@@ -1,0 +1,7 @@
+@media (min-width: 1000px) {
+  .custom-container {
+    max-width: 60%;
+    padding: 2rem 5rem;
+    margin-inline: auto;
+  }
+}
