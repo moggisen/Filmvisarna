@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Container, Navbar, Nav, Button, Card, Form } from "react-bootstrap";
 import "../styles/App.css";
 
@@ -12,11 +12,6 @@ type Route = { name: "login" | "signup" | "home" };
 export default function Auth() {
   const [route, setRoute] = useState<Route>({ name: "home" });
   const [authed, setAuthed] = useState(false);
-
-  //   // Tema (mörkt)
-  //   useEffect(() => {
-  //     document.documentElement.setAttribute("data-bs-theme", "dark");
-  //   }, []);
 
   return (
     <div className="bg-black min-vh-100 min-vw-100 text-white pb-5">
@@ -85,11 +80,17 @@ function BottomNav({
   onLogout: () => void;
 }) {
   return (
-    <Navbar bg="dark" variant="dark" fixed="bottom" className="border-top">
-      <Nav className="mx-auto gap-3">
+    <Navbar
+      bg="dark"
+      variant="dark"
+      fixed="bottom"
+      className="border-top bottom-nav"
+    >
+      <Nav className="mx-auto">
         <Nav.Item>
           <Button
             variant="outline-light"
+            className="home-btn bottom-nav-btn"
             size="sm"
             onClick={() => onNavigate("home")}
           >
@@ -101,6 +102,7 @@ function BottomNav({
             <Nav.Item>
               <Button
                 variant="secondary"
+                className="login-btn bottom-nav-btn"
                 size="sm"
                 onClick={() => onNavigate("login")}
               >
@@ -110,6 +112,7 @@ function BottomNav({
             <Nav.Item>
               <Button
                 variant="primary"
+                className="signup-btn bottom-nav-btn"
                 size="sm"
                 onClick={() => onNavigate("signup")}
               >
