@@ -1,0 +1,141 @@
+$primary: #0d253f;
+$secondary: #113255;
+$info: #ebebeb;
+$warning: #ffd700;
+$light: #d52026;
+$dark: #b81c21;
+
+
+// custom.scss
+@import "bootstrap/scss/bootstrap"; // Detta ger alla .btn-variant-stilar
+@import "./mixins.scss";
+
+body {
+  background-color: #0d253f; // eller vilken färg du vill
+}
+
+.card-body  {
+    background-color: #0d253f;
+}
+
+.movie-card {
+  border-radius: 12px; // rundar kortet
+  overflow: hidden;    // ser till att barn som bilden också klipps
+}
+/* custom.scss */
+
+/* Kalender-container */
+.react-calendar {
+  width: 100%;
+  background-color: #343a40; /* mörk bakgrund */
+  color: #194e83; /* ljus text */
+  border: none;
+  border-radius: 8px;
+  
+  /* Dagar */
+  .react-calendar__tile {
+    background-color: #495057;
+
+    &:hover {
+      background-color: #6c757d;
+    }
+  }
+
+  .react-calendar__navigation__label {
+  font-size: 12px; // mindre text
+
+  overflow: hidden;
+  text-overflow: ellipsis; // visar ... om texten blir för lång
+}
+.react-calendar__navigation__arrow {
+  margin: 1 1.4rem; // minskar mellanrum mellan pilar och text
+}
+
+
+  /* Navigation (månad + pilar) */
+  .react-calendar__navigation {
+    background-color: #343a40;
+    border-bottom: 1px solid #495057;
+
+    button {
+      color: #d0dbe6;
+      background: none;
+      border: none;
+
+      &:hover {
+        background-color: #495057;
+        color: #ffc107;
+        border-radius: 4px;
+      }
+    }
+  }
+  /* Markerad dag */
+  .react-calendar__tile--active {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+  }
+
+  /* Dagens datum */
+  .react-calendar__tile--now {
+    background-color: #17a2b8;
+    color: #fff;
+  }
+
+  /* Gråa datum (andra månader) */
+  .react-calendar__month-view__days__day--neighboringMonth {
+    color: #adb5bd;
+  }
+}
+
+/* Rubriker */
+h5 {
+  @include heading-text;
+}
+
+/* Kort-text */
+.card-text, p {
+  @include content-text;
+}
+
+/* Knappar */
+button {
+  @include button-text;
+}
+
+.event-card {
+  background-color: $secondary;
+  color: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease;
+
+  &:hover {
+    transform: translateY(-5px);
+  }
+
+  .card-img-top {
+    height: 180px;
+    object-fit: cover;
+  }
+
+  .card-title {
+    @include title-text;
+    color: $light // guld
+  }
+
+  .card-text {
+    @include content-text;
+    color: #d0dbe6;
+  }
+
+  .event-date {
+    display: inline-block;
+    background-color: $warning;
+    color: #362f2f;
+    font-weight: bold;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+  }
+}
