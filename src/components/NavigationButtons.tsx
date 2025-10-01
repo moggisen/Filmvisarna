@@ -1,6 +1,6 @@
 import { Nav, Button } from "react-bootstrap";
 
-type Route = "home" | "biljett" | "login" | "signup";
+type Route = "home" | "biljett" | "login" | "signup" | "profile";
 
 interface NavigationButtonsProps {
   authed: boolean;
@@ -25,7 +25,10 @@ export default function NavigationButtons({
         { key: "login", label: "Logga in", btnClass: "login-btn" },
         { key: "signup", label: "Bli medlem", btnClass: "signup-btn" },
       ]
-    : [{ key: "logout", label: "Logga ut", btnClass: "logout-btn" }];
+    : [
+        { key: "profile", label: "Mina sidor", btnClass: "profile-btn" },
+        { key: "logout", label: "Logga ut", btnClass: "logout-btn" },
+      ];
 
   return (
     <Nav className={btnClass}>

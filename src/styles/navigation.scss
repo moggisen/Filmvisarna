@@ -1,0 +1,146 @@
+// navigation.scss
+// Styling för NavigationButtons komponenten
+
+// Färgvariabler
+:root {
+  --nav-primary: #0d253f;
+  --nav-secondary: #113255;
+  --nav-accent: #d52026;
+  --nav-text: #ebebeb;
+  --nav-text-light: #ffffff;
+}
+
+// Gemensam basstyling för alla navigation buttons
+.nav-btn {
+  font-family: "Inter", sans-serif;
+  font-weight: 700;
+  border: none;
+  transition: all 0.2s ease;
+
+  &:focus {
+    outline: 2px solid var(--nav-text-light);
+    outline-offset: -2px;
+  }
+}
+
+// TOP NAVIGATION VARIANT
+.navigation-buttons-top {
+  // Flex layout för top nav
+  display: flex;
+  gap: 0.5rem;
+
+  .nav-item {
+    // Standard styling för top nav items
+  }
+
+  .nav-btn {
+    // Top nav specifik styling
+    color: var(--nav-text);
+    background: transparent;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+
+    &:hover {
+      background-color: var(--nav-secondary);
+      color: var(--nav-text-light);
+    }
+  }
+}
+
+// BOTTOM NAVIGATION VARIANT
+.navigation-buttons-bottom {
+  // Flex layout för bottom nav
+  width: 100%;
+  display: flex;
+  gap: 1px;
+  justify-content: center;
+  align-items: stretch;
+
+  .nav-item {
+    flex: 1 0 0;
+
+    &.d-flex {
+      display: flex !important;
+    }
+  }
+
+  .nav-btn {
+    // Bottom nav specifik styling
+    color: var(--nav-text);
+    background: transparent;
+    font-size: 0.75rem;
+    border-radius: 0;
+    margin: 0;
+    flex: 1 0 0;
+    min-height: 4rem;
+    padding: 0.5rem 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    word-wrap: break-word;
+    white-space: normal;
+    line-height: 1.2;
+
+    &:hover {
+      background-color: var(--nav-secondary);
+      color: var(--nav-text-light);
+    }
+
+    &:active {
+      background-color: var(--nav-accent);
+    }
+  }
+}
+
+// Responsiv design för bottom nav
+@media (max-width: 575.98px) {
+  .navigation-buttons-bottom {
+    .nav-btn {
+      font-size: 0.7rem;
+      min-height: 3.5rem;
+      padding: 0.375rem 0.125rem;
+    }
+  }
+}
+
+@media (max-width: 450px) {
+  .navigation-buttons-bottom {
+    .nav-btn {
+      padding-inline: 0;
+      --bs-btn-padding-x: 0;
+      font-size: 0.65rem;
+    }
+  }
+}
+
+@media (max-width: 350px) {
+  .navigation-buttons-bottom {
+    .nav-btn {
+      font-size: 0.6rem;
+      min-height: 3rem;
+    }
+  }
+}
+
+// Touch device optimizations för bottom nav
+@media (hover: none) and (pointer: coarse) {
+  .navigation-buttons-bottom {
+    .nav-btn {
+      min-height: 4.5rem;
+      padding: 0.75rem 0.25rem;
+
+      &:active {
+        background-color: var(--nav-accent);
+      }
+    }
+  }
+}
+
+// Safe area support för bottom nav
+@supports (padding: max(0px)) {
+  .navigation-buttons-bottom {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
+  }
+}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, Card, Form } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
+import "../styles/authpage.scss";
 
 interface AuthPageProps {
   mode: "login" | "signup";
@@ -32,23 +33,22 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
       <Button
         variant="outline-light"
         size="sm"
-        className="mb-3"
+        className="auth-btn auth-btn-back"
         onClick={onBack}
       >
         ← Tillbaka
       </Button>
 
-      <Card className="custom-container bg-secondary">
-        <Card.Header as="h6">
+      <Card className="auth-container auth-card">
+        <Card.Header as="h6" className="auth-heading-text">
           {mode === "login" ? "Logga in" : "Bli medlem"}
         </Card.Header>
         <Card.Body>
-          <Form onSubmit={handleSubmit}>
+          <Form onSubmit={handleSubmit} className="auth-form">
             <Form.Group className="mb-3" controlId="email">
               <Form.Label>E-post</Form.Label>
               <Form.Control
                 type="email"
-                // required
                 placeholder="du@example.com"
                 autoComplete="username"
               />
@@ -58,7 +58,6 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
               <Form.Label>Lösenord</Form.Label>
               <Form.Control
                 type="password"
-                // required
                 minLength={8}
                 placeholder="Minst 8 tecken"
                 autoComplete={
@@ -71,11 +70,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
               <>
                 <Form.Group className="mb-3" controlId="pwd2">
                   <Form.Label>Verifiera lösenord</Form.Label>
-                  <Form.Control
-                    type="password"
-                    // required
-                    minLength={8}
-                  />
+                  <Form.Control type="password" minLength={8} />
                 </Form.Group>
                 <Form.Group className="mb-3" controlId="name">
                   <Form.Label>Namn</Form.Label>
@@ -96,12 +91,12 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
               </>
             )}
 
-            <div className="d-grid gap-2">
+            <div className="auth-btn-grid">
               <Button
                 type="submit"
                 variant="primary"
                 disabled={loading}
-                className="sign-up-submit"
+                className="auth-btn auth-btn-submit"
               >
                 {loading
                   ? "Skickar…"
@@ -115,13 +110,14 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
       </Card>
 
       <Modal
-        className="modal-container"
+        className="auth-modal"
         show={show}
         onHide={handleClose}
         animation={false}
+        backdropClassName="auth-modal-backdrop"
       >
         <Modal.Header closeButton>
-          <Modal.Title>
+          <Modal.Title className="auth-heading-text">
             {name ? (
               <>
                 Välkommen, <strong>{name}</strong>!
@@ -132,10 +128,16 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p>Tack för att du blev medlem hos Filmvisarna!</p>
+          <p className="auth-body-text">
+            Tack för att du blev medlem hos Filmvisarna!
+          </p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>
+          <Button
+            variant="secondary"
+            onClick={handleClose}
+            className="auth-btn auth-btn-modal"
+          >
             Stäng
           </Button>
         </Modal.Footer>

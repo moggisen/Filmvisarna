@@ -1,0 +1,338 @@
+// homepage.scss
+// Endast styling som är specifik för HomePage.tsx
+
+// Färgvariabler specifika för startsidan
+:root {
+  --home-primary: #0d253f;
+  --home-secondary: #113255;
+  --home-accent: #d52026;
+  --home-accent-dark: #b81c21;
+  --home-warning: #ffd700;
+  --home-text: #ebebeb;
+  --home-text-muted: #d0dbe6;
+}
+
+// Huvudcontainer för startsidan
+.homepage-container {
+  background-color: var(--home-primary);
+
+  // Mobilvy
+  &.d-md-none {
+    padding: 1rem;
+  }
+
+  // Desktopvy
+  &.d-none.d-md-block {
+    .position-sticky {
+      background: var(--home-secondary);
+      height: 100vh;
+      padding: 0.5rem;
+    }
+  }
+}
+
+// Rubriker
+.homepage-heading {
+  font-family: "Inter", sans-serif;
+  font-weight: 700;
+  color: var(--home-text);
+  margin-bottom: 1rem;
+}
+
+// Filmkort
+.homepage-movie-card {
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--home-secondary);
+  border: none;
+
+  .card-img-top {
+    height: 200px;
+    object-fit: cover;
+  }
+
+  .card-body {
+    background: var(--home-secondary);
+    color: var(--home-text);
+
+    .card-title {
+      font-family: "Inter", sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+    }
+  }
+
+  // Hover-effekt på desktop
+  @media (min-width: 768px) {
+    transition: transform 0.2s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+    }
+  }
+}
+
+// Event-kort
+.homepage-event-card {
+  background-color: var(--home-secondary);
+  color: var(--home-text);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease;
+  height: 100%;
+
+  &:hover {
+    transform: translateY(-5px);
+  }
+
+  .card-img-top {
+    height: 180px;
+    object-fit: cover;
+  }
+
+  .card-title {
+    font-family: "Bebas Neue", sans-serif;
+    font-weight: 400;
+    color: var(--home-accent);
+    font-size: 1.5rem;
+  }
+
+  .card-text {
+    font-family: "Roboto", sans-serif;
+    font-weight: 300;
+    color: var(--home-text-muted);
+    line-height: 1.5;
+  }
+
+  .homepage-event-date {
+    display: inline-block;
+    background-color: var(--home-warning);
+    color: #362f2f;
+    font-weight: bold;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+    font-family: "Inter", sans-serif;
+    font-size: 0.875rem;
+  }
+}
+
+// Kalender styling
+.homepage-calendar {
+  width: 100%;
+  background-color: #343a40;
+  color: #194e83;
+  border: none;
+  border-radius: 8px;
+
+  // Navigation (månad + pilar)
+  .react-calendar__navigation {
+    background-color: #343a40;
+    border-bottom: 1px solid #495057;
+
+    button {
+      color: #d0dbe6;
+      background: none;
+      border: none;
+
+      &:hover {
+        background-color: #495057;
+        color: var(--home-warning);
+        border-radius: 4px;
+      }
+    }
+
+    .react-calendar__navigation__label {
+      font-size: 0.75rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .react-calendar__navigation__arrow {
+      margin: 0 0.35rem;
+    }
+  }
+
+  // Dagar
+  .react-calendar__tile {
+    background-color: #495057;
+    color: var(--home-text);
+
+    &:hover {
+      background-color: #6c757d;
+    }
+  }
+
+  // Markerad dag
+  .react-calendar__tile--active {
+    background-color: var(--home-warning) !important;
+    color: #000 !important;
+  }
+
+  // Dagens datum
+  .react-calendar__tile--now {
+    background-color: #17a2b8;
+    color: #fff;
+  }
+
+  // Gråa datum (andra månader)
+  .react-calendar__month-view__days__day--neighboringMonth {
+    color: #adb5bd;
+  }
+}
+
+// Formulärelement
+.homepage-form {
+  .form-label {
+    color: var(--home-text);
+    font-family: "Inter", sans-serif;
+    font-weight: 600;
+  }
+
+  .form-control,
+  .form-select {
+    background-color: var(--home-primary);
+    border-color: var(--home-text-muted);
+    color: var(--home-text);
+
+    &:focus {
+      background-color: var(--home-primary);
+      border-color: var(--home-warning);
+      color: var(--home-text);
+      box-shadow: 0 0 0 0.2rem rgba(255, 215, 0, 0.25);
+    }
+  }
+
+  .form-control::placeholder {
+    color: var(--home-text-muted);
+  }
+}
+
+// Knappar
+.homepage-btn {
+  font-family: "Inter", sans-serif;
+  font-weight: 700;
+  font-size: 0.875rem;
+
+  &.homepage-btn-secondary {
+    background-color: var(--home-accent);
+    border-color: var(--home-accent);
+
+    &:hover {
+      background-color: var(--home-accent-dark);
+      border-color: var(--home-accent-dark);
+    }
+  }
+
+  &.homepage-btn-dark {
+    background-color: var(--home-primary);
+    border-color: var(--home-text-muted);
+
+    &:hover {
+      background-color: var(--home-secondary);
+      border-color: var(--home-text);
+    }
+  }
+}
+
+// Grid layout
+.homepage-movie-grid {
+  .row {
+    --bs-gutter-x: 1rem;
+    --bs-gutter-y: 1rem;
+  }
+
+  // Mobil layout (2 kolumner)
+  &.homepage-mobile-grid {
+    .col {
+      flex: 0 0 calc(50% - 0.5rem);
+      max-width: calc(50% - 0.5rem);
+    }
+  }
+
+  // Desktop layout (responsive kolumner)
+  &.homepage-desktop-grid {
+    .col {
+      margin-bottom: 1rem;
+    }
+  }
+}
+
+// Nyaste filmen sektion
+.homepage-newest-movie {
+  margin-bottom: 1.5rem;
+
+  .card {
+    background: var(--home-secondary);
+    border: none;
+    border-radius: 12px;
+
+    .card-img-top {
+      height: 250px;
+      object-fit: cover;
+    }
+
+    .card-body {
+      .card-title {
+        font-family: "Inter", sans-serif;
+        font-weight: 700;
+        color: var(--home-text);
+        margin-bottom: 1rem;
+      }
+    }
+  }
+}
+
+// Responsiv design
+@media (max-width: 767.98px) {
+  .homepage-container {
+    .homepage-movie-card {
+      .card-body {
+        padding: 0.75rem;
+
+        .btn-group {
+          display: flex;
+          gap: 0.25rem;
+
+          .btn {
+            flex: 1;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+          }
+        }
+      }
+    }
+
+    .homepage-calendar {
+      margin-bottom: 1rem;
+    }
+  }
+}
+
+@media (min-width: 768px) {
+  .homepage-container {
+    .homepage-movie-card {
+      .card-body {
+        .btn {
+          margin: 0 0.25rem;
+        }
+      }
+    }
+  }
+}
+
+// Text hjälpklasser
+.homepage-body-text {
+  font-family: "Roboto", sans-serif;
+  font-weight: 300;
+  color: var(--home-text);
+  line-height: 1.6;
+}
+
+.homepage-heading-text {
+  font-family: "Inter", sans-serif;
+  font-weight: 700;
+  color: var(--home-text);
+}

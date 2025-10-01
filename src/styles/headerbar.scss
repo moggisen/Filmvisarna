@@ -1,0 +1,150 @@
+// headerbar.scss
+// Endast styling som är specifik för HeaderBar.tsx
+
+// Färgvariabler specifika för headern
+:root {
+  --header-primary: #0d253f;
+  --header-secondary: #113255;
+  --header-accent: #d52026;
+  --header-text: #ebebeb;
+  --header-text-light: #d52026;
+}
+
+// Huvudnavbar
+.header-navbar {
+  background-color: var(--header-primary) !important;
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+
+  // Bootstrap navbar padding override
+  --bs-navbar-padding-y: 0;
+}
+
+// Logotyp styling
+.header-logo {
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-size: 2rem;
+  color: var(--header-text-light);
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: 1px;
+
+  &:hover {
+    color: var(--header-text-light);
+    opacity: 0.9;
+  }
+}
+
+// Desktop navigation (döljs på mobil)
+.header-desktop-nav {
+  display: none;
+
+  @media (min-width: 992px) {
+    display: block;
+  }
+}
+
+// Top navigation buttons (desktop)
+.header-top-buttons {
+  .header-nav-btn {
+    color: var(--header-text);
+    font-family: "Inter", sans-serif;
+    font-weight: 700;
+    font-size: 0.875rem;
+    border: none;
+    background: transparent;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: var(--header-secondary);
+      color: var(--header-text-light);
+    }
+
+    // Specifika knapptyper kan få extra styling om needed
+    &.header-home-btn {
+      // Specifik styling för hem-knapp
+    }
+
+    &.header-biljett-btn {
+      // Specifik styling för biljett-knapp
+    }
+
+    &.header-login-btn {
+      // Specifik styling för login-knapp
+    }
+
+    &.header-signup-btn {
+      // Specifik styling för signup-knapp
+    }
+
+    &.header-profile-btn {
+      // Specifik styling för profil-knapp
+    }
+
+    &.header-logout-btn {
+      // Specifik styling för logout-knapp
+    }
+  }
+}
+
+// Responsiv design
+@media (max-width: 991.98px) {
+  .header-desktop-nav {
+    display: none !important;
+  }
+
+  .header-logo {
+    font-size: 1.75rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .header-logo {
+    font-size: 1.5rem;
+  }
+}
+
+// Container justeringar för header
+.header-container {
+  padding-left: 1rem;
+  padding-right: 1rem;
+
+  @media (min-width: 576px) {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+// Brand/logo container
+.header-brand {
+  padding-bottom: 0;
+  margin-right: auto;
+}
+
+// Animationer och transitions
+.header-navbar {
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+
+  // Lägg till skugga vid scroll (om du vill)
+  &.scrolled {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+}
+
+// Accessibility improvements
+.header-logo {
+  &:focus {
+    outline: 2px solid var(--header-text-light);
+    outline-offset: 2px;
+  }
+}
+
+.header-nav-btn {
+  &:focus {
+    outline: 2px solid var(--header-text-light);
+    outline-offset: -2px;
+  }
+}
