@@ -1,0 +1,184 @@
+
+// färger
+$primary:   #071422; 
+$secondary: #0d2844; 
+$info:      #ebebeb; 
+$warning:   #ffd700; 
+$light:     #c31d23; 
+$dark:      #a0181c;
+
+// variabler
+:root {
+  --bg-page:   #{$primary};
+  --text-main: #{$info};
+  --text-muted: #ffffff;
+
+  --nav-bg:    #{$primary};
+  --nav-text:  #ffffff;
+  --nav-link-hover: #ffffff;
+
+  --title-color: #{$light};
+  --brand-color: #{$light};
+
+  --surface-bg:  #{$secondary};
+  --surface-border: #{$secondary};
+  --trailer-bg:    #000000;
+  --trailer-border:#{$warning};
+  
+  --poster-border:#{$warning};
+  --poster-shadow: rgba(0,0,0,.15);
+
+  --btn-bg:       #{$light};
+  --btn-text:     #ffffff;
+  --btn-hover-bg: #{$dark};
+  --pill-bg:      #{$dark};
+  --pill-text:    #ffffff;
+  --pill-hover-bg:#{$light};
+
+  --accent-gold:  #{$warning};
+}
+
+// mixins för text
+@mixin title-text {
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-size: 2rem;
+}
+@mixin heading-text {
+  font-family: "Inter", sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+@mixin content-text {
+  font-family: "Roboto", sans-serif;
+  font-weight: 300;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+@mixin button-text {
+  font-family: "Inter", sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+// tema
+.theme { background: var(--bg-page); color: var(--text-main); }
+.brand { color: var(--brand-color); }
+.meta  { color: var(--text-muted); font-family: "Inter", sans-serif; font-size: .9rem; }
+
+// logga
+.logo {
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 700;
+  font-size: 1.75rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--brand-color);
+}
+
+// titel
+.title {
+  @include title-text;
+  color: var(--title-color);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: clamp(28px, 4vw, 48px);
+}
+h1,h2,h3,h4,h5,h6 { @include heading-text; color: var(--text-main); }
+.body-text { @include content-text; color: var(--text-main); }
+
+// kort
+.surface {
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  border-radius: .5rem;
+  overflow: hidden;
+}
+.surface-btn {
+  background: var(--surface-bg);
+  color: var(--text-main);
+  font-family: "Inter", sans-serif;
+  font-weight: 700;
+}
+
+// trailer yta
+.trailer-surface {
+  background: var(--trailer-bg);
+  border: 1px solid var(--trailer-border);
+  border-radius: .5rem;
+  overflow: hidden;
+}
+.trailer-wrapper {
+  position: relative;
+  background: #000;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border: 1px solid var(--trailer-border);
+}
+.trailer-poster {
+  position: relative;
+  cursor: pointer;
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+}
+.play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 4rem;
+  color: white;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+
+// poster
+.poster {
+  border: 1px solid var(--poster-border);
+  box-shadow: 0 2px 8px var(--poster-shadow);
+  border-radius: .5rem;
+}
+
+// boka knapp
+.book {
+  @include button-text;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: none;
+  border-radius: 999px;
+  padding: .5rem 1rem;
+}
+.book:hover { background: var(--btn-hover-bg); }
+
+// mobil meny
+.mobile-bottom { 
+  position: sticky; 
+  bottom: 0; 
+  width: 100%; 
+  display:flex; 
+  justify-content:center; 
+  padding:16px 0; 
+  background:transparent; 
+}
+.pill-nav {
+  background: var(--pill-bg);
+  color: var(--pill-text);
+  border-radius: 999px; 
+  padding: 10px 18px;
+  display: inline-flex; 
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  font-family: "Inter", sans-serif; 
+  font-weight: 600;
+}
+.pill-link { color: var(--pill-text); text-decoration: none; }
+.pill-link:hover { 
+  background: var(--pill-hover-bg); 
+  border-radius: 999px; 
+  text-decoration: underline; 
+}
+
