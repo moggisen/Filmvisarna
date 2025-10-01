@@ -2,90 +2,138 @@ import { useState } from "react";
 import { Container, Navbar, Nav, Button, Card, Form } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 
-type Route = "home" | "biljett" | "login" | "signup";
+// ------------------------------------------------------------
+// Endast Auth (login/signup)
+// ------------------------------------------------------------
+
+// Routes: bara login och signup
+type Route = { name: "login" | "biljett" | "signup" | "home" };
 
 export default function Auth() {
-  const [route, setRoute] = useState<Route>("home");
+  const [route, setRoute] = useState<Route>({ name: "home" });
   const [authed, setAuthed] = useState(false);
-
-  const handleAuthSuccess = () => {
-    setAuthed(true);
-    setRoute("home");
-  };
-
-  const navigationProps = {
-    authed,
-    onNavigate: setRoute,
-    onLogout: () => setAuthed(false),
-  };
 
   return (
     <div className="main-container min-vh-100 min-vw-100 text-white pb-5">
-      <HeaderBar {...navigationProps} onHome={() => setRoute("home")} />
+      <HeaderBar
+        authed={authed}
+        onNavigate={(name) => setRoute({ name })}
+        onLogout={() => setAuthed(false)}
+        onHome={() => setRoute({ name: "home" })}
+      />
 
       <Container className="pt-3 pb-5">
-        {route === "login" || route === "signup" ? (
+        {route.name === "login" && (
           <AuthPage
-            mode={route}
-            onSuccess={handleAuthSuccess}
-            onBack={() => setRoute("home")}
+            mode="login"
+            onSuccess={() => {
+              setAuthed(true);
+              setRoute({ name: "home" });
+            }}
+            onBack={() => setRoute({ name: "home" })}
           />
-        ) : (
+        )}
+        {route.name === "signup" && (
+          <AuthPage
+            mode="signup"
+            onSuccess={() => {
+              setAuthed(true);
+              setRoute({ name: "home" });
+            }}
+            onBack={() => setRoute({ name: "home" })}
+          />
+        )}
+        {route.name === "home" && (
           <p className="text-center text-secondary mt-5">
-            👋 Välkommen! Använd för att logga in eller skapa konto.
+            👋 Välkommen! Använd menyn längst ner för att logga in eller skapa
+            konto.
           </p>
         )}
       </Container>
 
-      <BottomNav {...navigationProps} />
+      <BottomNav
+        authed={authed}
+        onNavigate={(name) => setRoute({ name })}
+        onLogout={() => setAuthed(false)}
+      />
     </div>
   );
 }
 
-// Gemensam Navigation-komponent
+// ---------- Gemensam Navigation-komponent ----------
 function NavigationButtons({
   authed,
   onNavigate,
   onLogout,
-  btnClass = "",
+  className = "",
 }: {
   authed: boolean;
-  onNavigate: (name: Route) => void;
+  onNavigate: (name: "home" | "biljett" | "login" | "signup") => void;
   onLogout: () => void;
-  btnClass?: string;
+  className?: string;
 }) {
-  const buttons = [
-    { key: "home", label: "Hem", btnClass: "home-btn" },
-    { key: "biljett", label: "Biljett", btnClass: "biljett-btn" },
-  ];
-
-  const authButtons = !authed
-    ? [
-        { key: "login", label: "Logga in", btnClass: "login-btn" },
-        { key: "signup", label: "Bli medlem", btnClass: "signup-btn" },
-      ]
-    : [{ key: "logout", label: "Logga ut", btnClass: "logout-btn" }];
-
   return (
-    <Nav className={btnClass}>
-      {[...buttons, ...authButtons].map(({ key, label, btnClass }) => (
-        <Nav.Item key={key}>
+    <Nav className={className}>
+      <Nav.Item>
+        <Button
+          className="home-btn nav-btn"
+          size="sm"
+          variant="outline-light"
+          onClick={() => onNavigate("home")}
+        >
+          🏠 Hem
+        </Button>
+      </Nav.Item>
+      <Nav.Item>
+        <Button
+          className="biljett-btn nav-btn"
+          size="sm"
+          variant="outline-light"
+          onClick={() => onNavigate("biljett")}
+        >
+          🎫 Biljett
+        </Button>
+      </Nav.Item>
+      {!authed ? (
+        <>
+          <Nav.Item>
+            <Button
+              className="login-btn nav-btn"
+              size="sm"
+              variant="outline-light"
+              onClick={() => onNavigate("login")}
+            >
+              🔐 Logga in
+            </Button>
+          </Nav.Item>
+          <Nav.Item>
+            <Button
+              className="signup-btn nav-btn"
+              size="sm"
+              variant="outline-light"
+              onClick={() => onNavigate("signup")}
+            >
+              ✨ Bli medlem
+            </Button>
+          </Nav.Item>
+        </>
+      ) : (
+        <Nav.Item>
           <Button
-            className={`${btnClass} nav-btn`}
+            className="logout-btn nav-btn"
             size="sm"
-            onClick={() =>
-              key === "logout" ? onLogout() : onNavigate(key as Route)
-            }
+            variant="outline-light"
+            onClick={onLogout}
           >
-            {label}
+            ⎋ Logga ut
           </Button>
         </Nav.Item>
-      ))}
+      )}
     </Nav>
   );
 }
 
-// Header
+// ---------- Header ----------
 function HeaderBar({
   authed,
   onNavigate,
@@ -93,23 +141,24 @@ function HeaderBar({
   onHome,
 }: {
   authed: boolean;
-  onNavigate: (name: Route) => void;
+  onNavigate: (name: "home" | "biljett" | "login" | "signup") => void;
   onLogout: () => void;
   onHome: () => void;
 }) {
   return (
     <Navbar className="bg-primary logo-text" sticky="top">
       <Container>
-        <Navbar.Brand role="button" onClick={onHome}>
+        <Navbar.Brand role="button" className="top-nav" onClick={onHome}>
           <span className="text-light logo-text">FILMVISARNA</span>
         </Navbar.Brand>
 
-        <div className="d-none d-lg-block top-nav">
+        {/* Desktop navigation - visas bara på större skärmar */}
+        <div className="d-none d-md-block">
           <NavigationButtons
             authed={authed}
             onNavigate={onNavigate}
             onLogout={onLogout}
-            btnClass="top-nav-buttons"
+            className="top-nav-buttons"
           />
         </div>
       </Container>
@@ -117,29 +166,30 @@ function HeaderBar({
   );
 }
 
-// Bottom nav
+// ---------- Bottom nav ----------
 function BottomNav({
   authed,
   onNavigate,
   onLogout,
 }: {
   authed: boolean;
-  onNavigate: (name: Route) => void;
+  onNavigate: (name: "home" | "biljett" | "login" | "signup") => void;
   onLogout: () => void;
 }) {
   return (
-    <Navbar fixed="bottom" className="bg-primary bottom-nav d-lg-none">
+    <Navbar fixed="bottom" className="bg-primary bottom-nav d-md-none">
       <NavigationButtons
         authed={authed}
         onNavigate={onNavigate}
         onLogout={onLogout}
-        btnClass="mx-auto"
+        className="mx-auto"
       />
     </Navbar>
   );
 }
 
-// Auth (login/signup)
+// ---------- Auth (login/signup) ----------
+// (AuthPage-komponenten förblir oförändrad)
 function AuthPage({
   mode,
   onSuccess,
@@ -153,19 +203,24 @@ function AuthPage({
   const [show, setShow] = useState(false);
   const [name, setName] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      mode === "signup" ? setShow(true) : onSuccess();
-    }, 700);
-  };
-
   const handleClose = () => {
     setShow(false);
     onSuccess();
   };
+  const handleShow = () => setShow(true);
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      if (mode === "signup") {
+        setShow(true);
+      } else {
+        onSuccess(); // login går direkt
+      }
+    }, 700);
+  }
 
   return (
     <>
@@ -177,28 +232,26 @@ function AuthPage({
       >
         ← Tillbaka
       </Button>
-
       <Card className="custom-container bg-secondary">
         <Card.Header as="h6">
           {mode === "login" ? "Logga in" : "Bli medlem"}
         </Card.Header>
         <Card.Body>
-          <Form onSubmit={handleSubmit}>
+          <Form onSubmit={submit}>
             <Form.Group className="mb-3" controlId="email">
               <Form.Label>E-post</Form.Label>
               <Form.Control
                 type="email"
-                // required
+                required
                 placeholder="du@example.com"
                 autoComplete="username"
               />
             </Form.Group>
-
             <Form.Group className="mb-3" controlId="pwd">
               <Form.Label>Lösenord</Form.Label>
               <Form.Control
                 type="password"
-                // required
+                required
                 minLength={8}
                 placeholder="Minst 8 tecken"
                 autoComplete={
@@ -206,21 +259,16 @@ function AuthPage({
                 }
               />
             </Form.Group>
-
             {mode === "signup" && (
               <>
                 <Form.Group className="mb-3" controlId="pwd2">
                   <Form.Label>Verifiera lösenord</Form.Label>
-                  <Form.Control
-                    type="password"
-                    // required
-                    minLength={8}
-                  />
+                  <Form.Control type="password" required minLength={8} />
                 </Form.Group>
                 <Form.Group className="mb-3" controlId="name">
                   <Form.Label>Namn</Form.Label>
                   <Form.Control
-                    type="text"
+                    type="Name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                   />
@@ -228,18 +276,18 @@ function AuthPage({
                 <Form.Group className="mb-3" controlId="number">
                   <Form.Label>Telefonnummer</Form.Label>
                   <Form.Control
-                    type="tel"
+                    type="password"
                     minLength={10}
                     placeholder="070 555 5454"
                   />
                 </Form.Group>
               </>
             )}
-
             <div className="d-grid gap-2">
               <Button
                 type="submit"
                 variant="primary"
+                onClick={mode === "login" ? onSuccess : handleShow}
                 disabled={loading}
                 className="sign-up-submit"
               >

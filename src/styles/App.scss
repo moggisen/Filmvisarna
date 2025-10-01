@@ -1,0 +1,178 @@
+$primary: #0d253f !default;
+$primary-light: lighten($primary, 15%); // 15% ljusare
+$primary-dark: #071422;
+$secondary: #113255 !default;
+$success: #28a745 !default;
+$info: #ebebeb !default;
+$warning: #ffd700 !default;
+$danger: #dc3545 !default;
+$light: #d52026 !default;
+$dark: #b81c21 !default;
+
+// Andra anpassningar
+$font-family-base: "Roboto", sans-serif !default;
+$font-size-base: 1rem !default;
+
+$logo-font: "Bebas Neue", sans-serif;
+
+// Importera Bootstrap SCSS
+@import "bootstrap/scss/bootstrap";
+
+// Mixins --------------------------------------------------------
+@mixin title-text {
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 3rem;
+}
+
+@mixin heading-text {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+  font-size: 1.5rem;
+}
+
+@mixin content-text {
+  font-family: "Roboto", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+  font-size: 1.3rem;
+}
+@mixin button-text {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 1rem;
+}
+
+// End Mixins --------------------------------------------------------
+
+:root {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Inter", sans-serif;
+    font-weight: 700;
+  }
+}
+
+body {
+  background-color: $primary-dark;
+}
+
+@media (min-width: 1000px) {
+  .custom-container {
+    max-width: 60%;
+    padding: 1rem 5rem;
+    margin-inline: auto;
+  }
+}
+
+.custom-container {
+  color: $info !important;
+}
+
+.logo-text {
+  @include title-text;
+}
+
+.navbar-brand {
+  padding-bottom: 0;
+}
+
+.btn {
+  font-family: "Roboto", sans-serif;
+  font-weight: 700;
+}
+
+.bottom-nav {
+  padding: 0 !important;
+}
+
+.navbar {
+  --bs-navbar-padding-y: 0;
+}
+
+.nav-btn {
+  min-height: 5rem;
+  min-width: 7rem;
+  border-radius: 0;
+  margin: 0;
+
+  &:hover {
+    background-color: $secondary;
+  }
+}
+
+.modal-backdrop {
+  --bs-backdrop-opacity: 0.9;
+}
+
+.modal-dialog {
+  margin-top: 18%;
+
+  .modal-content {
+    border-radius: 1rem;
+  }
+
+  .modal-title {
+    padding-block: 1rem;
+  }
+
+  .btn-close {
+    filter: invert(1);
+  }
+
+  .modal-header,
+  .modal-footer {
+    background-color: $primary-dark;
+    color: $info;
+    border-color: $dark;
+  }
+
+  .modal-body {
+    background-color: $primary;
+    color: $info;
+    min-height: 9rem;
+    padding-top: 2rem;
+
+    p {
+      @include content-text();
+    }
+  }
+}
+
+.card-header {
+  border: none;
+}
+
+.top-nav-buttons {
+  .btn {
+    color: $info;
+
+    &:hover {
+      background-color: $secondary;
+    }
+  }
+}
+
+@media (max-width: 770px) {
+  .top-nav-buttons {
+    display: none !important;
+  }
+}
+
+@media (max-width: 450px) {
+  .bottom-nav .nav-btn {
+    padding-inline: 0;
+    --bs-btn-padding-x: 0;
+  }
+}
