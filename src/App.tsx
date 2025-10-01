@@ -1,11 +1,5 @@
-import Auth from "./components/Auth";
+import Booking from './components/booking';
 
-function App() {
-  return (
-    <>
-      <Auth />
-    </>
-  );
+export default function App() {
+  return <Booking />;
 }
-
-export default App;
