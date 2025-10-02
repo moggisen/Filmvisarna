@@ -43,44 +43,43 @@ $dark: #b81c21 !default;
 /* Dra in allt Bootstrap */
 @import "bootstrap/scss/bootstrap";
 
-body {
-  background-color: $primary;
-}
-.btn {
-  @include button-text;
-  color: $info;
-}
-.btn-close {
-  filter: invert(1);
-}
-.alert,
-.card {
-  @include content-text;
-}
-.alert-heading,
-.card-header {
-  @include heading-text;
-  padding: 20px 0;
-  text-align: center;
-}
-.card-header,
-.list-group-item {
-  color: $info;
-}
-.list-group-item strong {
-  font-weight: bold;
-}
-.modal-backdrop {
-  --bs-backdrop-opacity: 0.9;
-}
-.mobile-nav-button {
+.mobile-shell {
+  .btn {
+    @include button-text;
+    color: $info;
+  }
+  .btn-close {
+    filter: invert(1);
+  }
+  .alert,
+  .card {
+    @include content-text;
+  }
+  .alert-heading,
+  .card-header {
+    @include heading-text;
+    padding: 20px 0;
+    text-align: center;
+  }
+  .card-header,
+  .list-group-item {
+    color: $info;
+  }
+  .list-group-item strong {
+    font-weight: bold;
+  }
+  .modal-backdrop {
+    --bs-backdrop-opacity: 0.9;
+  }
+  .mobile-nav-button {
     padding: 20px 0;
     background-image: linear-gradient(
-    to bottom,
-    $primary 0%,
-    #0a2036 50%,
-    $primary 100%
+      to bottom,
+      $primary 0%,
+      #0a2036 50%,
+      $primary 100%
     );
+  }
 }
 
 /* Roten skapar en stacking context */
@@ -100,7 +99,7 @@ body {
     inset: 0;
     z-index: -1; /* bakom innehållet men över body */
     background: linear-gradient(rgba(7, 20, 34, 0.8), rgba(7, 20, 34, 0.8)),
-      /* mörk overlay för läsbarhet */ url("/background.jpg") center / cover
+      /* mörk overlay för läsbarhet */ url("./background.jpg") center / cover
         no-repeat;
   }
 }

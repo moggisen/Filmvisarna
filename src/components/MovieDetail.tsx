@@ -42,7 +42,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
 
             {/* kort beskrivning */}
             <section className="movie-card mb-3">
-              <div className="card-body movie-body-text">
+              <div className="card-body movie-body-text p-4">
                 Efter de katastrofala händelserna, som startades av Thanos, och
                 vilka raderade halva universum och splittrade The Avengers
                 tvingas de återstående medlemmarna i Avengers ta upp en sista

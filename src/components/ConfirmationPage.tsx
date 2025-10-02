@@ -37,8 +37,8 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   };
 
   return (
-    <div className="mobile-shell">
-      <Alert variant="success" className="mb-3">
+    <div className="mobile-shell confirm-page">
+      <Alert data-bs-theme="dark" variant="success" className="mb-3">
         <Alert.Heading className="h5">Bokning bekräftad!</Alert.Heading>
         <p className="text-center mb-0">
           Ditt boknings-ID är <strong>{mockSummary.bookingId}</strong>.
@@ -78,7 +78,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
         <Button
           variant="primary"
           size="sm"
-          className="border-dark text-dark"
+          className="border-dark text-info py-2 px-3"
           onClick={onDone}
         >
           Till startsidan
