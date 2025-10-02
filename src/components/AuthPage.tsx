@@ -39,7 +39,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
         ← Tillbaka
       </Button>
 
-      <Card className="auth-container auth-card">
+      <Card className="auth-container auth-card auth-page">
         <Card.Header as="h6" className="auth-heading-text">
           {mode === "login" ? "Logga in" : "Bli medlem"}
         </Card.Header>
