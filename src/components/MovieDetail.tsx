@@ -22,7 +22,6 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
     "https://www.youtube.com/watch?v=TcMBFSGVi1c"
   );
 
-
   return (
     <div className="movie-detail-theme min-vh-100 d-flex flex-column">
       {/* logga för mobil */}
@@ -52,9 +51,8 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
             </section>
 
             {/* accordion för mer info och recensioner */}
-          
-           <section className="movie-accordion accordion" id="filmAccordion">
 
+            <section className="movie-accordion accordion" id="filmAccordion">
               <div className="accordion-item">
                 <h2 className="accordion-header">
                   <button
@@ -64,7 +62,6 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                     data-bs-target="#collapseInfo"
                     aria-expanded="true"
                     aria-controls="collapseInfo"
-                    
                   >
                     Mer info
                   </button>

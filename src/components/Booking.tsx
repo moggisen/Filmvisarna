@@ -308,11 +308,6 @@ export default function Booking({
     if (showAuth) {
       closeAuth();
     }
-
-    // Navigera till "Mina sidor" om användaren är inloggad
-    // if (authed) {
-    //   onConfirm(booking);
-    // }
   }
 
   function getMovieTitle(id: string): string {
@@ -337,7 +332,7 @@ export default function Booking({
 
   return (
     <>
-      <div className="container-fluid py-4">
+      <div className="booking container-fluid py-4">
         <div className="row g-4 align-items-stretch">
           {/* VÄNSTER: val */}
           <div className="col-lg-4">
@@ -373,7 +368,7 @@ export default function Booking({
                   </select>
                 </div>
                 <label className="form-label fw-semibold">Salong</label>
-                <div className="form-control-plaintext">
+                <div className="form-control-plaintext hidden-text">
                   {SALONGER[salonIndex].name}
                 </div>
 
@@ -408,10 +403,10 @@ export default function Booking({
 
           {/* HÖGER: salong & platser + knappar */}
           <div className="col-lg-8">
-            <div className="card panel h-100">
+            <div className="card booking-panel h-100">
               <div className="card-header d-flex align-items-center justify-content-between">
                 <span className="fw-semibold">Salong – platser</span>
-                <small className="text-muted">Välj dina platser</small>
+                <small className="hidden-text">Välj dina platser</small>
               </div>
               <div className="card-body">
                 {/* MOBIL (0–600px): checkbox-dropdown för platser */}
@@ -439,29 +434,13 @@ export default function Booking({
                                 (!isActive && selected.size >= needed);
                               return (
                                 <button
-                                  key={no}
-                                  type="button"
-                                  className={
-                                    "seat btn btn-sm" +
-                                    (isTaken
-                                      ? " seat-taken"
-                                      : isActive
-                                      ? " seat-active"
-                                      : "")
-                                  }
-                                  aria-pressed={isActive}
-                                  aria-label={`Plats ${no}${
-                                    isTaken
-                                      ? " (upptagen)"
-                                      : isActive
-                                      ? " (vald)"
-                                      : ""
-                                  }`}
-                                  disabled={disabled}
-                                  onClick={() => onToggleSeat(no)}
-                                >
-                                  {no}
-                                </button>
+                                key={no}
+                                type="button"
+                                className={"seat" + (isTaken ? " seat-taken" : isActive ? " seat-active" : "")}
+                                aria-pressed={isActive}
+                                aria-label={`Plats ${no}${isTaken ? " (upptagen)" : isActive ? " (vald)" : ""}`}
+                                disabled={disabled}onClick={() => onToggleSeat(no)}>{no}</button>
+
                               );
                             })}
                           </div>
@@ -474,7 +453,7 @@ export default function Booking({
                 {/* Val + totals */}
                 <div className="mt-3 d-flex align-items-center justify-content-between">
                   <div>
-                    <div className="text-muted small">Valda platser</div>
+                    <div className="small hidden-text">Valda platser</div>
                     <div className="fw-semibold">
                       {Array.from(selected)
                         .sort((a, b) => a - b)
@@ -482,7 +461,7 @@ export default function Booking({
                     </div>
                   </div>
                   <div className="text-end">
-                    <div className="text-muted small">Totalt</div>
+                    <div className="small hidden-text">Totalt</div>
                     <div className="h4 mb-0">{fmtSEK(ticketTotal)}</div>
                   </div>
                 </div>
