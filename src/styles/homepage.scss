@@ -4,6 +4,7 @@
 // Färgvariabler specifika för startsidan
 :root {
   --home-primary: #0d253f;
+  --home-primary-dark: #071422;
   --home-secondary: #113255;
   --home-accent: #d52026;
   --home-accent-dark: #b81c21;
@@ -14,8 +15,6 @@
 
 // Huvudcontainer för startsidan
 .homepage-container {
-  background-color: var(--home-primary);
-
   // Mobilvy
   &.d-md-none {
     padding: 1rem;
@@ -44,15 +43,15 @@
   border-radius: 12px;
   overflow: hidden;
   background: var(--home-secondary);
-  border: none;
+  border: none !important;
 
   .card-img-top {
-    height: 200px;
+    height: 300px;
     object-fit: cover;
   }
 
   .card-body {
-    background: var(--home-secondary);
+    background: var(--home-primary-dark);
     color: var(--home-text);
 
     .card-title {
@@ -75,7 +74,7 @@
 
 // Event-kort
 .homepage-event-card {
-  background-color: var(--home-secondary);
+  background-color: var(--home-primary) !important;
   color: var(--home-text);
   border-radius: 12px;
   overflow: hidden;
@@ -108,8 +107,8 @@
 
   .homepage-event-date {
     display: inline-block;
-    background-color: var(--home-warning);
-    color: #362f2f;
+    background-color: var(--home-accent-dark);
+    color: #ffffff;
     font-weight: bold;
     padding: 0.3rem 0.6rem;
     border-radius: 8px;
@@ -119,16 +118,20 @@
   }
 }
 
+.sidebar {
+  background-color: var(--home-primary-dark) !important;
+}
+
 // Kalender styling
 .homepage-calendar {
   width: 100%;
-  background-color: #343a40;
   color: #194e83;
   border: none;
   border-radius: 8px;
 
   // Navigation (månad + pilar)
   .react-calendar__navigation {
+
     background-color: #343a40;
     border-bottom: 1px solid #495057;
 
@@ -148,10 +151,6 @@
       font-size: 0.75rem;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    .react-calendar__navigation__arrow {
-      margin: 0 0.35rem;
     }
   }
 
@@ -180,6 +179,18 @@
   // Gråa datum (andra månader)
   .react-calendar__month-view__days__day--neighboringMonth {
     color: #adb5bd;
+  }
+}
+
+.homepage-calendar {
+  .react-calendar__month-view__weekdays {
+    font-size: 0.7rem; // mindre text
+    height: 1.5rem; // minskar höjden på raden
+    line-height: 1rem; // centrerar texten vertikalt
+  }
+
+  .react-calendar__month-view__weekdays__weekday {
+    padding: 0; // tar bort extra padding
   }
 }
 
@@ -263,9 +274,9 @@
 // Nyaste filmen sektion
 .homepage-newest-movie {
   margin-bottom: 1.5rem;
-
+  background-color: var(--home-primary) !important;
+  border: none !important;
   .card {
-    background: var(--home-secondary);
     border: none;
     border-radius: 12px;
 
@@ -334,5 +345,5 @@
 .homepage-heading-text {
   font-family: "Inter", sans-serif;
   font-weight: 700;
-  color: var(--home-text);
+  color: var(--home-text) !important;
 }
