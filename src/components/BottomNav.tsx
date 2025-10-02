@@ -15,7 +15,12 @@ export default function BottomNav({
   onLogout,
 }: BottomNavProps) {
   return (
-    <Navbar fixed="bottom" className="bottom-navbar d-lg-none">
+    <Navbar
+      fixed="bottom"
+      bg="primary"
+      data-bs-theme="dark"
+      className="border-top border-secondary py-0 bottom-navbar d-lg-none"
+    >
       <NavigationButtons
         authed={authed}
         onNavigate={onNavigate}
