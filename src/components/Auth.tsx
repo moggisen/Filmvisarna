@@ -67,7 +67,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="main-container min-vh-100 min-vw-100 text-white pb-5">
+    <div className="main-container min-vh-100 text-white pb-5">
       <HeaderBar {...navigationProps} onHome={() => setRoute("home")} />
 
       <Container className="pt-3 pb-5">

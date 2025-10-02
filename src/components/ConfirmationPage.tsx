@@ -1,4 +1,5 @@
 import { Alert, Card, ListGroup, Button } from "react-bootstrap";
+import "../styles/ConfirmationAndProfile.scss";
 
 interface ConfirmationPageProps {
   onDone: () => void;

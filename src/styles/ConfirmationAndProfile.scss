@@ -1,0 +1,128 @@
+$primary: #0d253f !default;
+$primary-light: lighten($primary, 15%); // 15% ljusare
+$primary-dark: #071422;
+$secondary: #113255 !default;
+$success: #28a745 !default;
+$info: #ebebeb !default;
+$warning: #ffd700 !default;
+$danger: #dc3545 !default;
+$light: #d52026 !default;
+$dark: #b81c21 !default;
+
+@mixin title-text {
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 2rem;
+}
+
+@mixin heading-text {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+  font-size: 1.5rem;
+}
+
+@mixin content-text {
+  font-family: "Roboto", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+  font-size: 1rem;
+}
+@mixin button-text {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  //   font-style: italic;
+  font-size: 1rem;
+}
+
+/* Dra in allt Bootstrap */
+@import "bootstrap/scss/bootstrap";
+
+body {
+  background-color: $primary;
+}
+.btn {
+  @include button-text;
+  color: $info;
+}
+.btn-close {
+  filter: invert(1);
+}
+.alert,
+.card {
+  @include content-text;
+}
+.alert-heading,
+.card-header {
+  @include heading-text;
+  padding: 20px 0;
+  text-align: center;
+}
+.card-header,
+.list-group-item {
+  color: $info;
+}
+.list-group-item strong {
+  font-weight: bold;
+}
+.modal-backdrop {
+  --bs-backdrop-opacity: 0.9;
+}
+.mobile-nav-button {
+    padding: 20px 0;
+    background-image: linear-gradient(
+    to bottom,
+    $primary 0%,
+    #0a2036 50%,
+    $primary 100%
+    );
+}
+
+/* Roten skapar en stacking context */
+.app-root {
+  position: relative;
+  z-index: 0;
+  //   overflow-x: hidden;
+}
+
+@media (min-width: 768px) {
+  /* Profil-sidan */
+  .profile-page::before,
+  /* Bekräftelsesidan */
+  .confirm-page::before {
+    content: "";
+    position: fixed; /* täck viewporten */
+    inset: 0;
+    z-index: -1; /* bakom innehållet men över body */
+    background: linear-gradient(rgba(7, 20, 34, 0.8), rgba(7, 20, 34, 0.8)),
+      /* mörk overlay för läsbarhet */ url("/background.jpg") center / cover
+        no-repeat;
+  }
+}
+/* Mobil-shell: smal, centrerad kolumn */
+:root {
+  --shell-min: 15rem; /* 22rem ≈352px */
+  --shell-ideal: 94%; /* väx lite med viewporten */
+  --shell-max: 28rem; /* 40rem ≈640px på desktop */
+  --shell-pad: 1rem;
+}
+
+.mobile-shell {
+  /* Fyll förälderns bredd, men begränsa med max-width */
+  width: 100%;
+  max-width: clamp(var(--shell-min), var(--shell-ideal), var(--shell-max));
+  margin-inline: auto;
+  padding-inline: var(--shell-pad);
+}
+
+/* Modal-variant */
+.mobile-shell-modal {
+  width: 100%;
+  max-width: clamp(var(--shell-min), var(--shell-ideal), var(--shell-max));
+  margin-inline: auto;
+}

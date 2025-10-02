@@ -1,6 +1,7 @@
 import { Navbar, Container } from "react-bootstrap";
 import NavigationButtons from "./NavigationButtons";
 import type { Route } from "./types";
+import "../styles/headerbar.scss"
 
 interface HeaderBarProps {
   authed: boolean;
