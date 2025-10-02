@@ -2,16 +2,22 @@
 // Endast styling som är specifik för Booking.tsx
 
 // Seat styling variabler
-:root {
-  --seat-size: 34px;
-  --seat-free-bg: #fff;
-  --seat-free-bd: #0dcaf0; // Bootstrap info color
+:root{
+  --seat-size:40px;
+
+  --seat-free-bg:#fff;
+  --seat-free-bd: var(--bs-info);
   --seat-free-tx: #666;
-  --seat-active-bg: #dc3545; // Bootstrap danger color
-  --seat-active-bd: #b02a37;
+
+  --seat-active-bg: var(--bs-danger);
+  --seat-active-bd: color-mix(in srgb, var(--bs-danger) 80%, #000 20%);
   --seat-active-tx: #fff;
-  --seat-taken-bg: #2d2d2d;
-  --seat-taken-tx: #cfcfcf;
+
+  --seat-taken-bg:#2d2d2d;
+  --seat-taken-tx:#cfcfcf;
+
+  /* om du vill fortsätta kunna använda var(--bg-primary) */
+  --bg-primary: var(--bs-body-bg);
 }
 
 // Panel styling för bokningskomponenten
@@ -139,7 +145,8 @@
 
 // Mobile styling
 @media (max-width: 576px) {
-  :root {
+  :root
+   {
     --seat-size: 40px;
   }
 
