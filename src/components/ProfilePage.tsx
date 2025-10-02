@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, Card, ListGroup, Modal } from "react-bootstrap";
 import type { BookingSummary } from "./types";
+import "../styles/ConfirmationAndProfile.scss";
 
 interface ProfilePageProps {
   bookings: BookingSummary[];

@@ -1,6 +1,7 @@
 import { Navbar } from "react-bootstrap";
 import NavigationButtons from "./NavigationButtons";
 import type { Route } from "./types";
+import "../styles/bottomnav.scss";
 
 interface BottomNavProps {
   authed: boolean;
@@ -14,7 +15,12 @@ export default function BottomNav({
   onLogout,
 }: BottomNavProps) {
   return (
-    <Navbar fixed="bottom" className="bottom-navbar d-lg-none">
+    <Navbar
+      fixed="bottom"
+      bg="primary"
+      data-bs-theme="dark"
+      className="border-top border-secondary py-0 bottom-navbar d-lg-none"
+    >
       <NavigationButtons
         authed={authed}
         onNavigate={onNavigate}

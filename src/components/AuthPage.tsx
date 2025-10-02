@@ -45,7 +45,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
         </Card.Header>
         <Card.Body>
           <Form onSubmit={handleSubmit} className="auth-form">
-            <Form.Group className="mb-3" controlId="email">
+            <Form.Group className="mb-2" controlId="email">
               <Form.Label>E-post</Form.Label>
               <Form.Control
                 type="email"
@@ -54,7 +54,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
               />
             </Form.Group>
 
-            <Form.Group className="mb-3" controlId="pwd">
+            <Form.Group className="mb-2" controlId="pwd">
               <Form.Label>Lösenord</Form.Label>
               <Form.Control
                 type="password"
@@ -68,11 +68,11 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
 
             {mode === "signup" && (
               <>
-                <Form.Group className="mb-3" controlId="pwd2">
+                <Form.Group className="mb-2" controlId="pwd2">
                   <Form.Label>Verifiera lösenord</Form.Label>
                   <Form.Control type="password" minLength={8} />
                 </Form.Group>
-                <Form.Group className="mb-3" controlId="name">
+                <Form.Group className="mb-2" controlId="name">
                   <Form.Label>Namn</Form.Label>
                   <Form.Control
                     type="text"
@@ -80,7 +80,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
                     onChange={(e) => setName(e.target.value)}
                   />
                 </Form.Group>
-                <Form.Group className="mb-3" controlId="number">
+                <Form.Group className="mb-2" controlId="number">
                   <Form.Label>Telefonnummer</Form.Label>
                   <Form.Control
                     type="tel"

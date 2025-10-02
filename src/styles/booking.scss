@@ -3,7 +3,7 @@
 
 // Seat styling variabler
 :root {
-  --seat-size: 34px;
+  --seat-size: 40px;
   --seat-free-bg: #fff;
   --seat-free-bd: #0dcaf0; // Bootstrap info color
   --seat-free-tx: #666;
@@ -27,10 +27,6 @@
     font-weight: 600;
     font-family: "Inter", sans-serif;
     font-size: large;
-  }
-
-  .card {
-    word-wrap: break-word;
   }
 }
 

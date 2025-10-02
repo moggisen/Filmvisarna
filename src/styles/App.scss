@@ -102,6 +102,7 @@ body {
 
 .nav-btn {
   min-height: 5rem;
+  // min-width: 7rem;
   border-radius: 0;
   margin: 0;
 
@@ -115,8 +116,6 @@ body {
 }
 
 .modal-dialog {
-  margin-top: 18%;
-
   .modal-content {
     border-radius: 1rem;
   }
