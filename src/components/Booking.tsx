@@ -5,7 +5,7 @@ import "../styles/booking.scss";
 
 interface BookingProps {
   onConfirm: (booking: BookingSummary) => void;
-  onNavigate: (route: "login" | "signup" | "profile" | "confirmation") => void;
+  onNavigate: (route: "login" | "signup" | "profile") => void;
   authed: boolean;
 }
 

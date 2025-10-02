@@ -118,10 +118,13 @@
     font-size: 0.875rem;
   }
 }
-
+.react-calendar {
+  width: 100% !important;
+  margin-inline: auto;
+}
 // Kalender styling
 .homepage-calendar {
-  width: 100%;
+  width: 90%;
   background-color: #343a40;
   color: #194e83;
   border: none;

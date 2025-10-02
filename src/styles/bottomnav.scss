@@ -76,31 +76,6 @@
     outline: 2px solid var(--bottomnav-text-light);
     outline-offset: -2px;
   }
-
-  // Specifika knapptyper
-  &.bottom-nav-home-btn {
-    // Specifik styling för hem-knapp
-  }
-
-  &.bottom-nav-biljett-btn {
-    // Specifik styling för biljett-knapp
-  }
-
-  &.bottom-nav-login-btn {
-    // Specifik styling för login-knapp
-  }
-
-  &.bottom-nav-signup-btn {
-    // Specifik styling för signup-knapp
-  }
-
-  &.bottom-nav-profile-btn {
-    // Specifik styling för profil-knapp
-  }
-
-  &.bottom-nav-logout-btn {
-    // Specifik styling för logout-knapp
-  }
 }
 
 // Safe area support för iPhone X och nyare

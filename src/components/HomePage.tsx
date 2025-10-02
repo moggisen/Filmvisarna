@@ -334,7 +334,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       {/* Desktopvy */}
       <Container fluid className="homepage-container d-none d-md-block">
         <Row>
-          <Col md={3} lg={2} className="p-1 position-sticky">
+          <Col md={3} lg={3} className="p-1 position-sticky">
             <h5 className="homepage-heading">Åldersgräns</h5>
             <Form.Group className="homepage-form mb-3">
               <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
@@ -363,7 +363,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             />
           </Col>
 
-          <Col md={9} lg={10} className="p-4">
+          <Col md={9} lg={9} className="p-4">
             <Row
               xs={1}
               sm={2}
