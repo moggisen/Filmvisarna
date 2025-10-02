@@ -92,6 +92,7 @@ $dark: #b81c21 !default;
 @media (min-width: 768px) {
   /* Profil-sidan */
   .profile-page::before,
+  .auth-page::before,
   /* Bekräftelsesidan */
   .confirm-page::before {
     content: "";
