@@ -310,9 +310,9 @@ export default function Booking({
     }
 
     // Navigera till "Mina sidor" om användaren är inloggad
-    if (authed) {
-      onConfirm(booking);
-    }
+    // if (authed) {
+    //   onConfirm(booking);
+    // }
   }
 
   function getMovieTitle(id: string): string {

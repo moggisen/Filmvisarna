@@ -43,11 +43,11 @@ export default function ProfilePage({
     .sort((a, b) => Date.parse(b.showtime) - Date.parse(a.showtime));
 
   return (
-    <div className="mobile-shell">
+    <div className="mobile-shell profile-page">
       <Button
         variant="primary"
         size="sm"
-        className="mb-3 d-block mx-auto text-dark border-dark py-2 px-5"
+        className="mb-3 d-block mx-auto text-info border-dark py-2 px-5"
         onClick={onBack}
       >
         Tillbaka
@@ -119,6 +119,14 @@ export default function ProfilePage({
           ))}
         </ListGroup>
       </Card>
+      <Button
+        variant="primary"
+        size="sm"
+        className="mb-3 d-block mx-auto text-info border-dark py-2 px-5"
+        onClick={onBack}
+      >
+        Tillbaka
+      </Button>
 
       <Modal show={!!toCancel} onHide={() => setToCancel(null)} centered>
         <Modal.Header closeButton className="bg-primary border-dark text-info">

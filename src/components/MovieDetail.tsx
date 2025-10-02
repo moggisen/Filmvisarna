@@ -26,7 +26,6 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
   return (
     <div className="movie-detail-theme min-vh-100 d-flex flex-column">
       {/* logga för mobil */}
-      <header className="movie-detail-logo mb-2 d-lg-none">Filmvisarna</header>
 
       <main className="container-xxl py-4 flex-grow-1">
         <h1 className="movie-title mb-3">Avengers</h1>
@@ -44,7 +43,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
 
             {/* kort beskrivning */}
             <section className="movie-card mb-3">
-              <div className="card-body movie-body-text">
+              <div className="card-body movie-body-text p-4">
                 Efter de katastrofala händelserna, som startades av Thanos, och
                 vilka raderade halva universum och splittrade The Avengers
                 tvingas de återstående medlemmarna i Avengers ta upp en sista
