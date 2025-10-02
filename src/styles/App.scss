@@ -116,7 +116,6 @@ body {
 }
 
 .modal-dialog {
-  margin-top: 18%;
 
   .modal-content {
     border-radius: 1rem;
@@ -147,10 +146,6 @@ body {
       @include content-text();
     }
   }
-}
-
-.card-header {
-  border: none;
 }
 
 .top-nav-buttons {
