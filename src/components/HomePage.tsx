@@ -355,7 +355,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         style={{ width: "100%", paddingLeft: 0, paddingRight: 0 }}
       >
         <Row>
-          <Col md={4} lg={2} className="sidebar p-1 mt-2 position-sticky">
+          <Col md={4} lg={3} className="sidebar p-1 mt-2 position-sticky">
             <h5 className="homepage-heading">Åldersgräns</h5>
             <Form.Group className="homepage-form mb-3">
               <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
@@ -397,12 +397,12 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             />
           </Col>
 
-          <Col md={8} lg={10} className="p-4">
+          <Col md={8} lg={9} className="p-4">
             <Row
               xs={1}
               sm={2}
               md={3}
-              lg={5}
+              lg={4}
               className="homepage-movie-grid homepage-desktop-grid g-4"
             >
               {filteredMovies.map((movie, idx) => (
