@@ -1,6 +1,7 @@
 import { Navbar } from "react-bootstrap";
 import NavigationButtons from "./NavigationButtons";
 import type { Route } from "./types";
+import "../styles/bottomnav.scss";
 
 interface BottomNavProps {
   authed: boolean;
