@@ -86,7 +86,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       img: doctorstrangeImg,
     },
     {
-      year: 2021,
+      year: 2022,
       title: "Spider Man No way home",
       age: "11",
       dates: [
@@ -171,7 +171,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const newestMovie = [...movies].sort(
     (a, b) =>
       new Date(b.dates[0].date).getTime() - new Date(a.dates[0].date).getTime()
-  )[0];
+  )[1];
 
   const events: Event[] = [
     {
@@ -248,20 +248,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           ))}
         </Row>
 
-        {/* KALENDER */}
-        <h5 className="homepage-heading">Välj datum</h5>
-        <Calendar
-          value={date}
-          onChange={(value: Date | Date[]) => {
-            if (Array.isArray(value)) {
-              setDate(value[0] || null);
-            } else {
-              setDate(value);
-            }
-          }}
-          className="homepage-calendar"
-        />
-
         {/* FILTRERING */}
         <h5 className="homepage-heading">Åldersgräns</h5>
         <Form.Group className="homepage-form mb-3">
@@ -282,9 +268,40 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           />
         </Form.Group>
 
+        {/* KALENDER */}
+        <h5 className="homepage-heading">Välj datum</h5>
+        <Calendar
+          value={date}
+          onChange={(value: Date | Date[]) => {
+            if (Array.isArray(value)) {
+              setDate(value[0] || null);
+            } else {
+              setDate(value);
+            }
+          }}
+          className="homepage-calendar"
+          style={{ maxWidth: "220px" }}
+          formatShortWeekday={(locale, date) => {
+            const shortNames = [
+              "sön",
+              "mån",
+              "tis",
+              "ons",
+              "tor",
+              "fre",
+              "lör",
+            ];
+            return shortNames[date.getDay()];
+          }}
+        />
+
         {/* Alla filmer */}
         <h5 className="homepage-heading">Alla filmer</h5>
-        <Row xs={2} className="homepage-movie-grid homepage-mobile-grid g-3">
+        <Row
+          xs={2}
+          xl={4}
+          className="homepage-movie-grid homepage-mobile-grid g-3"
+        >
           {filteredMovies.map((movie, idx) => (
             <Col key={idx}>
               <Card className="homepage-movie-card h-100">
@@ -332,9 +349,13 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       </Container>
 
       {/* Desktopvy */}
-      <Container fluid className="homepage-container d-none d-md-block">
+      <Container
+        fluid
+        className="homepage-container d-none d-md-block"
+        style={{ width: "100%", paddingLeft: 0, paddingRight: 0 }}
+      >
         <Row>
-          <Col md={3} lg={2} className="p-1 position-sticky">
+          <Col md={4} lg={2} className="sidebar p-1 mt-2 position-sticky">
             <h5 className="homepage-heading">Åldersgräns</h5>
             <Form.Group className="homepage-form mb-3">
               <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
@@ -360,10 +381,23 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               value={date}
               onChange={setDate}
               className="homepage-calendar"
+              style={{ maxWidth: "220px" }}
+              formatShortWeekday={(locale, date) => {
+                const shortNames = [
+                  "sön",
+                  "mån",
+                  "tis",
+                  "ons",
+                  "tor",
+                  "fre",
+                  "lör",
+                ];
+                return shortNames[date.getDay()];
+              }}
             />
           </Col>
 
-          <Col md={9} lg={10} className="p-4">
+          <Col md={8} lg={10} className="p-4">
             <Row
               xs={1}
               sm={2}
