@@ -16,9 +16,8 @@
   position: sticky;
   top: 0;
   z-index: 1020;
-
   // Bootstrap navbar padding override
-  --bs-navbar-padding-y: 0;
+  --bs-navbar-padding-y: 0 !important;
 }
 
 // Logotyp styling
@@ -41,7 +40,14 @@
 .header-desktop-nav {
   display: none;
   .nav-btn {
+    min-height: 5rem;
     min-width: 7rem;
+    border-radius: 0;
+    margin: 0;
+
+    &:hover {
+      background-color: var(--header-secondary);
+    }
   }
 
   @media (min-width: 992px) {
@@ -98,7 +104,7 @@
 
 // Brand/logo container
 .header-brand {
-  padding-bottom: 0;
+  padding-block: 0 !important;
   margin-right: auto;
 }
 
