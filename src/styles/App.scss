@@ -67,24 +67,8 @@ body {
   background-color: $primary-dark;
 }
 
-@media (min-width: 1000px) {
-  .custom-container {
-    max-width: 60%;
-    padding: 1rem 5rem;
-    margin-inline: auto;
-  }
-}
-
-.custom-container {
-  color: $info !important;
-}
-
 .logo-text {
   @include title-text;
-}
-
-.navbar-brand {
-  padding-bottom: 0;
 }
 
 .btn {
@@ -92,31 +76,12 @@ body {
   font-weight: 700;
 }
 
-.bottom-nav {
-  padding: 0 !important;
-}
-
-.navbar {
-  --bs-navbar-padding-y: 0;
-}
-
-.nav-btn {
-  min-height: 5rem;
-  // min-width: 7rem;
-  border-radius: 0;
-  margin: 0;
-
-  &:hover {
-    background-color: $secondary;
-  }
-}
-
 .modal-backdrop {
   --bs-backdrop-opacity: 0.9;
 }
 
 .modal-dialog {
-
+  
   .modal-content {
     border-radius: 1rem;
   }
@@ -144,16 +109,6 @@ body {
 
     p {
       @include content-text();
-    }
-  }
-}
-
-.top-nav-buttons {
-  .btn {
-    color: $info;
-
-    &:hover {
-      background-color: $secondary;
     }
   }
 }

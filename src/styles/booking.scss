@@ -2,15 +2,12 @@
 .booking {
   /* ==== Vars (scopade till booking) ==== */
   --seat-size: 40px;
-
   --seat-free-bg: #fff;
   --seat-free-bd: var(--bs-info);
   --seat-free-tx: #666;
-
-  --seat-active-bg: var(--bs-danger);
-  --seat-active-bd: color-mix(in srgb, var(--bs-danger) 80%, #000 20%);
+  --seat-active-bg: #dc3545; // Bootstrap danger color
+  --seat-active-bd: #b02a37;
   --seat-active-tx: #fff;
-
   --seat-taken-bg: #2d2d2d;
   --seat-taken-tx: #cfcfcf;
   --bg-primary: var(--bs-body-bg);
