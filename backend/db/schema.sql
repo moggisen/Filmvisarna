@@ -21,6 +21,11 @@ CREATE TABLE movies (
     movie_trailer VARCHAR(50) NOT NULL
 );
 
+CREATE TABLE guest_user (
+    guest_user_id INT AUTO_INCREMENT PRIMARY KEY,
+    guest_user_email VARCHAR(50) NOT NULL UNIQUE
+);
+
 CREATE TABLE auditoriums (
     auditorium_id INT AUTO_INCREMENT PRIMARY KEY,
     auditorium_name VARCHAR(20) NOT NULL UNIQUE
