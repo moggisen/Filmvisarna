@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "better-express-store": "^1.0.5",
     "express": "^5.1.0",
     "express-mysql-session": "^3.0.3",
     "express-session": "^1.18.0",
@@ -19,7 +20,13 @@
   "devDependencies": {
     "nodemon": "^3.0.2"
   },
-  "keywords": ["rest-api", "cinema", "booking", "mysql", "express"],
+  "keywords": [
+    "rest-api",
+    "cinema",
+    "booking",
+    "mysql",
+    "express"
+  ],
   "author": "Filmvisarna Group",
   "license": "MIT"
 }
