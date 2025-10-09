@@ -18,7 +18,8 @@ CREATE TABLE movies (
     movie_cast VARCHAR(255) NOT NULL,
     movie_premier VARCHAR(10) NOT NULL,
     movie_poster VARCHAR(50) NOT NULL,
-    movie_trailer VARCHAR(50) NOT NULL
+    movie_trailer VARCHAR(50) NOT NULL,
+    age_limit INT NOT NULL
 );
 
 CREATE TABLE guest_user (
