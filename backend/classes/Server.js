@@ -28,6 +28,12 @@ export default class Server {
     // Start an Express server/app
     const { port } = this.settings;
     this.app = express();
+
+    // health
+    this.app.get('/api/health', (req, res) => {
+      res.json({ ok: true });
+    });
+
     this.app.listen(port, () => console.log(
       'Server listening on http://localhost:' + port
       //'with settings', this.settings
@@ -42,7 +48,6 @@ export default class Server {
   addStaticFolder() {
     const folder = PathFinder.relToAbs(this.settings.staticFolder);
     this.app.use(express.static(folder));
-    // catch all middleware (important for SPA:s - serve index.html if not matching server route)
     /*this.app.get('*', (req, res) => {
       !req.url.includes('.') ?
         res.sendFile(path.join(folder, 'index.html')) :

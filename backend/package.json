@@ -7,15 +7,18 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "setup-db": "mysql -u root -p < db/schema.sql"
+    "setup-db": "mysql -u root -p < db/schema.sql",
+    "seed:movies": "node scripts/movie-seed.js",
+    "reset:movies": "mysql -u root -p < db/reset-db.sql"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "better-express-store": "^1.0.5",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-mysql-session": "^3.0.3",
     "express-session": "^1.18.0",
-    "mysql2": "^3.15.1"
+    "mysql2": "^3.15.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
