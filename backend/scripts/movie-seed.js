@@ -1,6 +1,7 @@
 //seed
 import mysql from 'mysql2/promise';
 import 'dotenv/config';
+const cut = (s, max) => (s ?? '').toString().slice(0, max);
 
 //films
 const filmsRaw = [
@@ -209,6 +210,18 @@ const seed = async () => {
         m.movie_trailer,
         m.age_limit
       ]);
+    await conn.execute(sql, [
+  cut(m.movie_title, 50),     
+  m.movie_desc,               
+  cut(m.movie_playtime, 10),  
+  cut(m.movie_director, 50),  
+  cut(m.movie_cast, 255),     
+  cut(m.movie_premier, 10),   
+  cut(m.movie_poster, 50),    
+  cut(m.movie_trailer, 50),   
+  m.age_limit                 
+]);
+
     }
 
     console.log('[seed] done');
