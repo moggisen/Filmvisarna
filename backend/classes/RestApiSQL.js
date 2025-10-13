@@ -1,23 +1,23 @@
-import express from 'express';
+import express from "express";
 import LoginHandler from "./LoginHandlerSQL.js";
 import RestSearch from "./RestSearchSQL.js";
-import Acl from './Acl.js';
+import Acl from "./Acl.js";
 import catchExpressJsonErrors from "../helpers/catchExpressJsonErrors.js";
-import PasswordChecker from '../helpers/PasswordChecker.js';
+import PasswordChecker from "../helpers/PasswordChecker.js";
 
 // import the correct version of the DBQueryMaker
-const DBQueryMaker =
-  (await import(isSQLite ? './DBQueryMakerSQLite.js' : './DBQueryMakerMySQL.js')).default;
+const DBQueryMaker = (
+  await import(isSQLite ? "./DBQueryMakerSQLite.js" : "./DBQueryMakerMySQL.js")
+).default;
 
 export default class RestApi {
-
   // Connect to the db through DBQueryMaker
   // and call methods that creates routes
   constructor(app, settings) {
     this.app = app;
     this.settings = settings;
     this.prefix = this.settings.restPrefix;
-    this.prefix.endsWith('/') || (this.prefix += '/');
+    this.prefix.endsWith("/") || (this.prefix += "/");
     this.db = new DBQueryMaker(settings);
     // use built in Express middleware to read the body
     app.use(express.json());
@@ -28,9 +28,10 @@ export default class RestApi {
     // add login routes
     new LoginHandler(this);
     // add post, get, put and delete routes
-    this.addPostRoutes();   // C
-    this.addGetRoutes();    // R
-    this.addPutRoutes();    // U
+    this.addBookingRoute();
+    this.addPostRoutes(); // C
+    this.addGetRoutes(); // R
+    this.addPutRoutes(); // U
     this.addDeleteRoutes(); // D
     // catch calls to undefined routes
     this.addCatchAllRoute();
@@ -43,8 +44,8 @@ export default class RestApi {
   sendJsonResponse(res, data, asObject = false) {
     if (data instanceof Array) {
       data = Acl.filterResultOnFieldMatchingUserId(res, data);
-      data.forEach(post => {
-        this.settings.passwordFieldNames.forEach(x => delete post[x]);
+      data.forEach((post) => {
+        this.settings.passwordFieldNames.forEach((x) => delete post[x]);
       });
     }
     res.status(data.error ? 400 : 200).json(asObject ? data[0] || null : data);
@@ -57,18 +58,34 @@ export default class RestApi {
       delete body[this.settings.userRoleField];
   }
 
+  addBookingRoute() {
+    this.app.post(this.prefix + "makeBooking", async (req, res) => {
+      req.body = req.body || {};
+      const { body } = req;
+
+      res.json({ OK: "We can send our own responses" });
+    });
+  }
+
   addPostRoutes() {
     // insert a post in a table
-    this.app.post(this.prefix + ':table', async (req, res) => {
+    this.app.post(this.prefix + ":table", async (req, res) => {
       req.body = req.body || {};
       const { table } = req.params;
       const { body } = req;
       this.stripRoleField(table, body);
       delete body.id; // id:s should be set by the db
-      const result = await this.db.query(req.method, req.url,/*sql*/`
-        INSERT INTO ${table} (${Object.keys(body).join(', ')})
-        VALUES (${Object.keys(body).map(x => ':' + x).join(', ')})
-      `, body);
+      const result = await this.db.query(
+        req.method,
+        req.url,
+        /*sql*/ `
+        INSERT INTO ${table} (${Object.keys(body).join(", ")})
+        VALUES (${Object.keys(body)
+          .map((x) => ":" + x)
+          .join(", ")})
+      `,
+        body
+      );
       this.sendJsonResponse(res, result);
     });
   }
@@ -76,52 +93,77 @@ export default class RestApi {
   addGetRoutes() {
     // get all the posts in a table
     // or: if there are search params in the url get posts matching them
-    this.app.get(this.prefix + ':table', async (req, res) => {
+    this.app.get(this.prefix + ":table", async (req, res) => {
       const { table } = req.params;
       const { error, sqlWhere, parameters } = RestSearch.parse(req);
-      if (error) { this.sendJsonResponse(res, { error }); return; }
-      const result = await this.db.query(req.method, req.url,/*sql*/`
+      if (error) {
+        this.sendJsonResponse(res, { error });
+        return;
+      }
+      const result = await this.db.query(
+        req.method,
+        req.url,
+        /*sql*/ `
         SELECT * FROM ${table}
         ${sqlWhere}
-      `, parameters);
+      `,
+        parameters
+      );
       this.sendJsonResponse(res, result);
     });
 
     // get a post by id in a table
-    this.app.get(this.prefix + ':table/:id', async (req, res) => {
+    this.app.get(this.prefix + ":table/:id", async (req, res) => {
       const { table, id } = req.params;
-      const result = await this.db.query(req.method, req.url,/*sql*/`
+      const result = await this.db.query(
+        req.method,
+        req.url,
+        /*sql*/ `
         SELECT * FROM ${table}
         WHERE id = :id
-      `, { id });
+      `,
+        { id }
+      );
       this.sendJsonResponse(res, result, true);
     });
   }
 
   addPutRoutes() {
     // update a post in a table
-    this.app.put(this.prefix + ':table/:id', async (req, res) => {
+    this.app.put(this.prefix + ":table/:id", async (req, res) => {
       const { table, id } = req.params;
       let { body } = req;
       this.stripRoleField(table, body);
       delete body.id; // id:s should be set in the route
-      const result = await this.db.query(req.method, req.url,/*sql*/`
+      const result = await this.db.query(
+        req.method,
+        req.url,
+        /*sql*/ `
         UPDATE ${table}
-        SET ${Object.keys(body).map(x => x + '= :' + x).join(', ')}
+        SET ${Object.keys(body)
+          .map((x) => x + "= :" + x)
+          .join(", ")}
         WHERE id = :id
-      `, { id, ...body });
+      `,
+        { id, ...body }
+      );
       this.sendJsonResponse(res, result);
     });
   }
 
   addDeleteRoutes() {
     // delete a post in a table
-    this.app.delete(this.prefix + ':table/:id', async (req, res) => {
+    this.app.delete(this.prefix + ":table/:id", async (req, res) => {
       const { table, id } = req.params;
-      const result = await this.db.query(req.method, req.url,/*sql*/`
+      const result = await this.db.query(
+        req.method,
+        req.url,
+        /*sql*/ `
         DELETE FROM ${table}
         WHERE id = :id
-      `, { id });
+      `,
+        { id }
+      );
       this.sendJsonResponse(res, result);
     });
   }
@@ -132,5 +174,4 @@ export default class RestApi {
       this.sendJsonResponse(res, { error: 'No such route exists in the REST-api' });
     });*/
   }
-
 }
