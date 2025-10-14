@@ -79,20 +79,22 @@ export default class RestApi {
           }
         }
 
-        // --- 2️⃣ Kontrollera att screening finns ---
-        const screeningResult = await this.db.query(
+        // --- 2️⃣ Starta transaktion ---
+        await this.db.query("POST", req.url, "START TRANSACTION;", {});
+
+        // --- 3️⃣ Kontrollera att visningen finns ---
+        const screening = await this.db.query(
           "POST",
           req.url,
-          "SELECT screening_time FROM screenings WHERE id = :id",
+          "SELECT * FROM screenings WHERE id = :id",
           { id: screening_id }
         );
+        if (!screening.length)
+          throw { status: 404, message: "Visningen finns inte." };
 
-        if (!screeningResult.length) {
-          return res.status(404).json({ error: "Visningen finns inte." });
-        }
-
-        const screening = screeningResult[0];
-        const readableTime = new Date(screening.screening_time).toLocaleString(
+        // Hämta och formatera screeningens datum och tid
+        const screeningTimeRaw = screening[0].screening_time;
+        const screeningTime = new Date(screeningTimeRaw).toLocaleString(
           "sv-SE",
           {
             dateStyle: "medium",
@@ -100,7 +102,44 @@ export default class RestApi {
           }
         );
 
-        // --- 3️⃣ Beräkna totalpris ---
+        // --- 4️⃣ Kontrollera lediga stolar ---
+        // 4a) Plocka ut efterfrågade seat_id som tal
+        const requestedSeatIds = seats.map((s) => Number(s.seat_id));
+
+        // 4b) Blockera dubbletter i samma anrop (UX)
+        const duplicatesInPayload = [
+          ...new Set(
+            requestedSeatIds.filter((id, idx, arr) => arr.indexOf(id) !== idx)
+          ),
+        ];
+        if (duplicatesInPayload.length) {
+          return res.status(400).json({
+            error: `Dubbletter i anropet: stolar ${duplicatesInPayload.join(
+              ", "
+            )}.`,
+          });
+        }
+
+        // 4c) Hämta redan bokade stolar för visningen
+        const booked = await this.db.query(
+          "POST",
+          req.url,
+          "SELECT seat_id FROM bookingsXseats WHERE screening_id = :id",
+          { id: screening_id }
+        );
+        const bookedSeats = new Set(booked.map((r) => Number(r.seat_id)));
+
+        // 4d) Samla *alla* konflikter (inte bara första)
+        const conflicts = requestedSeatIds.filter((id) => bookedSeats.has(id));
+        if (conflicts.length) {
+          return res.status(409).json({
+            error: `Följande stolar är redan bokade: ${[
+              ...new Set(conflicts),
+            ].join(", ")}.`,
+          });
+        }
+
+        // --- 5️⃣ Beräkna totalpris ---
         const uniqueTicketIds = [...new Set(seats.map((s) => s.ticketType_id))];
         const placeholders = uniqueTicketIds
           .map((_, i) => `:id${i}`)
@@ -115,16 +154,15 @@ export default class RestApi {
           `SELECT id, ticketType_price FROM ticketTypes WHERE id IN (${placeholders})`,
           params
         );
-
         const ticketMap = Object.fromEntries(
           ticketRows.map((r) => [r.id, r.ticketType_price])
         );
         const totalPrice = seats.reduce(
-          (sum, s) => sum + (ticketMap[s.ticketType_id] || 0),
+          (sum, s) => sum + ticketMap[s.ticketType_id],
           0
         );
 
-        // --- 4️⃣ Skapa bokning ---
+        // --- 6️⃣ Skapa bokningen ---
         const crypto = await import("crypto");
         const confirmation = crypto.randomBytes(8).toString("hex");
 
@@ -135,45 +173,53 @@ export default class RestApi {
          VALUES (NOW(), :confirmation, :screening_id, :user_id)`,
           { confirmation, screening_id, user_id }
         );
-
         const booking_id = bookingResult.insertId;
 
-        // --- 5️⃣ Reservera stolar ---
+        // --- 7️⃣ Reservera stolar ---
         for (const s of seats) {
-          await this.db.query(
-            "POST",
-            req.url,
-            `INSERT INTO bookingsXseats (screening_id, seat_id, ticketType_id, booking_id)
-           VALUES (:screening_id, :seat_id, :ticketType_id, :booking_id)`,
-            {
-              screening_id,
-              seat_id: s.seat_id,
-              ticketType_id: s.ticketType_id,
-              booking_id,
+          try {
+            await this.db.query(
+              "POST",
+              req.url,
+              `INSERT INTO bookingsXseats (screening_id, seat_id, ticketType_id, booking_id)
+       VALUES (:screening_id, :seat_id, :ticketType_id, :booking_id)`,
+              {
+                screening_id,
+                seat_id: s.seat_id,
+                ticketType_id: s.ticketType_id,
+                booking_id,
+              }
+            );
+          } catch (e) {
+            // Om databasen har uniknyckel på (screening_id, seat_id) blir detta ett snyggt 409-svar
+            if (
+              e &&
+              (e.code === "ER_DUP_ENTRY" || /Duplicate entry/.test(String(e)))
+            ) {
+              throw {
+                status: 409,
+                message: `Stol ${s.seat_id} är redan bokad.`,
+              };
             }
-          );
+            throw e;
+          }
         }
 
-        // --- 6️⃣ Returnera bekräftelse ---
+        // --- 8️⃣ Bekräfta bokningen ---
+        await this.db.query("POST", req.url, "COMMIT;", {});
+
         res.status(201).json({
           message: "Bokning skapad!",
           booking_id,
           booking_confirmation: confirmation,
           total_price: totalPrice,
           screening_id,
-          screening_time: readableTime,
+          screening_time: screeningTime,
           seats,
         });
       } catch (err) {
         console.error("Booking error:", err);
-
-        // 🔸 Fångar MySQL-fel för dubbelbokning
-        if (err.code === "ER_DUP_ENTRY") {
-          return res.status(409).json({
-            error: "En eller flera stolar är redan bokade för denna visning.",
-          });
-        }
-
+        await this.db.query("POST", req.url, "ROLLBACK;", {});
         const status = err.status || 500;
         res.status(status).json({ error: err.message || "Internt serverfel." });
       }
