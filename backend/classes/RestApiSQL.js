@@ -58,12 +58,134 @@ export default class RestApi {
       delete body[this.settings.userRoleField];
   }
 
+  // I din RestApiSQL.js
   addBookingRoute() {
     this.app.post(this.prefix + "makeBooking", async (req, res) => {
-      req.body = req.body || {};
-      const { body } = req;
+      try {
+        const { screening_id, user_id, seats } = req.body;
 
-      res.json({ OK: "We can send our own responses" });
+        // --- 1️⃣ Validering ---
+        if (!screening_id || !Array.isArray(seats) || seats.length === 0) {
+          return res
+            .status(400)
+            .json({ error: "Du måste ange screening_id och minst en stol." });
+        }
+
+        for (const seat of seats) {
+          if (!seat.seat_id || !seat.ticketType_id) {
+            return res.status(400).json({
+              error: "Varje seat måste ha seat_id och ticketType_id.",
+            });
+          }
+        }
+
+        // --- 2️⃣ Starta transaktion ---
+        await this.db.query("POST", req.url, "START TRANSACTION;", {});
+
+        // --- 3️⃣ Kontrollera att visningen finns ---
+        const screening = await this.db.query(
+          "POST",
+          req.url,
+          "SELECT * FROM screenings WHERE id = :id",
+          { id: screening_id }
+        );
+        if (!screening.length)
+          throw { status: 404, message: "Visningen finns inte." };
+
+        // Hämta och formatera screeningens datum och tid
+        const screeningTimeRaw = screening[0].screening_time;
+        const screeningTime = new Date(screeningTimeRaw).toLocaleString(
+          "sv-SE",
+          {
+            dateStyle: "medium",
+            timeStyle: "short",
+          }
+        );
+
+        // --- 4️⃣ Kontrollera lediga stolar ---
+        const booked = await this.db.query(
+          "POST",
+          req.url,
+          "SELECT seat_id FROM bookingsXseats WHERE screening_id = :id",
+          { id: screening_id }
+        );
+        const bookedSeats = new Set(booked.map((r) => Number(r.seat_id)));
+        for (const s of seats) {
+          if (bookedSeats.has(Number(s.seat_id))) {
+            throw { status: 409, message: `Stol ${s.seat_id} är redan bokad.` };
+          }
+        }
+
+        // --- 5️⃣ Beräkna totalpris ---
+        const uniqueTicketIds = [...new Set(seats.map((s) => s.ticketType_id))];
+        const placeholders = uniqueTicketIds
+          .map((_, i) => `:id${i}`)
+          .join(", ");
+        const params = Object.fromEntries(
+          uniqueTicketIds.map((id, i) => [`id${i}`, id])
+        );
+
+        const ticketRows = await this.db.query(
+          "POST",
+          req.url,
+          `SELECT id, ticketType_price FROM ticketTypes WHERE id IN (${placeholders})`,
+          params
+        );
+        const ticketMap = Object.fromEntries(
+          ticketRows.map((r) => [r.id, r.ticketType_price])
+        );
+        const totalPrice = seats.reduce(
+          (sum, s) => sum + ticketMap[s.ticketType_id],
+          0
+        );
+
+        // --- 6️⃣ Skapa bokningen ---
+        const crypto = await import("crypto");
+        const confirmation = crypto.randomBytes(8).toString("hex");
+
+        const bookingResult = await this.db.query(
+          "POST",
+          req.url,
+          `INSERT INTO bookings (booking_time, booking_confirmation, screening_id, user_id)
+         VALUES (NOW(), :confirmation, :screening_id, :user_id)`,
+          { confirmation, screening_id, user_id }
+        );
+        const booking_id = bookingResult.insertId;
+
+        // --- 7️⃣ Reservera stolar ---
+        for (const s of seats) {
+          await this.db.query(
+            "POST",
+            req.url,
+            `INSERT INTO bookingsXseats (screening_id, seat_id, ticketType_id, booking_id)
+           VALUES (:screening_id, :seat_id, :ticketType_id, :booking_id)`,
+            {
+              screening_id,
+              seat_id: s.seat_id,
+              ticketType_id: s.ticketType_id,
+              booking_id,
+            }
+          );
+        }
+
+        // --- 8️⃣ Bekräfta bokningen ---
+        await this.db.query("POST", req.url, "COMMIT;", {});
+
+        res.status(201).json({
+          message: "Bokning skapad!",
+          booking_id,
+          booking_confirmation: confirmation,
+          total_price: totalPrice,
+          screening_id,
+          screening_time: screeningTime,
+          seats,
+        });
+      } catch (err) {
+        console.error("Booking error:", err);
+        await this.db.query("POST", req.url, "ROLLBACK;", {});
+        const status = err.status || 500;
+        res.status(status).json({ error: err.message || "Internt serverfel." });
+      }
     });
   }
 
