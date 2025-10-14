@@ -47,9 +47,9 @@ CREATE TABLE bookings (
     booking_time DATETIME NOT NULL,
     booking_confirmation VARCHAR(50) NOT NULL,
     screening_id INT NOT NULL,
-    user_id VARCHAR(50) NOT NULL,
+    user_id INT NOT NULL,
     FOREIGN KEY (screening_id) REFERENCES screenings(id),
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 CREATE TABLE seats (

@@ -79,22 +79,20 @@ export default class RestApi {
           }
         }
 
-        // --- 2️⃣ Starta transaktion ---
-        await this.db.query("POST", req.url, "START TRANSACTION;", {});
-
-        // --- 3️⃣ Kontrollera att visningen finns ---
-        const screening = await this.db.query(
+        // --- 2️⃣ Kontrollera att screening finns ---
+        const screeningResult = await this.db.query(
           "POST",
           req.url,
-          "SELECT * FROM screenings WHERE id = :id",
+          "SELECT screening_time FROM screenings WHERE id = :id",
           { id: screening_id }
         );
-        if (!screening.length)
-          throw { status: 404, message: "Visningen finns inte." };
 
-        // Hämta och formatera screeningens datum och tid
-        const screeningTimeRaw = screening[0].screening_time;
-        const screeningTime = new Date(screeningTimeRaw).toLocaleString(
+        if (!screeningResult.length) {
+          return res.status(404).json({ error: "Visningen finns inte." });
+        }
+
+        const screening = screeningResult[0];
+        const readableTime = new Date(screening.screening_time).toLocaleString(
           "sv-SE",
           {
             dateStyle: "medium",
@@ -102,21 +100,7 @@ export default class RestApi {
           }
         );
 
-        // --- 4️⃣ Kontrollera lediga stolar ---
-        const booked = await this.db.query(
-          "POST",
-          req.url,
-          "SELECT seat_id FROM bookingsXseats WHERE screening_id = :id",
-          { id: screening_id }
-        );
-        const bookedSeats = new Set(booked.map((r) => Number(r.seat_id)));
-        for (const s of seats) {
-          if (bookedSeats.has(Number(s.seat_id))) {
-            throw { status: 409, message: `Stol ${s.seat_id} är redan bokad.` };
-          }
-        }
-
-        // --- 5️⃣ Beräkna totalpris ---
+        // --- 3️⃣ Beräkna totalpris ---
         const uniqueTicketIds = [...new Set(seats.map((s) => s.ticketType_id))];
         const placeholders = uniqueTicketIds
           .map((_, i) => `:id${i}`)
@@ -131,15 +115,16 @@ export default class RestApi {
           `SELECT id, ticketType_price FROM ticketTypes WHERE id IN (${placeholders})`,
           params
         );
+
         const ticketMap = Object.fromEntries(
           ticketRows.map((r) => [r.id, r.ticketType_price])
         );
         const totalPrice = seats.reduce(
-          (sum, s) => sum + ticketMap[s.ticketType_id],
+          (sum, s) => sum + (ticketMap[s.ticketType_id] || 0),
           0
         );
 
-        // --- 6️⃣ Skapa bokningen ---
+        // --- 4️⃣ Skapa bokning ---
         const crypto = await import("crypto");
         const confirmation = crypto.randomBytes(8).toString("hex");
 
@@ -150,9 +135,10 @@ export default class RestApi {
          VALUES (NOW(), :confirmation, :screening_id, :user_id)`,
           { confirmation, screening_id, user_id }
         );
+
         const booking_id = bookingResult.insertId;
 
-        // --- 7️⃣ Reservera stolar ---
+        // --- 5️⃣ Reservera stolar ---
         for (const s of seats) {
           await this.db.query(
             "POST",
@@ -168,21 +154,26 @@ export default class RestApi {
           );
         }
 
-        // --- 8️⃣ Bekräfta bokningen ---
-        await this.db.query("POST", req.url, "COMMIT;", {});
-
+        // --- 6️⃣ Returnera bekräftelse ---
         res.status(201).json({
           message: "Bokning skapad!",
           booking_id,
           booking_confirmation: confirmation,
           total_price: totalPrice,
           screening_id,
-          screening_time: screeningTime,
+          screening_time: readableTime,
           seats,
         });
       } catch (err) {
         console.error("Booking error:", err);
-        await this.db.query("POST", req.url, "ROLLBACK;", {});
+
+        // 🔸 Fångar MySQL-fel för dubbelbokning
+        if (err.code === "ER_DUP_ENTRY") {
+          return res.status(409).json({
+            error: "En eller flera stolar är redan bokade för denna visning.",
+          });
+        }
+
         const status = err.status || 500;
         res.status(status).json({ error: err.message || "Internt serverfel." });
       }
