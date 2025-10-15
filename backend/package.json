@@ -1,0 +1,32 @@
+{
+  "name": "filmvisarna-backend",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Self-expanding REST API for Filmvisarna cinema booking system",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "setup-db": "mysql -u root -p < db/schema.sql"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "better-express-store": "^1.0.5",
+    "express": "^5.1.0",
+    "express-mysql-session": "^3.0.3",
+    "express-session": "^1.18.0",
+    "mysql2": "^3.15.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "rest-api",
+    "cinema",
+    "booking",
+    "mysql",
+    "express"
+  ],
+  "author": "Filmvisarna Group",
+  "license": "MIT"
+}
