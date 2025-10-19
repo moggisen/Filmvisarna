@@ -4,6 +4,7 @@ import RestSearch from "./RestSearchSQL.js";
 import Acl from "./Acl.js";
 import catchExpressJsonErrors from "../helpers/catchExpressJsonErrors.js";
 import PasswordChecker from "../helpers/PasswordChecker.js";
+import { body, query, validationResult } from "express-validator";
 
 // import the correct version of the DBQueryMaker
 const DBQueryMaker = (
@@ -29,6 +30,7 @@ export default class RestApi {
     new LoginHandler(this);
     // add post, get, put and delete routes
     this.addBookingRoute();
+    this.addRegisterRoute();
     this.addPostRoutes(); // C
     this.addGetRoutes(); // R
     this.addPutRoutes(); // U
@@ -58,7 +60,36 @@ export default class RestApi {
       delete body[this.settings.userRoleField];
   }
 
-  // I din RestApiSQL.js
+  // using express-validator to validate the data sent through the API during user-registration
+  addRegisterRoute() {
+    this.app.post(
+      this.prefix + "register",
+      body("user_email")
+        .trim()
+        .notEmpty()
+        .withMessage("Email är obligatoriskt")
+        .isEmail()
+        .withMessage("Måste vara en giltig email"),
+      async (req, res) => {
+        const result = validationResult(req);
+
+        if (!result.isEmpty()) {
+          return res.status(400).json({
+            error: "Ogiltig input",
+            details: result.array(),
+          });
+        }
+
+        try {
+          // await this.saveUser(user_email, user_password_hash);
+          res.json({ success: true, message: "Användare registrerad" });
+        } catch (error) {
+          res.status(500).json({ error: "Kunde inte skapa användare" });
+        }
+      }
+    );
+  }
+
   addBookingRoute() {
     this.app.post(this.prefix + "makeBooking", async (req, res) => {
       try {
