@@ -14,13 +14,62 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
   const [show, setShow] = useState(false);
   const [name, setName] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+
+    if (mode === "signup" && password !== password2) {
+      alert("Lösenorden matchar inte");
       setLoading(false);
-      mode === "signup" ? setShow(true) : onSuccess();
-    }, 700);
+      return;
+    }
+
+    // Basic validation
+    if (!email || !password) {
+      alert("Fyll i både email och lösenord.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const endpoint = mode === "login" ? "/api/login" : "/api/register";
+      const body =
+        mode === "login"
+          ? { user_email: email, user_password_hash: password }
+          : {
+              user_email: email,
+              user_password_hash: password,
+              password2,
+              user_name: name,
+            };
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      console.log(data.error);
+      if (data.error) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.message || "Något gick fel");
+
+      if (mode === "signup" && data.success) {
+        setShow(true);
+      } else {
+        onSuccess();
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClose = () => {
@@ -51,6 +100,8 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
                 type="email"
                 placeholder="du@example.com"
                 autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </Form.Group>
 
@@ -63,6 +114,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
                 autoComplete={
                   mode === "login" ? "current-password" : "new-password"
                 }
+                onChange={(e) => setPassword(e.target.value)}
               />
             </Form.Group>
 
@@ -70,7 +122,12 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
               <>
                 <Form.Group className="mb-2" controlId="pwd2">
                   <Form.Label>Verifiera lösenord</Form.Label>
-                  <Form.Control type="password" minLength={8} />
+                  <Form.Control
+                    type="password"
+                    minLength={8}
+                    value={password2}
+                    onChange={(e) => setPassword2(e.target.value)}
+                  />
                 </Form.Group>
                 <Form.Group className="mb-2" controlId="name">
                   <Form.Label>Namn</Form.Label>

@@ -50,14 +50,55 @@ export default function Auth() {
 
   //  -----------------------------------------------------------------------
 
+  // Stay logged in----------------------------------------------------------
+
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const response = await fetch("/api/login", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        const data = await response.json();
+
+        console.log("Auth check: ", data);
+
+        if (response.ok && data.id) {
+          setAuthed(true);
+        }
+      } catch (err) {
+        console.error("Fel vid kontroll av inloggning: ", err);
+      }
+    }
+    checkAuth();
+  }, []);
+  // ------------------------------------------------------------------------
+
   const handleAuthSuccess = () => {
     setAuthed(true);
     setRoute("home");
   };
 
-  const handleLogout = () => {
-    setAuthed(false); // Logga ut
-    setRoute("home"); // Navigera till startsidan
+  const handleLogout = async () => {
+    try {
+      const response = await fetch("/api/login", {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        console.log(data.success);
+        setAuthed(false);
+        setRoute("home");
+      } else {
+        console.error(data.error || "Kunde inte logga ut.");
+      }
+    } catch (err) {
+      console.error("Fel vid utloggning: ", err);
+    }
   };
 
   const navigationProps = {

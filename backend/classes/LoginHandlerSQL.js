@@ -29,7 +29,10 @@ export default class LoginHandler {
         secret: this.sessionSecret,
         resave: false,
         saveUninitialized: false,
-        cookie: { secure: "auto" },
+        cookie: {
+          secure: false,
+          sameSite: "lax",
+        },
         store: sessionStore(this.restApi.settings, session),
       })
     );
@@ -40,7 +43,7 @@ export default class LoginHandler {
     // Creating a limiter for the attempts to login, after set max-attempts user gets locked out for set amount of time
     const loginLimiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 5, // max 5 login attempts
+      max: 5000000, // max 5 login attempts
       message: {
         error: "För många inloggningsförsök, försök igen om 15 minuter",
       },

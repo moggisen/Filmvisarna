@@ -3,7 +3,7 @@ import LoginHandler from "./LoginHandlerSQL.js";
 import RestSearch from "./RestSearchSQL.js";
 import Acl from "./Acl.js";
 import catchExpressJsonErrors from "../helpers/catchExpressJsonErrors.js";
-import PasswordChecker from "../helpers/PasswordChecker.js";
+// import PasswordChecker from "../helpers/PasswordChecker.js";
 import { body, query, validationResult } from "express-validator";
 
 // import the correct version of the DBQueryMaker
@@ -25,7 +25,7 @@ export default class RestApi {
     // use middleware to capture malformed json errors
     app.use(catchExpressJsonErrors);
     // use middleware to check password strength
-    PasswordChecker.addMiddleware(app, this.prefix, settings);
+    // PasswordChecker.addMiddleware(app, this.prefix, settings);
     // add login routes
     new LoginHandler(this);
     // add post, get, put and delete routes
@@ -64,12 +64,18 @@ export default class RestApi {
   addRegisterRoute() {
     this.app.post(
       this.prefix + "register",
-      body("user_email")
-        .trim()
-        .notEmpty()
-        .withMessage("Email är obligatoriskt")
-        .isEmail()
-        .withMessage("Måste vara en giltig email"),
+      [
+        body("user_email")
+          .trim()
+          .notEmpty()
+          .withMessage("Email är obligatoriskt")
+          .isEmail()
+          .withMessage("Måste vara en giltig email"),
+        body("user_password_hash")
+          .if(body("user_password_hash").notEmpty())
+          .isLength({ min: 8, max: 35 })
+          .withMessage("Ditt lösenord måste vara längre än 8 tecken"),
+      ],
       async (req, res) => {
         const result = validationResult(req);
 
