@@ -12,11 +12,12 @@ interface AuthPageProps {
 export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
-  const [name, setName] = useState("");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,15 +38,15 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
 
     try {
       const endpoint = mode === "login" ? "/api/login" : "/api/register";
-      const body =
-        mode === "login"
-          ? { user_email: email, user_password_hash: password }
-          : {
-              user_email: email,
-              user_password_hash: password,
-              password2,
-              user_name: name,
-            };
+      const body: any = { user_email: email };
+
+      if (mode === "signup") {
+        if (password) body.user_password_hash = password;
+        if (name) body.user_name = name;
+        if (phone) body.user_phoneNumber = phone;
+      } else {
+        body.user_password_hash = password;
+      }
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -55,12 +56,13 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
       });
 
       const data = await res.json();
+      console.log("signup response: ", data);
 
       console.log(data.error);
-      if (data.error) throw new Error(data.error);
-      if (!res.ok) throw new Error(data.message || "Något gick fel");
+      if (!res.ok || data.error)
+        throw new Error(data.error || "Något gick fel");
 
-      if (mode === "signup" && data.success) {
+      if ((mode === "signup" && data.success) || data.message) {
         setShow(true);
       } else {
         onSuccess();
