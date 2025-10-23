@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Container,
   Row,
@@ -7,37 +7,30 @@ import {
   FormControl,
   Button,
   Card,
+  Spinner,
+  Carousel,
 } from "react-bootstrap";
-
 import "../styles/homepage.scss";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 
-import deadpoolImg from "../assets/deadpool.jpg";
-import guardianImg from "../assets/guardians3.jpg";
-import doctorstrangeImg from "../assets/doctorstrange.jpg";
-import nowayhomeImg from "../assets/nowayhome.jpg";
-import avengersImg from "../assets/avengers.jpg";
-import spideracrossImg from "../assets/spideracross.jpg";
-import thorImg from "../assets/thor.jpg";
-import infinitywarImg from "../assets/avengers2.jpg";
-import civilwarImg from "../assets/captainamerica2.jpg";
-import guardiansImg from "../assets/guardian1.jpg";
 import spidermarathonImg from "../assets/spidermanmarathon.png";
 import guardianmarathonImg from "../assets/guardianmarathon.png";
-import ironmanImg from "../assets/ironMan2013.jpg";
-import venomImg from "../assets/venom2018.jpg";
-import loganImg from "../assets/logan2017.jpg";
-import deadpool1Img from "../assets/deadpool12016.jpg";
-import captainImg from "../assets/captainamerica2014.jpg";
+import carousel1Img from "../assets/deadpool.jpg";
+import carousel2Img from "../assets/ironMan2013.jpg";
+import carousel3Img from "../assets/venom2018.jpg";
 import type { Route } from "./types";
 
 interface Movie {
-  year: number;
-  title: string;
-  age: string;
-  dates: { date: string; times: string[] }[];
-  img: string;
+  movie_id: number;
+  movie_title: string;
+  movie_desc: string;
+  movie_playtime: string;
+  movie_director: string;
+  movie_cast: string;
+  movie_premier: string;
+  movie_poster: string;
+  age_limit: number;
 }
 
 interface Event {
@@ -48,130 +41,32 @@ interface Event {
 }
 
 interface HomePageProps {
-  onNavigate: (route: Route) => void;
+  onNavigate: (route: Route, movieId?: number) => void;
 }
 
 export default function HomePage({ onNavigate }: HomePageProps) {
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
   const [age, setAge] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
   const [date, setDate] = useState<Date | null>(null);
 
-  const movies: Movie[] = [
-    {
-      year: 2024,
-      title: "Deadpool",
-      age: "15",
-      dates: [{ date: "2025-09-25", times: ["12:00", "15:00", "18:00"] }],
-      img: deadpoolImg,
-    },
-    {
-      year: 2023,
-      title: "Guardians of the galaxy 3",
-      age: "11",
-      dates: [{ date: "2025-11-25", times: ["13:00", "16:00"] }],
-      img: guardianImg,
-    },
-    {
-      year: 2023,
-      title: "Spider man across",
-      age: "7",
-      dates: [{ date: "2025-10-24", times: ["11:00", "14:00"] }],
-      img: spideracrossImg,
-    },
-    {
-      year: 2022,
-      title: "Doctor Strange",
-      age: "11",
-      dates: [{ date: "2025-10-25", times: ["12:30", "15:30"] }],
-      img: doctorstrangeImg,
-    },
-    {
-      year: 2022,
-      title: "Spider Man No way home",
-      age: "11",
-      dates: [
-        { date: "2025-10-25", times: ["12:00", "15:00", "18:00"] },
-        { date: "2025-10-21", times: ["14:00", "17:00"] },
-        { date: "2025-11-25", times: ["13:00", "16:00"] },
-      ],
-      img: nowayhomeImg,
-    },
-    {
-      year: 2019,
-      title: "Avengers Endgame",
-      age: "11",
-      dates: [{ date: "2025-10-25", times: ["12:00", "15:00"] }],
-      img: avengersImg,
-    },
-    {
-      year: 2018,
-      title: "Avengers Infinity war",
-      age: "11",
-      dates: [{ date: "2025-10-03", times: ["13:00", "16:00"] }],
-      img: infinitywarImg,
-    },
-    {
-      year: 2017,
-      title: "Logan",
-      age: "15",
-      dates: [{ date: "2025-10-17", times: ["12:00", "15:00"] }],
-      img: loganImg,
-    },
-    {
-      year: 2017,
-      title: "Thor Ragnarok",
-      age: "11",
-      dates: [{ date: "2025-10-05", times: ["11:00", "14:00"] }],
-      img: thorImg,
-    },
-    {
-      year: 2017,
-      title: "Venom",
-      age: "15",
-      dates: [{ date: "2025-10-16", times: ["13:00", "16:00"] }],
-      img: venomImg,
-    },
-    {
-      year: 2016,
-      title: "Deadpool 1",
-      age: "15",
-      dates: [{ date: "2025-10-19", times: ["12:00", "15:00"] }],
-      img: deadpool1Img,
-    },
-    {
-      year: 2016,
-      title: "Captain America civil war",
-      age: "11",
-      dates: [{ date: "2025-11-10", times: ["13:00", "16:00"] }],
-      img: civilwarImg,
-    },
-    {
-      year: 2014,
-      title: "Guardians of the galaxy",
-      age: "11",
-      dates: [{ date: "2025-10-14", times: ["12:00", "15:00"] }],
-      img: guardiansImg,
-    },
-    {
-      year: 2014,
-      title: "Captain America the winter soldier",
-      age: "11",
-      dates: [{ date: "2025-10-20", times: ["13:00", "16:00"] }],
-      img: captainImg,
-    },
-    {
-      year: 2013,
-      title: "Iron Man 3",
-      age: "11",
-      dates: [{ date: "2025-10-14", times: ["12:00", "15:00"] }],
-      img: ironmanImg,
-    },
-  ];
-
-  const newestMovie = [...movies].sort(
-    (a, b) =>
-      new Date(b.dates[0].date).getTime() - new Date(a.dates[0].date).getTime()
-  )[1];
+  // Hämta filmer från backend
+  useEffect(() => {
+    const fetchMovies = async () => {
+      try {
+        const res = await fetch("/api/movies");
+        if (!res.ok) throw new Error("Misslyckades att hämta filmer");
+        const data = await res.json();
+        setMovies(data);
+      } catch (err) {
+        console.error("Fel vid hämtning av filmer:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMovies();
+  }, []);
 
   const events: Event[] = [
     {
@@ -189,45 +84,45 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   ];
 
   const filteredMovies = movies.filter((movie) => {
-    const matchesSearch = movie.title
+    const matchesSearch = movie.movie_title
       .toLowerCase()
       .includes(search.toLowerCase());
-    const matchesAge = age === "all" || movie.age === age;
-    const matchesDate =
-      !date ||
-      movie.dates.some((d) => d.date === date.toISOString().split("T")[0]);
-    return matchesSearch && matchesAge && matchesDate;
+    const matchesAge = age === "all" || movie.age_limit === parseInt(age);
+    return matchesSearch && matchesAge;
   });
+
+  // Hårdkodade nyaste filmer för mobil-karusell
+  const newestMoviesHardcoded = [
+    { movie_id: 1, movie_title: "Deadpool", movie_poster: carousel1Img },
+    { movie_id: 2, movie_title: "Iron Man 3", movie_poster: carousel2Img },
+    { movie_id: 3, movie_title: "Venom", movie_poster: carousel3Img },
+  ];
+
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center vh-100">
+        <Spinner animation="border" variant="dark" />
+      </div>
+    );
+  }
 
   return (
     <>
-      {/* Mobilvy */}
-      <Container fluid className="homepage-container d-md-none p-3">
-        <h5 className="homepage-heading">Nyaste filmen</h5>
-        <Card className="homepage-newest-movie mb-3">
-          <Card.Img variant="top" src={newestMovie.img} />
-          <Card.Body>
-            <Card.Title className="homepage-heading-text">
-              {newestMovie.title}
-            </Card.Title>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="me-2 homepage-btn homepage-btn-secondary"
-              onClick={() => onNavigate("biljett")}
-            >
-              Biljett
-            </Button>
-            <Button
-              variant="dark"
-              size="sm"
-              className="homepage-btn homepage-btn-dark"
-              onClick={() => onNavigate("movie-detail")}
-            >
-              Info
-            </Button>
-          </Card.Body>
-        </Card>
+      {/* ------------------ MOBILVY ------------------ */}
+      <Container fluid className="d-md-none p-3">
+        {/* Karusell med bilder endast */}
+        <Carousel variant="dark" className="homepage-newest-carousel mb-4">
+          {newestMoviesHardcoded.map((movie) => (
+            <Carousel.Item key={movie.movie_id}>
+              <img
+                className="d-block w-100"
+                src={movie.movie_poster}
+                alt={movie.movie_title}
+               style={{ width: "100%", height: "auto" }}
+              />
+            </Carousel.Item>
+          ))}
+        </Carousel>
 
         {/* KOMMANDE EVENT */}
         <h5 className="homepage-heading">🎉 Kommande Event</h5>
@@ -258,6 +153,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             <option value="15">15 år</option>
           </Form.Select>
         </Form.Group>
+
         <Form.Group className="homepage-form mb-3">
           <Form.Label>Sök film</Form.Label>
           <FormControl
@@ -272,75 +168,45 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         <h5 className="homepage-heading">Välj datum</h5>
         <Calendar
           value={date}
-          onChange={(value: Date | Date[]) => {
-            if (Array.isArray(value)) {
-              setDate(value[0] || null);
-            } else {
-              setDate(value);
-            }
-          }}
+          onChange={(value: Date | Date[]) =>
+            setDate(Array.isArray(value) ? value[0] || null : value)
+          }
           className="homepage-calendar"
-          style={{ maxWidth: "220px" }}
-          formatShortWeekday={(locale, date) => {
-            const shortNames = [
-              "sön",
-              "mån",
-              "tis",
-              "ons",
-              "tor",
-              "fre",
-              "lör",
-            ];
-            return shortNames[date.getDay()];
-          }}
+          formatShortWeekday={(locale, date) =>
+            ["sön", "mån", "tis", "ons", "tor", "fre", "lör"][date.getDay()]
+          }
         />
 
-        {/* Alla filmer */}
+        {/* ALLA FILMER */}
         <h5 className="homepage-heading">Alla filmer</h5>
-        <Row
-          xs={2}
-          xl={4}
-          className="homepage-movie-grid homepage-mobile-grid g-3"
-        >
-          {filteredMovies.map((movie, idx) => (
-            <Col key={idx}>
-              <Card className="homepage-movie-card h-100">
-                <Card.Img variant="top" src={movie.img} />
-                <Card.Body className="text-center">
-                  {date ? (
-                    movie.dates
-                      .find((d) => d.date === date.toISOString().split("T")[0])
-                      ?.times.map((time, i) => (
-                        <Button
-                          key={i}
-                          variant="secondary"
-                          size="sm"
-                          className="me-2 homepage-btn homepage-btn-secondary"
-                          onClick={() => onNavigate("biljett")}
-                        >
-                          {time}
-                        </Button>
-                      ))
-                  ) : (
-                    <>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="me-2 homepage-btn homepage-btn-secondary"
-                        onClick={() => onNavigate("biljett")}
-                      >
-                        Biljett
-                      </Button>
-                      <Button
-                        variant="dark"
-                        size="sm"
-                        className="homepage-btn homepage-btn-dark"
-                        onClick={() => onNavigate("movie-detail")}
-                      >
-                        Info
-                      </Button>
-                    </>
-                  )}
+        <Row xs={2} xl={4} className="homepage-movie-grid g-3">
+          {filteredMovies.map((movie) => (
+            <Col key={movie.movie_id}>
+              <Card className="homepage-movie-card h-100 d-flex flex-column">
+                <Card.Img
+                  variant="top"
+                  src={movie.movie_poster || "/placeholder.jpg"}
+                />
+                <div className="movie-title-wrapper text-center mt-2 mb-2">
+                  {movie.movie_title}
+                </div>
+                <Card.Body className="text-center mt-auto">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="me-2 homepage-btn homepage-btn-secondary"
+                    onClick={() => onNavigate("biljett", movie.movie_id)}
+                  >
+                    Biljett
+                  </Button>
+                  <Button
+                    variant="dark"
+                    size="sm"
+                    className="homepage-btn homepage-btn-dark"
+                    onClick={() => onNavigate("movie-detail", movie.movie_id)}
+                  >
+                    Info
+                  </Button>
                 </Card.Body>
               </Card>
             </Col>
@@ -348,14 +214,15 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         </Row>
       </Container>
 
-      {/* Desktopvy */}
+      {/* ------------------ DESKTOPVY ------------------ */}
       <Container
         fluid
-        className="homepage-container d-none d-md-block"
+        className="d-none d-md-block"
         style={{ width: "100%", paddingLeft: 0, paddingRight: 0 }}
       >
         <Row>
-          <Col md={4} lg={3} className="sidebar p-1 mt-2 position-sticky">
+          {/* SIDOFILTER */}
+          <Col md={4} lg={2} className="sidebar p-1 mt-2 position-sticky">
             <h5 className="homepage-heading">Åldersgräns</h5>
             <Form.Group className="homepage-form mb-3">
               <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
@@ -381,71 +248,50 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               value={date}
               onChange={setDate}
               className="homepage-calendar"
-              style={{ maxWidth: "220px" }}
-              formatShortWeekday={(locale, date) => {
-                const shortNames = [
-                  "sön",
-                  "mån",
-                  "tis",
-                  "ons",
-                  "tor",
-                  "fre",
-                  "lör",
-                ];
-                return shortNames[date.getDay()];
-              }}
+              formatShortWeekday={(locale, date) =>
+                ["sön", "mån", "tis", "ons", "tor", "fre", "lör"][date.getDay()]
+              }
             />
           </Col>
 
-          <Col md={8} lg={9} className="p-4">
+          {/* FILMLISTA */}
+          <Col md={8} lg={10} className="p-4">
             <Row
               xs={1}
               sm={2}
               md={3}
-              lg={4}
+              lg={5}
               className="homepage-movie-grid homepage-desktop-grid g-4"
             >
-              {filteredMovies.map((movie, idx) => (
-                <Col key={idx}>
-                  <Card className="homepage-movie-card h-100">
-                    <Card.Img variant="top" src={movie.img} />
-                    <Card.Body className="text-center">
-                      {date ? (
-                        movie.dates
-                          .find(
-                            (d) => d.date === date.toISOString().split("T")[0]
-                          )
-                          ?.times.map((time, i) => (
-                            <Button
-                              key={i}
-                              variant="secondary"
-                              size="sm"
-                              className="me-2 homepage-btn homepage-btn-secondary"
-                              onClick={() => onNavigate("biljett")}
-                            >
-                              {time}
-                            </Button>
-                          ))
-                      ) : (
-                        <>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="me-2 homepage-btn homepage-btn-secondary"
-                            onClick={() => onNavigate("biljett")}
-                          >
-                            Biljett
-                          </Button>
-                          <Button
-                            variant="dark"
-                            size="sm"
-                            className="homepage-btn homepage-btn-dark"
-                            onClick={() => onNavigate("movie-detail")}
-                          >
-                            Info
-                          </Button>
-                        </>
-                      )}
+              {filteredMovies.map((movie) => (
+                <Col key={movie.movie_id}>
+                  <Card className="homepage-movie-card h-100 d-flex flex-column">
+                    <Card.Img
+                      variant="top"
+                      src={movie.movie_poster || "/placeholder.jpg"}
+                    />
+                    <div className="movie-title-wrapper text-center mt-2 mb-2">
+                      {movie.movie_title}
+                    </div>
+                    <Card.Body className="text-center mt-auto">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="me-2 homepage-btn homepage-btn-secondary"
+                        onClick={() => onNavigate("biljett", movie.movie_id)}
+                      >
+                        Biljett
+                      </Button>
+                      <Button
+                        variant="dark"
+                        size="sm"
+                        className="homepage-btn homepage-btn-dark"
+                        onClick={() =>
+                          onNavigate("movie-detail", movie.movie_id)
+                        }
+                      >
+                        Info
+                      </Button>
                     </Card.Body>
                   </Card>
                 </Col>
