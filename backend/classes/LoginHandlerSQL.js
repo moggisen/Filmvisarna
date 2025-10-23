@@ -45,7 +45,7 @@ export default class LoginHandler {
       windowMs: 15 * 60 * 1000, // 15 minutes
       max: 5000000, // max 5 login attempts
       message: {
-        error: "För många inloggningsförsök, försök igen om 15 minuter ",
+        error: "För många inloggningsförsök, försök igen om 15 minuter",
       },
     });
 
