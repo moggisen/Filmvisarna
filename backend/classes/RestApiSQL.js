@@ -69,7 +69,7 @@ export default class RestApi {
         body("user_email")
           .trim()
           .notEmpty()
-          .withMessage("Email är obligatoriskt ")
+          .withMessage("Email är obligatoriskt")
           .isEmail()
           .withMessage("Måste vara en giltig email"),
         body("user_password_hash")
