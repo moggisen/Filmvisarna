@@ -20,7 +20,7 @@ const validateForm = (
   }
 
   if (mode === "signup" && password !== password2) {
-    return "Lösenorden matchar inte ";
+    return "Lösenorden matchar inte";
   }
 
   return null;
