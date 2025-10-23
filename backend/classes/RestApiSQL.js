@@ -3,7 +3,8 @@ import LoginHandler from "./LoginHandlerSQL.js";
 import RestSearch from "./RestSearchSQL.js";
 import Acl from "./Acl.js";
 import catchExpressJsonErrors from "../helpers/catchExpressJsonErrors.js";
-import PasswordChecker from "../helpers/PasswordChecker.js";
+import PasswordChecker from '../helpers/PasswordChecker.js';
+import SeatsHub from "../helpers/SeatsHub.js"; 
 
 // import the correct version of the DBQueryMaker
 const DBQueryMaker = (
@@ -33,6 +34,43 @@ export default class RestApi {
     this.addGetRoutes(); // R
     this.addPutRoutes(); // U
     this.addDeleteRoutes(); // D
+
+    this.seatsHub = new SeatsHub({
+      // Vill du initialisera upptagna platser från DB per visning?
+      // loadSeatsFromDB: async (screeningId) => new Set()
+    });
+
+    // SSE-ström (krockar inte med CRUD)
+    this.app.get(this.prefix + "screenings/:id/seats/stream", (req, res) =>
+      this.seatsHub.stream(req, res)
+    );
+
+    // Viktigt: undvik krock med "POST /api/:table" genom att använda en djupare path
+    this.app.post(this.prefix + "bookings/create", async (req, res) => {
+      const { screeningId, seats } = req.body || {};
+      if (!screeningId || !Array.isArray(seats) || seats.length === 0) {
+        return res.status(400).json({ error: "Bad request" });
+      }
+
+      const result = await this.seatsHub.tryBook(screeningId, seats);
+      if (!result.ok) {
+        return res.status(409).json({ error: "conflict", taken: result.taken });
+      }
+
+      // TODO: här kan du spara i DB; backa vid fel:
+      // try { await this.db.query(...); return res.status(201).json({ ok: true }); }
+      // catch(e) { await this.seatsHub.release(screeningId, seats); return res.status(500).json({ error:"persist_failed" }); }
+
+      return res.status(201).json({ ok: true }); // demo utan persist
+    });
+
+    // (valfritt) avbokning/test
+    this.app.post(this.prefix + "screenings/:id/release", async (req, res) => {
+      const seats = (req.body && req.body.seats) || [];
+      await this.seatsHub.release(req.params.id, seats);
+      res.json({ ok: true });
+    });
+
     // catch calls to undefined routes
     this.addCatchAllRoute();
   }
@@ -326,6 +364,7 @@ export default class RestApi {
       this.sendJsonResponse(res, result);
     });
   }
+  
 
   addCatchAllRoute() {
     // send if the route is missing
