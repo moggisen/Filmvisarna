@@ -3,8 +3,8 @@ import LoginHandler from "./LoginHandlerSQL.js";
 import RestSearch from "./RestSearchSQL.js";
 import Acl from "./Acl.js";
 import catchExpressJsonErrors from "../helpers/catchExpressJsonErrors.js";
-import PasswordChecker from '../helpers/PasswordChecker.js';
-import SeatsHub from "../helpers/SeatsHub.js"; 
+import PasswordChecker from "../helpers/PasswordChecker.js";
+import SeatsHub from "../helpers/SeatsHub.js";
 import { body, query, validationResult } from "express-validator";
 
 // import the correct version of the DBQueryMaker
@@ -31,6 +31,7 @@ export default class RestApi {
     new LoginHandler(this);
     // add post, get, put and delete routes
     this.addBookingRoute();
+    this.addRegisterRoute();
     this.addPostRoutes(); // C
     this.addGetRoutes(); // R
     this.addPutRoutes(); // U
@@ -477,7 +478,6 @@ export default class RestApi {
       this.sendJsonResponse(res, result);
     });
   }
-  
 
   addCatchAllRoute() {
     // send if the route is missing

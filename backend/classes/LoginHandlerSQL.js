@@ -1,10 +1,10 @@
-import session from 'express-session';
-import sessionStore from '../helpers/sessionStore.js';
-import Acl from './Acl.js';
-import PasswordEncryptor from '../helpers/PasswordEncryptor.js';
+import session from "express-session";
+import sessionStore from "../helpers/sessionStore.js";
+import Acl from "./Acl.js";
+import PasswordEncryptor from "../helpers/PasswordEncryptor.js";
+import rateLimit from "express-rate-limit";
 
 export default class LoginHandler {
-
   constructor(restApi) {
     // transfer settings from restApi.settings to instance properties
     Object.assign(this, restApi.settings);
@@ -24,45 +24,70 @@ export default class LoginHandler {
   }
 
   setupSessionHandling() {
-    this.app.use(session({
-      secret: this.sessionSecret,
-      resave: false,
-      saveUninitialized: false,
-      cookie: { secure: 'auto' },
-      store: sessionStore(this.restApi.settings, session)
-    }));
+    this.app.use(
+      session({
+        secret: this.sessionSecret,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+          secure: false,
+          sameSite: "lax",
+        },
+        store: sessionStore(this.restApi.settings, session),
+      })
+    );
   }
 
   // Post route -> Used to LOGIN
   addPostRoute() {
+    // Creating a limiter for the attempts to login, after set max-attempts user gets locked out for set amount of time
+    const loginLimiter = rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 5000000, // max X login attempts  <--------- ÄNDRA DETTA ----------------------------------------------------------------------------------
+      message: {
+        error: "För många inloggningsförsök, försök igen om 15 minuter",
+      },
+    });
+
     // Note: This code would have been slightly easer to read if we
     // had hardcoded userTableName, userNameField and passwordFieldName
     // (but we don't - for flexibility they are set in the settings.json file)
-    this.app.post(this.prefix + 'login', async (req, res) => {
+    this.app.post(this.prefix + "login", loginLimiter, async (req, res) => {
       // If a user is already logged in, then do not allow login
       if (req.session.user) {
-        this.restApi.sendJsonResponse(res, { error: 'Someone is already logged in.' });
+        this.restApi.sendJsonResponse(res, {
+          error: "Someone is already logged in.",
+        });
         return;
       }
       // get the user from the db
-      const result = await this.db.query(req.method, req.url, this.userTableName,
-        'find', [{ [this.userNameField]: req.body[this.userNameField] }],
-        'toArray', []
+      const result = await this.db.query(
+        req.method,
+        req.url,
+        /*sql*/ `
+        SELECT * FROM ${this.userTableName}
+        WHERE ${this.userNameField} = :${this.userNameField}
+      `,
+        { [this.userNameField]: req.body[this.userNameField] }
       );
       const foundDbUser = result[0] || null;
       // if the user is not  found return an error
       if (!foundDbUser) {
-        this.restApi.sendJsonResponse(res, { error: 'No such user.' });
+        this.restApi.sendJsonResponse(res, { error: "No such user." });
         return;
       }
       // get the name of the db field with the password
-      let passwordFieldlName = Object.keys(foundDbUser)
-        .find(key => this.passwordFieldNames.includes(key));
+      let passwordFieldlName = Object.keys(foundDbUser).find((key) =>
+        this.passwordFieldNames.includes(key)
+      );
       // check if the password matches the stored encrypted one
-      if (!(await PasswordEncryptor.check(
-        req.body[passwordFieldlName], foundDbUser[passwordFieldlName]
-      ))) {
-        this.restApi.sendJsonResponse(res, { error: 'Password mismatch.' });
+      if (
+        !(await PasswordEncryptor.check(
+          req.body[passwordFieldlName],
+          foundDbUser[passwordFieldlName]
+        ))
+      ) {
+        this.restApi.sendJsonResponse(res, { error: "Password mismatch." });
         return;
       }
       // the user has successfully logged in, store in req.session.user
@@ -76,9 +101,10 @@ export default class LoginHandler {
   // Get route -> used to check if we have a logged in user
   // (return the user property of our session)
   addGetRoute() {
-    this.app.get(this.prefix + 'login', (req, res) =>
-      this.restApi.sendJsonResponse(res,
-        req.session.user || { error: 'Not logged in.' }
+    this.app.get(this.prefix + "login", (req, res) =>
+      this.restApi.sendJsonResponse(
+        res,
+        req.session.user || { error: "Not logged in." }
       )
     );
   }
@@ -86,13 +112,13 @@ export default class LoginHandler {
   // Delete route -> used to LOGOUT
   // (delete the user property of our session)
   adddDeleteRoute() {
-    this.app.delete(this.prefix + 'login', (req, res) =>
-      this.restApi.sendJsonResponse(res,
-        req.session.user ?
-          delete req.session.user && { success: 'Logged out successfully.' } :
-          { error: 'No user logged in.' }
+    this.app.delete(this.prefix + "login", (req, res) =>
+      this.restApi.sendJsonResponse(
+        res,
+        req.session.user
+          ? delete req.session.user && { success: "Logged out successfully." }
+          : { error: "No user logged in." }
       )
     );
-  };
-
+  }
 }

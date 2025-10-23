@@ -14,11 +14,11 @@ import "../styles/homepage.scss";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 
-import spidermarathonImg from "../assets/spidermanmarathon.png";
-import guardianmarathonImg from "../assets/guardianmarathon.png";
-import carousel1Img from "../assets/deadpool.jpg";
-import carousel2Img from "../assets/ironMan2013.jpg";
-import carousel3Img from "../assets/venom2018.jpg";
+import spidermarathonImg from "../assets/banners/spidermanmarathon.png";
+import guardianmarathonImg from "../assets/banners/guardianmarathon.png";
+import carousel1Img from "../assets/banners/deadpool.jpg";
+import carousel2Img from "../assets/banners/ironMan2013.jpg";
+import carousel3Img from "../assets/banners/venom2018.jpg";
 import type { Route } from "./types";
 
 interface Movie {
@@ -118,7 +118,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 className="d-block w-100"
                 src={movie.movie_poster}
                 alt={movie.movie_title}
-               style={{ width: "100%", height: "auto" }}
+                style={{ width: "100%", height: "auto" }}
               />
             </Carousel.Item>
           ))}
