@@ -2,6 +2,7 @@ import session from "express-session";
 import Acl from "./Acl.js";
 import sessionStore from "../helpers/sessionStore.js";
 import PasswordEncryptor from "../helpers/PasswordEncryptor.js";
+import rateLimit from "express-rate-limit";
 
 export default class LoginHandler {
   constructor(restApi) {
@@ -28,7 +29,10 @@ export default class LoginHandler {
         secret: this.sessionSecret,
         resave: false,
         saveUninitialized: false,
-        cookie: { secure: "auto" },
+        cookie: {
+          secure: false,
+          sameSite: "lax",
+        },
         store: sessionStore(this.restApi.settings, session),
       })
     );
@@ -36,10 +40,19 @@ export default class LoginHandler {
 
   // Post route -> Used to LOGIN
   addPostRoute() {
+    // Creating a limiter for the attempts to login, after set max-attempts user gets locked out for set amount of time
+    const loginLimiter = rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 5000000, // max 5 login attempts
+      message: {
+        error: "För många inloggningsförsök, försök igen om 15 minuter",
+      },
+    });
+
     // Note: This code would have been slightly easer to read if we
     // had hardcoded userTableName, userNameField and passwordFieldName
     // (but we don't - for flexibility they are set in the settings.json file)
-    this.app.post(this.prefix + "login", async (req, res) => {
+    this.app.post(this.prefix + "login", loginLimiter, async (req, res) => {
       // If a user is already logged in, then do not allow login
       if (req.session.user) {
         this.restApi.sendJsonResponse(res, {
@@ -60,7 +73,9 @@ export default class LoginHandler {
       const foundDbUser = result[0] || null;
       // if the user is not  found return an error
       if (!foundDbUser) {
-        this.restApi.sendJsonResponse(res, { error: "No such user." });
+        this.restApi.sendJsonResponse(res, {
+          error: "Ogiltigt användarnamn eller lösenord",
+        });
         return;
       }
       // get the name of the db field with the password
@@ -74,7 +89,9 @@ export default class LoginHandler {
           foundDbUser[passwordFieldlName]
         ))
       ) {
-        this.restApi.sendJsonResponse(res, { error: "Password mismatch." });
+        this.restApi.sendJsonResponse(res, {
+          error: "Ogiltigt användarnamn eller lösenord",
+        });
         return;
       }
       // the user has successfully logged in, store in req.session.user

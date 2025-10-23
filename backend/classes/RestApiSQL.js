@@ -3,7 +3,9 @@ import LoginHandler from "./LoginHandlerSQL.js";
 import RestSearch from "./RestSearchSQL.js";
 import Acl from "./Acl.js";
 import catchExpressJsonErrors from "../helpers/catchExpressJsonErrors.js";
-import PasswordChecker from "../helpers/PasswordChecker.js";
+// import PasswordChecker from "../helpers/PasswordChecker.js";
+import { body, query, validationResult } from "express-validator";
+import PasswordEncryptor from "../helpers/PasswordEncryptor.js";
 
 // import the correct version of the DBQueryMaker
 const DBQueryMaker = (
@@ -24,11 +26,12 @@ export default class RestApi {
     // use middleware to capture malformed json errors
     app.use(catchExpressJsonErrors);
     // use middleware to check password strength
-    PasswordChecker.addMiddleware(app, this.prefix, settings);
+    // PasswordChecker.addMiddleware(app, this.prefix, settings);
     // add login routes
     new LoginHandler(this);
     // add post, get, put and delete routes
     this.addBookingRoute();
+    this.addRegisterRoute();
     this.addPostRoutes(); // C
     this.addGetRoutes(); // R
     this.addPutRoutes(); // U
@@ -58,7 +61,118 @@ export default class RestApi {
       delete body[this.settings.userRoleField];
   }
 
-  // I din RestApiSQL.js
+  // using express-validator to validate the data sent through the API during user-registration
+  addRegisterRoute() {
+    this.app.post(
+      this.prefix + "register",
+      [
+        body("user_email")
+          .trim()
+          .notEmpty()
+          .withMessage("Email är obligatoriskt")
+          .isEmail()
+          .withMessage("Måste vara en giltig email"),
+        body("user_password_hash")
+          .optional()
+          .isLength({ min: 8, max: 35 })
+          .withMessage("Lösenordet måste vara minst 8 tecken"),
+        body("user_password")
+          .optional()
+          .isLength({ min: 8, max: 35 })
+          .withMessage("Lösenordet måste vara minst 8 tecken"),
+      ],
+      async (req, res) => {
+        const result = validationResult(req);
+        if (!result.isEmpty()) {
+          return res.status(400).json({
+            error: "Ogiltig input",
+            details: result.array(),
+          });
+        }
+
+        const {
+          user_email,
+          user_password,
+          user_password_hash,
+          user_name,
+          user_phoneNumber,
+        } = req.body;
+
+        // Kontrollera att inte båda finns
+        if (user_password && user_password_hash) {
+          return res.status(400).json({
+            error:
+              "Skicka endast user_password eller user_password_hash, inte båda.",
+          });
+        }
+
+        // Kontrollera att minst en finns
+        if (!user_password && !user_password_hash) {
+          return res.status(400).json({
+            error:
+              "Du måste skicka antingen user_password eller user_password_hash.",
+          });
+        }
+
+        try {
+          // Kolla om e-post redan finns
+          const existingUser = await this.db.query(
+            "POST",
+            req.url,
+            "SELECT id FROM users WHERE user_email = :user_email",
+            { user_email }
+          );
+
+          if (existingUser.length > 0) {
+            return res
+              .status(400)
+              .json({ error: "E-postadressen används redan" });
+          }
+
+          // Skapa userObj
+          const userObj = {
+            user_email,
+            user_password_hash: user_password_hash || user_password,
+            user_name: user_name || null,
+            user_phoneNumber: user_phoneNumber || null,
+          };
+
+          // Hasha lösenordet om det inte redan är en hash
+          if (user_password) {
+            await PasswordEncryptor.encrypt(userObj);
+          }
+
+          // Spara användaren
+          const result = await this.db.query(
+            "POST",
+            req.url,
+            `INSERT INTO users (user_email, user_password_hash, user_name, user_phoneNumber)
+           VALUES (:user_email, :user_password_hash, :user_name, :user_phoneNumber)`,
+            userObj
+          );
+
+          const newUser = await this.db.query(
+            "GET",
+            req.url,
+            `SELECT id, user_email, user_name, user_phoneNumber FROM users WHERE id = :id`,
+            { id: result.insertId }
+          );
+
+          req.session.user = newUser[0];
+
+          res.status(201).json({
+            success: true,
+            message: "Användare registrerad och inloggad",
+            user: newUser[0],
+          });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({ error: "Kunde inte skapa användare" });
+        }
+      }
+    );
+  }
+
   addBookingRoute() {
     this.app.post(this.prefix + "makeBooking", async (req, res) => {
       try {
