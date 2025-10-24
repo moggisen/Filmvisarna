@@ -22,7 +22,7 @@ import carousel3Img from "../assets/banners/venom2018.jpg";
 import type { Route } from "./types";
 
 interface Movie {
-  movie_id: number;
+  id: number;
   movie_title: string;
   movie_desc: string;
   movie_playtime: string;
@@ -113,7 +113,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         {/* Karusell med bilder endast */}
         <Carousel variant="dark" className="homepage-newest-carousel mb-4">
           {newestMoviesHardcoded.map((movie) => (
-            <Carousel.Item key={movie.movie_id}>
+            <Carousel.Item key={movie.id}>
               <img
                 className="d-block w-100"
                 src={movie.movie_poster}
@@ -181,7 +181,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         <h5 className="homepage-heading">Alla filmer</h5>
         <Row xs={2} xl={4} className="homepage-movie-grid g-3">
           {filteredMovies.map((movie) => (
-            <Col key={movie.movie_id}>
+            <Col key={movie.id}>
               <Card className="homepage-movie-card h-100 d-flex flex-column">
                 <Card.Img
                   variant="top"
@@ -195,7 +195,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                     variant="secondary"
                     size="sm"
                     className="me-2 homepage-btn homepage-btn-secondary"
-                    onClick={() => onNavigate("biljett", movie.movie_id)}
+                    onClick={() => onNavigate("biljett", movie.id)}
                   >
                     Biljett
                   </Button>
@@ -203,7 +203,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                     variant="dark"
                     size="sm"
                     className="homepage-btn homepage-btn-dark"
-                    onClick={() => onNavigate("movie-detail", movie.movie_id)}
+                    onClick={() => onNavigate("movie-detail", movie.id)}
                   >
                     Info
                   </Button>
@@ -264,7 +264,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               className="homepage-movie-grid homepage-desktop-grid g-4"
             >
               {filteredMovies.map((movie) => (
-                <Col key={movie.movie_id}>
+                <Col key={movie.id}>
                   <Card className="homepage-movie-card h-100 d-flex flex-column">
                     <Card.Img
                       variant="top"
@@ -278,7 +278,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                         variant="secondary"
                         size="sm"
                         className="me-2 homepage-btn homepage-btn-secondary"
-                        onClick={() => onNavigate("biljett", movie.movie_id)}
+                        onClick={() => onNavigate("biljett", movie.id)}
                       >
                         Biljett
                       </Button>
@@ -286,9 +286,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                         variant="dark"
                         size="sm"
                         className="homepage-btn homepage-btn-dark"
-                        onClick={() =>
-                          onNavigate("movie-detail", movie.movie_id)
-                        }
+                        onClick={() => onNavigate("movie-detail", movie.id)}
                       >
                         Info
                       </Button>

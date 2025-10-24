@@ -16,7 +16,8 @@ import AuthPage from "./components/AuthPage";
 import ProfilePage from "./components/ProfilePage";
 import MovieDetail from "./components/MovieDetail";
 
-import { routePath } from "./routes";
+import { routePath, buildPath } from "./routes";
+import type { RouteKey } from "./routes";
 import type { BookingSummary } from "./components/types";
 
 // --- LocalStorage helpers (från gamla Auth.tsx) ---
@@ -38,11 +39,6 @@ function ConfirmWrapper() {
   if (!sp.get("booking_id")) return <Navigate to="/" replace />;
   return <ConfirmationPage onDone={() => (window.location.href = "/")} />;
 }
-
-// Tillfälliga stubbar om ni inte kopplat sidorna än
-const MovieDetailStub = () => (
-  <div className="container py-4">Filmsida (kommer).</div>
-);
 
 export default function App() {
   // ==== Global app-state (flyttat från Auth.tsx) ====
@@ -115,8 +111,21 @@ export default function App() {
     setBookings((prev) => prev.filter((b) => b.bookingId !== bookingId));
   };
 
-  // Adapter för din gamla HomePage.onNavigate("...") tills ni byter till useNavigate inne i HomePage
-  const homeOnNavigate = (name: keyof typeof routePath) => {
+  const homeOnNavigate = (name: RouteKey, movieId?: number) => {
+    if (
+      name === "movie-detail" &&
+      typeof movieId === "number" &&
+      Number.isFinite(movieId) &&
+      movieId > 0
+    ) {
+      const target = buildPath("movie-detail", { id: movieId }); // => /movies/123
+      try {
+        localStorage.setItem("selectedMovieId", String(movieId));
+      } catch {}
+      console.log("Navigating to:", target, "movieId:", movieId);
+      navigate(target);
+      return;
+    }
     navigate(routePath[name] ?? routePath.home);
   };
 
@@ -189,9 +198,11 @@ export default function App() {
             }
           />
 
-          {/* MOVIE DETAIL (stub just nu) */}
-          <Route path="/movies" element={<MovieDetailStub />} />
-          {/* Senare: <Route path="/movies/:id" element={<MovieDetail />} /> */}
+          {/* MOVIE DETAIL */}
+          <Route
+            path={routePath["movie-detail"]} // "/movies/:id"
+            element={<MovieDetail onBook={() => navigate(routePath.biljett)} />}
+          />
 
           {/* 404 */}
           <Route
