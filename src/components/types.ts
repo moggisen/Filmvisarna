@@ -1,4 +1,3 @@
-
 export type TicketCounts = { vuxen: number; barn: number; pensionar: number };
 
 export type Seat = { row: string; number: number };
