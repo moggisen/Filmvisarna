@@ -40,11 +40,8 @@ export default function NavigationButtons({
           <NavLink
             to={routePath[key]}
             end={key === "home"}
-            className={({ isActive }) =>
-              `${klass} nav-btn btn btn-sm ${
-                isActive ? "btn-info" : "btn-outline-info"
-              }`
-            }
+            className={`${klass} nav-btn btn text-info btn-sm`}
+            style={{ lineHeight: "5" }}
           >
             {label}
           </NavLink>
@@ -54,7 +51,7 @@ export default function NavigationButtons({
       {authed && (
         <Nav.Item>
           <button
-            className="logout-btn nav-btn btn btn-sm btn-outline-info"
+            className="logout-btn nav-btn btn btn-sm text-info"
             onClick={onLogout}
             type="button"
           >

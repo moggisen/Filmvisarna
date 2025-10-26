@@ -67,6 +67,10 @@ body {
   background-color: $primary-dark;
 }
 
+a.nav-btn {
+  line-height: 5;
+}
+
 .logo-text {
   @include title-text;
 }
