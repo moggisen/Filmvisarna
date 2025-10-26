@@ -65,7 +65,7 @@ export default function App() {
 
         console.log("Auth check: ", data);
 
-        if (response.ok && data.id) {
+        if (response.ok && !data.error) {
           setAuthed(true);
         }
       } catch (err) {
