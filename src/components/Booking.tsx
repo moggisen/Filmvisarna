@@ -11,7 +11,10 @@ interface BookingProps {
 // ===== Konfig från .env =====
 const API_PREFIX = import.meta.env.VITE_API_PREFIX || "/api";
 
-// ===== Salonger =====
+// ===== Filmer (från API) =====
+type Movie = { id: string; title: string };
+
+// ===== Salonger (oförändrat – tills screenings kopplas in) =====
 type Salon = { name: string; seatsPerRow: number[] };
 const SALONGER: Salon[] = [
   { name: "Stora Salongen", seatsPerRow: [8, 9, 10, 10, 10, 10, 12, 12] },
@@ -38,7 +41,6 @@ const fmtSEK = (n: number) =>
     n
   );
 
-// Unik nyckel för visning
 const screeningKey = (movieId: string, showtime: string, salonIndex: number) =>
   `${movieId}|${showtime}|${salonIndex}`;
 
@@ -74,7 +76,7 @@ export default function Booking({
 }: BookingProps) {
   // ===== UI-state =====
   const [salonIndex, setSalonIndex] = useState(0);
-  const [movieId, setMovieId] = useState("ironman");
+  const [movieId, setMovieId] = useState(""); // init tom, sätts efter movies-load
   const showtimes = useMemo(makeShowtimes, []);
   const [showtime, setShowtime] = useState(showtimes[0]?.value ?? "");
   const [tickets, setTickets] = useState<Tickets>({
@@ -189,8 +191,6 @@ export default function Booking({
       apply(JSON.parse((ev as MessageEvent).data))
     );
     es.onerror = () => {
-      // EventSource auto-reconnectar; här kan man logga om man vill
-      // console.warn("SSE error");
     };
     return () => es.close();
   }, [sid]);
@@ -386,6 +386,7 @@ export default function Booking({
       return;
     }
 
+    const movie = movies.find((m) => m.id === movieId);
     const booking: BookingSummary = {
       movieId,
       movieTitle: getMovieTitle(movieId),
@@ -403,18 +404,7 @@ export default function Booking({
     if (showAuth) closeAuth();
   }
 
-  function getMovieTitle(id: string): string {
-    const titles: Record<string, string> = {
-      ironman: "Iron Man",
-      avengers: "The Avengers",
-      blackpanther: "Black Panther",
-    };
-    return titles[id] || "Okänd film";
-  }
-
-  function convertSeats(
-    seatNumbers: Set<number>
-  ): { row: string; number: number }[] {
+  function convertSeats(seatNumbers: Set<number>): { row: string; number: number }[] {
     // TODO: Mappa till rad A/B/C via seatStruct om du vill visa exakt radbokstav.
     return Array.from(seatNumbers).map((no) => ({ row: "A", number: no }));
   }
@@ -430,15 +420,23 @@ export default function Booking({
               <div className="card-body">
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Film</label>
-                  <select
-                    className="form-select"
-                    value={movieId}
-                    onChange={(e) => setMovieId(e.target.value)}
-                  >
-                    <option value="ironman">Iron Man</option>
-                    <option value="avengers">The Avengers</option>
-                    <option value="blackpanther">Black Panther</option>
-                  </select>
+                  {loadingMovies ? (
+                    <div className="form-control-plaintext">Laddar filmer…</div>
+                  ) : movieError ? (
+                    <div className="text-danger small">{movieError}</div>
+                  ) : (
+                    <select
+                      className="form-select"
+                      value={movieId}
+                      onChange={(e) => setMovieId(e.target.value)}
+                    >
+                      {movies.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -760,19 +758,4 @@ function TicketRow({
       </div>
     </div>
   );
-}
-
-function getMovieTitle(id: string): string {
-  const titles: Record<string, string> = {
-    ironman: "Iron Man",
-    avengers: "The Avengers",
-    blackpanther: "Black Panther",
-  };
-  return titles[id] || "Okänd film";
-}
-
-function convertSeats(
-  seatNumbers: Set<number>
-): { row: string; number: number }[] {
-  return Array.from(seatNumbers).map((no) => ({ row: "A", number: no }));
 }
