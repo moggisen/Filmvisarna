@@ -10,6 +10,7 @@
     "setup-db": "mysql -u root -p < db/schema.sql"
   },
   "dependencies": {
+    "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
     "better-express-store": "^1.0.5",
     "express": "^5.1.0",

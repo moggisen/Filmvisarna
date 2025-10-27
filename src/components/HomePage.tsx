@@ -58,6 +58,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         if (!res.ok) throw new Error("Misslyckades att hämta filmer");
         const data = await res.json();
         setMovies(data);
+        console.log(data);
       } catch (err) {
         console.error("Fel vid hämtning av filmer:", err);
       } finally {
@@ -182,10 +183,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           {filteredMovies.map((movie) => (
             <Col key={movie.id}>
               <Card className="homepage-movie-card h-100 d-flex flex-column">
-                <Card.Img
-                  variant="top"
-                  src={movie.movie_poster || "/placeholder.jpg"}
-                />
+                <Card.Img variant="top" src={`src/${movie.movie_poster}`} />
                 <div className="movie-title-wrapper text-center mt-2 mb-2">
                   {movie.movie_title}
                 </div>
@@ -265,10 +263,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               {filteredMovies.map((movie) => (
                 <Col key={movie.id}>
                   <Card className="homepage-movie-card h-100 d-flex flex-column">
-                    <Card.Img
-                      variant="top"
-                      src={movie.movie_poster || "/placeholder.jpg"}
-                    />
+                    <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
                     <div className="movie-title-wrapper text-center mt-2 mb-2">
                       {movie.movie_title}
                     </div>

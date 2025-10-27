@@ -28,11 +28,18 @@ const MOVIE_TO_SALON: Record<string, number> = {
 
 // ===== Övrigt =====
 type Tickets = { adult: number; child: number; senior: number };
-const PRICES = { adult: 140, child: 80, senior: 120 } as const;
+type TicketType = {
+  id: number;
+  ticketType_name: string;
+  ticketType_price: number;
+};
+type Prices = { adult: number; child: number; senior: number };
 type SeatMeta = { ri: number; ci: number };
 
 const fmtSEK = (n: number) =>
-  new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK" }).format(n);
+  new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK" }).format(
+    n
+  );
 
 const screeningKey = (movieId: string, showtime: string, salonIndex: number) =>
   `${movieId}|${showtime}|${salonIndex}`;
@@ -62,55 +69,65 @@ function makeShowtimes() {
   return out;
 }
 
-export default function Booking({ onConfirm, onNavigate, authed }: BookingProps) {
-  // ===== Filmer från API =====
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [loadingMovies, setLoadingMovies] = useState(true);
-  const [movieError, setMovieError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setLoadingMovies(true);
-        const resp = await fetch(`${API_PREFIX}/movies`);
-        if (!resp.ok) throw new Error("Kunde inte hämta filmer");
-        const raw = await resp.json();
-
-        // Normalisera fält från API:t
-        const data: Movie[] = (Array.isArray(raw) ? raw : []).map((m: any) => ({
-          id: String(m.id ?? m.movie_id ?? m.movieId),
-          title: String(m.title ?? m.movie_title ?? m.movieTitle ?? "Okänd film"),
-        }));
-
-        if (!alive) return;
-        setMovies(data);
-        setMovieError(null);
-
-        // välj första film som default om inget är valt
-        if (data.length && !movieId) setMovieId(data[0].id);
-      } catch (e: any) {
-        if (!alive) return;
-        setMovieError(e?.message ?? "Fel vid hämtning av filmer");
-      } finally {
-        if (alive) setLoadingMovies(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
-
+export default function Booking({
+  onConfirm,
+  onNavigate,
+  authed,
+}: BookingProps) {
   // ===== UI-state =====
   const [salonIndex, setSalonIndex] = useState(0);
   const [movieId, setMovieId] = useState(""); // init tom, sätts efter movies-load
   const showtimes = useMemo(makeShowtimes, []);
   const [showtime, setShowtime] = useState(showtimes[0]?.value ?? "");
-  const [tickets, setTickets] = useState<Tickets>({ adult: 0, child: 0, senior: 0 });
+  const [tickets, setTickets] = useState<Tickets>({
+    adult: 0,
+    child: 0,
+    senior: 0,
+  });
+
+  // ===== State för ticket types =====
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
+  const [prices, setPrices] = useState<Prices>({
+    adult: 0,
+    child: 0,
+    senior: 0,
+  });
 
   useEffect(() => {
     setSalonIndex(MOVIE_TO_SALON[movieId] ?? 0);
   }, [movieId]);
+
+  // Hämta ticket types från databasen
+  useEffect(() => {
+    const fetchTicketTypes = async () => {
+      try {
+        const response = await fetch(`api/ticketTypes`);
+        if (!response.ok) {
+          throw new Error("Kunde inte hämta biljettyper");
+        }
+        const data: TicketType[] = await response.json();
+        setTicketTypes(data);
+
+        // Konvertera till PRICES-format
+        const newPrices: Prices = { adult: 0, child: 0, senior: 0 };
+        data.forEach((ticket) => {
+          if (ticket.ticketType_name === "vuxen")
+            newPrices.adult = ticket.ticketType_price;
+          if (ticket.ticketType_name === "barn")
+            newPrices.child = ticket.ticketType_price;
+          if (ticket.ticketType_name === "pensionär")
+            newPrices.senior = ticket.ticketType_price;
+        });
+        setPrices(newPrices);
+      } catch (error) {
+        console.error("Error fetching ticket types:", error);
+        // Fallback till hårdkodade priser om API-anropet misslyckas
+        setPrices({ adult: 140, child: 80, senior: 120 });
+      }
+    };
+
+    fetchTicketTypes();
+  }, []);
 
   // ===== Seat-structure =====
   const needed = tickets.adult + tickets.child + tickets.senior;
@@ -135,18 +152,26 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
 
   // ===== Realtid via SSE =====
   const [occupied, setOccupied] = useState<Set<number>>(new Set());
-  const sid = useMemo(() => screeningKey(movieId, showtime, salonIndex), [movieId, showtime, salonIndex]);
+  const sid = useMemo(
+    () => screeningKey(movieId, showtime, salonIndex),
+    [movieId, showtime, salonIndex]
+  );
 
   useEffect(() => {
     if (!sid) return;
-    const es = new EventSource(`${API_PREFIX}/screenings/${encodeURIComponent(sid)}/seats/stream`);
+    const es = new EventSource(
+      `${API_PREFIX}/screenings/${encodeURIComponent(sid)}/seats/stream`
+    );
 
     const apply = (msg: { type: string; seats?: number[] }) => {
       setOccupied((prev) => {
-        if (msg.type === "snapshot" && Array.isArray(msg.seats)) return new Set(msg.seats);
+        if (msg.type === "snapshot" && Array.isArray(msg.seats))
+          return new Set(msg.seats);
         const next = new Set(prev);
-        if (msg.type === "booked" && Array.isArray(msg.seats)) msg.seats.forEach((n) => next.add(n));
-        if (msg.type === "released" && Array.isArray(msg.seats)) msg.seats.forEach((n) => next.delete(n));
+        if (msg.type === "booked" && Array.isArray(msg.seats))
+          msg.seats.forEach((n) => next.add(n));
+        if (msg.type === "released" && Array.isArray(msg.seats))
+          msg.seats.forEach((n) => next.delete(n));
         return next;
       });
     };
@@ -156,9 +181,15 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
         apply(JSON.parse(ev.data));
       } catch {}
     };
-    es.addEventListener("snapshot", (ev) => apply(JSON.parse((ev as MessageEvent).data)));
-    es.addEventListener("booked", (ev) => apply(JSON.parse((ev as MessageEvent).data)));
-    es.addEventListener("released", (ev) => apply(JSON.parse((ev as MessageEvent).data)));
+    es.addEventListener("snapshot", (ev) =>
+      apply(JSON.parse((ev as MessageEvent).data))
+    );
+    es.addEventListener("booked", (ev) =>
+      apply(JSON.parse((ev as MessageEvent).data))
+    );
+    es.addEventListener("released", (ev) =>
+      apply(JSON.parse((ev as MessageEvent).data))
+    );
     es.onerror = () => {
     };
     return () => es.close();
@@ -209,7 +240,9 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
         starts.sort((a, b) => a.bias - b.bias);
         for (const { s } of starts) {
           const segment = rowNos.slice(s, s + size);
-          const ok = segment.every((no) => !occupied.has(no) && !exclude?.has(no));
+          const ok = segment.every(
+            (no) => !occupied.has(no) && !exclude?.has(no)
+          );
           if (ok) return segment;
         }
       }
@@ -225,10 +258,11 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
       if (needed <= 0) return next;
       const block = findBestContiguousBlock(needed);
       if (block.length === needed) block.forEach((n) => next.add(n));
-      else for (const n of bestSeatOrder()) {
-        if (next.size >= needed) break;
-        next.add(n);
-      }
+      else
+        for (const n of bestSeatOrder()) {
+          if (next.size >= needed) break;
+          next.add(n);
+        }
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -243,10 +277,11 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
         const exclude = new Set<number>(curr);
         const block = findBestContiguousBlock(diff, exclude);
         if (block.length === diff) block.forEach((n) => curr.add(n));
-        else for (const n of bestSeatOrder(exclude)) {
-          if (curr.size >= needed) break;
-          curr.add(n);
-        }
+        else
+          for (const n of bestSeatOrder(exclude)) {
+            if (curr.size >= needed) break;
+            curr.add(n);
+          }
       } else if (diff < 0) {
         const arr = Array.from(curr);
         const toRemove = arr.slice(needed);
@@ -269,9 +304,9 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
 
   // Totalsumma
   const ticketTotal =
-    tickets.adult * PRICES.adult +
-    tickets.child * PRICES.child +
-    tickets.senior * PRICES.senior;
+    tickets.adult * prices.adult +
+    tickets.child * prices.child +
+    tickets.senior * prices.senior;
 
   // Mobil-fit (skala + centrera)
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -292,7 +327,13 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
   useEffect(() => {
     const id = requestAnimationFrame(fitSeatsToViewport);
     return () => cancelAnimationFrame(id);
-  }, [fitSeatsToViewport, salonIndex, showtime, selected.size, seatStruct.totalSeats]);
+  }, [
+    fitSeatsToViewport,
+    salonIndex,
+    showtime,
+    selected.size,
+    seatStruct.totalSeats,
+  ]);
   useEffect(() => {
     const onR = () => fitSeatsToViewport();
     window.addEventListener("resize", onR);
@@ -328,7 +369,9 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
 
     if (resp.status === 409) {
       const data = await resp.json().catch(() => ({}));
-      const taken: number[] = Array.isArray((data as any).taken) ? (data as any).taken : [];
+      const taken: number[] = Array.isArray((data as any).taken)
+        ? (data as any).taken
+        : [];
       setSelected((prev) => {
         const next = new Set(prev);
         taken.forEach((n) => next.delete(n));
@@ -346,8 +389,12 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
     const movie = movies.find((m) => m.id === movieId);
     const booking: BookingSummary = {
       movieId,
-      movieTitle: movie?.title ?? "Okänd film",
-      tickets: { vuxen: tickets.adult, barn: tickets.child, pensionar: tickets.senior },
+      movieTitle: getMovieTitle(movieId),
+      tickets: {
+        vuxen: tickets.adult,
+        barn: tickets.child,
+        pensionar: tickets.senior,
+      },
       seats: convertSeats(selected),
       total: ticketTotal,
       bookingId: "M-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
@@ -394,7 +441,11 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
 
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Datum & tid</label>
-                  <select className="form-select" value={showtime} onChange={(e) => setShowtime(e.target.value)}>
+                  <select
+                    className="form-select"
+                    value={showtime}
+                    onChange={(e) => setShowtime(e.target.value)}
+                  >
                     {showtimes.map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.label}
@@ -404,26 +455,34 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
                 </div>
 
                 <label className="form-label fw-semibold">Salong</label>
-                <div className="form-control-plaintext hidden-text">{SALONGER[salonIndex].name}</div>
+                <div className="form-control-plaintext hidden-text">
+                  {SALONGER[salonIndex].name}
+                </div>
 
                 <h6 className="mb-3 fw-bold">Antal biljetter</h6>
                 <TicketRow
                   label="Vuxen"
-                  price={PRICES.adult}
+                  price={prices.adult}
                   value={tickets.adult}
-                  onChange={(v) => setTickets({ ...tickets, adult: Math.max(0, v) })}
+                  onChange={(v) =>
+                    setTickets({ ...tickets, adult: Math.max(0, v) })
+                  }
                 />
                 <TicketRow
                   label="Barn"
-                  price={PRICES.child}
+                  price={prices.child}
                   value={tickets.child}
-                  onChange={(v) => setTickets({ ...tickets, child: Math.max(0, v) })}
+                  onChange={(v) =>
+                    setTickets({ ...tickets, child: Math.max(0, v) })
+                  }
                 />
                 <TicketRow
                   label="Pensionär"
-                  price={PRICES.senior}
+                  price={prices.senior}
                   value={tickets.senior}
-                  onChange={(v) => setTickets({ ...tickets, senior: Math.max(0, v) })}
+                  onChange={(v) =>
+                    setTickets({ ...tickets, senior: Math.max(0, v) })
+                  }
                 />
               </div>
             </div>
@@ -448,14 +507,29 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
                             {rowNos.map((no) => {
                               const isTaken = occupied.has(no);
                               const isActive = selected.has(no);
-                              const disabled = isTaken || (!isActive && selected.size >= needed);
+                              const disabled =
+                                isTaken ||
+                                (!isActive && selected.size >= needed);
                               return (
                                 <button
                                   key={no}
                                   type="button"
-                                  className={"seat" + (isTaken ? " seat-taken" : isActive ? " seat-active" : "")}
+                                  className={
+                                    "seat" +
+                                    (isTaken
+                                      ? " seat-taken"
+                                      : isActive
+                                      ? " seat-active"
+                                      : "")
+                                  }
                                   aria-pressed={isActive}
-                                  aria-label={`Plats ${no}${isTaken ? " (upptagen)" : isActive ? " (vald)" : ""}`}
+                                  aria-label={`Plats ${no}${
+                                    isTaken
+                                      ? " (upptagen)"
+                                      : isActive
+                                      ? " (vald)"
+                                      : ""
+                                  }`}
                                   disabled={disabled}
                                   onClick={() => onToggleSeat(no)}
                                 >
@@ -499,7 +573,12 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
                   </button>
                   <button
                     className="btn btn-primary btn-confirm"
-                    disabled={needed === 0 || selected.size !== needed || !showtime || !movieId}
+                    disabled={
+                      needed === 0 ||
+                      selected.size !== needed ||
+                      !showtime ||
+                      !movieId
+                    }
                     onClick={openAuth}
                   >
                     Boka
@@ -508,7 +587,11 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
 
                 {/* Live region för a11y */}
                 <div className="visually-hidden" aria-live="polite">
-                  {`Totalt ${fmtSEK(ticketTotal)} för ${needed} biljett(er). Valda platser: ${selected.size}.`}
+                  {`Totalt ${fmtSEK(
+                    ticketTotal
+                  )} för ${needed} biljett(er). Valda platser: ${
+                    selected.size
+                  }.`}
                 </div>
               </div>
             </div>
@@ -569,16 +652,30 @@ function AuthModal(props: {
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title">Fortsätt för att boka</h5>
-              <button type="button" className="btn-close" aria-label="Stäng" onClick={onClose}></button>
+              <button
+                type="button"
+                className="btn-close"
+                aria-label="Stäng"
+                onClick={onClose}
+              ></button>
             </div>
 
             {step === "choose" && (
               <div className="modal-body">
                 <p className="mb-3">Välj hur du vill fortsätta:</p>
                 <div className="d-grid gap-2">
-                  <button className="btn btn-primary" onClick={onLoginRedirect}>Logga in</button>
-                  <button className="btn btn-primary" onClick={onSignupRedirect}>Bli medlem</button>
-                  <button className="btn btn-primary" onClick={onPickGuest}>Fortsätt som gäst</button>
+                  <button className="btn btn-primary" onClick={onLoginRedirect}>
+                    Logga in
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={onSignupRedirect}
+                  >
+                    Bli medlem
+                  </button>
+                  <button className="btn btn-primary" onClick={onPickGuest}>
+                    Fortsätt som gäst
+                  </button>
                 </div>
               </div>
             )}
@@ -600,9 +697,16 @@ function AuthModal(props: {
             )}
 
             <div className="modal-footer">
-              <button className="btn btn-cancel" onClick={onClose}>Stäng</button>
+              <button className="btn btn-cancel" onClick={onClose}>
+                Stäng
+              </button>
               {step === "guest" && (
-                <button className="btn btn-primary btn-confirm" onClick={onConfirmGuest}>Bekräfta</button>
+                <button
+                  className="btn btn-primary btn-confirm"
+                  onClick={onConfirmGuest}
+                >
+                  Bekräfta
+                </button>
               )}
             </div>
           </div>
@@ -625,7 +729,10 @@ function TicketRow({
   onChange: (v: number) => void;
 }) {
   const fmtSEK = (n: number) =>
-    new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK" }).format(n);
+    new Intl.NumberFormat("sv-SE", {
+      style: "currency",
+      currency: "SEK",
+    }).format(n);
   return (
     <div className="mb-2 d-flex align-items-center justify-content-between">
       <div>
@@ -633,9 +740,21 @@ function TicketRow({
         <div className="booking-hint">{fmtSEK(price)}</div>
       </div>
       <div className="btn-group">
-        <button className="btn btn-outline-info btn-sm" onClick={() => onChange(Math.max(0, value - 1))}>−</button>
-        <button className="btn btn-info btn-sm" disabled>{value}</button>
-        <button className="btn btn-outline-info btn-sm" onClick={() => onChange(value + 1)}>+</button>
+        <button
+          className="btn btn-outline-info btn-sm"
+          onClick={() => onChange(Math.max(0, value - 1))}
+        >
+          −
+        </button>
+        <button className="btn btn-info btn-sm" disabled>
+          {value}
+        </button>
+        <button
+          className="btn btn-outline-info btn-sm"
+          onClick={() => onChange(value + 1)}
+        >
+          +
+        </button>
       </div>
     </div>
   );
