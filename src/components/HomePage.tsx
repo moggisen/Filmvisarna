@@ -112,7 +112,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         {/* Karusell med bilder endast */}
         <Carousel variant="dark" className="homepage-newest-carousel mb-4">
           {newestMoviesHardcoded.map((movie) => (
-            <Carousel.Item key={movie.id}>
+            <Carousel.Item key={movie.movie_id}>
               <img
                 className="d-block w-100"
                 src={movie.movie_poster}

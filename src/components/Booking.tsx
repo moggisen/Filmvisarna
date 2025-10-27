@@ -18,13 +18,16 @@ const SALONGER: Salon[] = [
   { name: "Stora Salongen", seatsPerRow: [8, 9, 10, 10, 10, 10, 12, 12] },
   { name: "Lilla Salongen", seatsPerRow: [6, 8, 9, 10, 10, 12] },
 ];
-const MOVIE_TO_SALON: Record<string, number> = {
-  ironman: 0,
-  avengers: 1,
-  blackpanther: 0,
-};
 
 // ===== Övrigt =====
+
+type Screening = {
+  id: number;
+  screening_time: string; // ISO/datetime från backend
+  movie_id: number;
+  auditorium_id: number;
+};
+
 type Tickets = { adult: number; child: number; senior: number };
 const PRICES = { adult: 140, child: 80, senior: 120 } as const;
 type SeatMeta = { ri: number; ci: number };
@@ -34,55 +37,105 @@ const fmtSEK = (n: number) =>
     n
   );
 
-// Unik nyckel för visning
-const screeningKey = (movieId: string, showtime: string, salonIndex: number) =>
-  `${movieId}|${showtime}|${salonIndex}`;
-
-// Skapa visningstider (5 dagar × 15/18/21)
-function makeShowtimes() {
-  const now = new Date();
-  const times = [15, 18, 21];
-  const out: { value: string; label: string }[] = [];
-  for (let d = 0; d < 5; d++) {
-    for (const hh of times) {
-      const dt = new Date(now);
-      dt.setDate(now.getDate() + d);
-      dt.setHours(hh, 0, 0, 0);
-      out.push({
-        value: dt.toISOString(),
-        label: dt.toLocaleString("sv-SE", {
-          weekday: "short",
-          day: "2-digit",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      });
-    }
-  }
-  return out;
-}
-
 export default function Booking({
   onConfirm,
   onNavigate,
   authed,
 }: BookingProps) {
   const navigate = useNavigate();
+
   // ===== UI-state =====
   const [salonIndex, setSalonIndex] = useState(0);
-  const [movieId, setMovieId] = useState("ironman");
-  const showtimes = useMemo(makeShowtimes, []);
-  const [showtime, setShowtime] = useState(showtimes[0]?.value ?? "");
+
+  // OBS: efter att din kollega kopplat Film-dropdownen till riktiga filmer
+  // så kommer movieId antagligen vara ett riktigt film-id (t.ex. 1, 2, 3...)
+  // så jag gör den numerisk direkt
+  const [movieId, setMovieId] = useState<number | null>(null);
+
+  // alla screenings vi hämtar från /api/screenings
+  const [allScreenings, setAllScreenings] = useState<Screening[]>([]);
+
+  // vilket screening_id som användaren valt i "Datum & Tid"
+  const [selectedScreeningId, setSelectedScreeningId] = useState<number | null>(
+    null
+  );
+
   const [tickets, setTickets] = useState<Tickets>({
     adult: 0,
     child: 0,
     senior: 0,
   });
 
+  // Hämta alla visningstillfällen från backend när sidan laddas
   useEffect(() => {
-    setSalonIndex(MOVIE_TO_SALON[movieId] ?? 0);
-  }, [movieId]);
+    let dead = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_PREFIX}/screenings`);
+        if (!res.ok) throw new Error("Kunde inte hämta screenings");
+        const data: Screening[] = await res.json();
+        if (!dead) {
+          setAllScreenings(data);
+        }
+      } catch (e) {
+        console.error("Fel vid hämtning av screenings:", e);
+      }
+    })();
+    return () => {
+      dead = true;
+    };
+  }, []);
+
+  // De screenings som matchar vald film
+  const screeningsForMovie = useMemo(() => {
+    if (movieId == null) return [];
+    return allScreenings
+      .filter((s) => s.movie_id === movieId)
+      .sort((a, b) => {
+        // sortera kronologiskt
+        const ta = new Date(a.screening_time).getTime();
+        const tb = new Date(b.screening_time).getTime();
+        return ta - tb;
+      })
+      .map((s) => {
+        const d = new Date(s.screening_time);
+        const label = d.toLocaleString("sv-SE", {
+          weekday: "short",
+          day: "2-digit",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        return {
+          value: s.id, // screening_id
+          label,
+          raw: s,
+        };
+      });
+  }, [allScreenings, movieId]);
+
+  // När film ändras: välj första screening för den filmen och uppdatera salong
+  useEffect(() => {
+    if (movieId == null) return;
+
+    const first = screeningsForMovie[0];
+    if (first) {
+      setSelectedScreeningId(first.value);
+
+      // TEMP: sätt salongIndex baserat på auditorium_id så gott det går.
+      // Vi mappar auditorium_id 1 -> SALONGER[0], auditorium_id 2 -> SALONGER[1]...
+      const audId = first.raw.auditorium_id;
+      if (audId != null) {
+        const fallbackIndex = audId - 1; // auditorium_id 1 -> index 0, osv.
+        if (fallbackIndex >= 0 && fallbackIndex < SALONGER.length) {
+          setSalonIndex(fallbackIndex);
+        }
+      }
+    } else {
+      // filmen har inga screenings ➜ nollställ
+      setSelectedScreeningId(null);
+    }
+  }, [movieId, screeningsForMovie]);
 
   // ===== Seat-structure =====
   const needed = tickets.adult + tickets.child + tickets.senior;
@@ -107,10 +160,8 @@ export default function Booking({
 
   // ===== Realtid via SSE =====
   const [occupied, setOccupied] = useState<Set<number>>(new Set());
-  const sid = useMemo(
-    () => screeningKey(movieId, showtime, salonIndex),
-    [movieId, showtime, salonIndex]
-  );
+  // sid = valt screening_id från databasen
+  const sid = selectedScreeningId;
 
   useEffect(() => {
     if (!sid) return;
@@ -214,16 +265,23 @@ export default function Booking({
       const next = new Set<number>();
       if (needed <= 0) return next;
       const block = findBestContiguousBlock(needed);
-      if (block.length === needed) block.forEach((n) => next.add(n));
-      else
+      if (block.length === needed) {
+        block.forEach((n) => next.add(n));
+      } else {
         for (const n of bestSeatOrder()) {
           if (next.size >= needed) break;
           next.add(n);
         }
+      }
       return next;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [salonIndex, showtime]);
+  }, [
+    salonIndex,
+    selectedScreeningId,
+    needed,
+    findBestContiguousBlock,
+    bestSeatOrder,
+  ]);
 
   // Auto-justera när antal biljetter ändras
   useEffect(() => {
@@ -287,7 +345,7 @@ export default function Booking({
   }, [
     fitSeatsToViewport,
     salonIndex,
-    showtime,
+    selectedScreeningId,
     selected.size,
     seatStruct.totalSeats,
   ]);
@@ -353,8 +411,13 @@ export default function Booking({
       null;
 
     // Skapa (fortfarande) lokal sammanfattning för profil/LS om ni vill
+    const chosenScreening = allScreenings.find(
+      (s) => s.id === selectedScreeningId
+    );
+    const showtimeISO = chosenScreening?.screening_time ?? "";
+
     const booking: BookingSummary = {
-      movieId,
+      movieId: movieId!, // vi vet att den inte är null här
       movieTitle: getMovieTitle(movieId),
       tickets: {
         vuxen: tickets.adult,
@@ -366,7 +429,7 @@ export default function Booking({
       bookingId: backendId
         ? String(backendId)
         : "M-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
-      showtime,
+      showtime: showtimeISO,
     };
 
     onConfirm(booking);
@@ -383,13 +446,10 @@ export default function Booking({
     }
   }
 
-  function getMovieTitle(id: string): string {
-    const titles: Record<string, string> = {
-      ironman: "Iron Man",
-      avengers: "The Avengers",
-      blackpanther: "Black Panther",
-    };
-    return titles[id] || "Okänd film";
+  function getMovieTitle(id: number | null): string {
+    // tillfälligt: vi kan inte veta titeln förrän kollegan matar in riktiga movies från backend,
+    // så returnera tom sträng eller placeholder tills dess
+    return "Vald film";
   }
 
   function convertSeats(
@@ -412,12 +472,19 @@ export default function Booking({
                   <label className="form-label fw-semibold">Film</label>
                   <select
                     className="form-select"
-                    value={movieId}
-                    onChange={(e) => setMovieId(e.target.value)}
+                    value={movieId ?? ""}
+                    onChange={(e) => {
+                      const n = Number(e.target.value);
+                      setMovieId(Number.isFinite(n) ? n : null);
+                    }}
                   >
-                    <option value="ironman">Iron Man</option>
-                    <option value="avengers">The Avengers</option>
-                    <option value="blackpanther">Black Panther</option>
+                    <option value="">Välj film…</option>
+
+                    {/* Tillfälliga hårdkodade tills kollegan kopplar riktiga filmer */}
+                    <option value={1}>Deadpool & Wolverine</option>
+                    <option value={10}>Venom</option>
+                    <option value={13}>Guardians of the Galaxy</option>
+                    {/* osv */}
                   </select>
                 </div>
 
@@ -425,14 +492,36 @@ export default function Booking({
                   <label className="form-label fw-semibold">Datum & tid</label>
                   <select
                     className="form-select"
-                    value={showtime}
-                    onChange={(e) => setShowtime(e.target.value)}
+                    value={selectedScreeningId ?? ""}
+                    onChange={(e) => {
+                      const n = Number(e.target.value);
+                      setSelectedScreeningId(Number.isFinite(n) ? n : null);
+
+                      // när användaren väljer ett specifikt visningstillfälle, uppdatera salongen
+                      const scr = screeningsForMovie.find(
+                        (opt) => opt.value === n
+                      );
+                      if (scr) {
+                        const audId = scr.raw.auditorium_id;
+                        const fallbackIndex = audId - 1;
+                        if (
+                          fallbackIndex >= 0 &&
+                          fallbackIndex < SALONGER.length
+                        ) {
+                          setSalonIndex(fallbackIndex);
+                        }
+                      }
+                    }}
                   >
-                    {showtimes.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
+                    {screeningsForMovie.length === 0 ? (
+                      <option value="">Inga visningar för vald film</option>
+                    ) : (
+                      screeningsForMovie.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -558,8 +647,8 @@ export default function Booking({
                     disabled={
                       needed === 0 ||
                       selected.size !== needed ||
-                      !showtime ||
-                      !movieId
+                      !selectedScreeningId ||
+                      movieId == null
                     }
                     onClick={openAuth}
                   >
@@ -740,19 +829,4 @@ function TicketRow({
       </div>
     </div>
   );
-}
-
-function getMovieTitle(id: string): string {
-  const titles: Record<string, string> = {
-    ironman: "Iron Man",
-    avengers: "The Avengers",
-    blackpanther: "Black Panther",
-  };
-  return titles[id] || "Okänd film";
-}
-
-function convertSeats(
-  seatNumbers: Set<number>
-): { row: string; number: number }[] {
-  return Array.from(seatNumbers).map((no) => ({ row: "A", number: no }));
 }
