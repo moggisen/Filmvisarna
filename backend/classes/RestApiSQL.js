@@ -32,6 +32,8 @@ export default class RestApi {
     // add post, get, put and delete routes
     this.addBookingRoute();
     this.addRegisterRoute();
+    this.addUserBookingsRoute();
+    this.addUserBookingDeleteRoute();
     this.addPostRoutes(); // C
     this.addGetRoutes(); // R
     this.addPutRoutes(); // U
@@ -97,6 +99,103 @@ export default class RestApi {
     table.toLowerCase() === this.settings.userTableName.toLowerCase() &&
       delete body[this.settings.userRoleField];
   }
+
+  // Bookings / Mina sidor -----------------------------------------------
+  addUserBookingsRoute() {
+    this.app.get(this.prefix + "user/bookings", async (req, res) => {
+      if (!req.session.user) {
+        return res.status(401).json({ error: "Ej inloggad" });
+      }
+
+      try {
+        const userId = req.session.user.id;
+
+        const bookings = await this.db.query(
+          "GET",
+          req.url,
+          `SELECT 
+          b.id,
+          b.booking_confirmation,
+          b.booking_time,
+          s.screening_time,
+          m.movie_title,
+          a.auditorium_name,
+          SUM(tt.ticketType_price) as total_price
+        FROM bookings b
+        JOIN screenings s ON b.screening_id = s.id
+        JOIN movies m ON s.movie_id = m.id
+        JOIN auditoriums a ON s.auditorium_id = a.id
+        JOIN bookingsXseats bxs ON b.id = bxs.booking_id
+        JOIN ticketTypes tt ON bxs.ticketType_id = tt.id
+        WHERE b.user_id = :user_id
+        GROUP BY b.id
+        ORDER BY b.booking_time DESC`,
+          { user_id: userId }
+        );
+
+        // Hämta platsinformation för varje bokning
+        for (let booking of bookings) {
+          const seats = await this.db.query(
+            "GET",
+            req.url,
+            `SELECT 
+            bxs.seat_id,
+            tt.ticketType_name,
+            tt.ticketType_price
+          FROM bookingsXseats bxs
+          JOIN ticketTypes tt ON bxs.ticketType_id = tt.id
+          WHERE bxs.booking_id = :booking_id`,
+            { booking_id: booking.id }
+          );
+          booking.seats = seats;
+        }
+        console.log("SQL hämtade bokningar:", bookings);
+        this.sendJsonResponse(res, bookings);
+      } catch (error) {
+        console.error("Error fetching user bookings:", error);
+        this.sendJsonResponse(res, { error: "Kunde inte hämta bokningar" });
+      }
+    });
+  }
+
+  addUserBookingDeleteRoute() {
+    this.app.delete(this.prefix + "bookings/:id", async (req, res) => {
+      if (!req.session.user) {
+        return res.status(401).json({ error: "Ej inloggad" });
+      }
+
+      try {
+        const bookingId = req.params.id;
+        const userId = req.session.user.id;
+
+        // Kontrollera att bokningen tillhör den inloggade användaren
+        const userBooking = await this.db.query(
+          "GET",
+          req.url,
+          "SELECT id FROM bookings WHERE id = :id AND user_id = :user_id",
+          { id: bookingId, user_id: userId }
+        );
+
+        if (userBooking.length === 0) {
+          return res.status(404).json({ error: "Bokning hittades inte" });
+        }
+
+        // Ta bort bokningen (cascading delete bör ta hand om bookingsXseats)
+        await this.db.query(
+          "DELETE",
+          req.url,
+          "DELETE FROM bookings WHERE id = :id",
+          { id: bookingId }
+        );
+
+        this.sendJsonResponse(res, { success: "Bokning raderad" });
+      } catch (error) {
+        console.error("Error deleting booking:", error);
+        this.sendJsonResponse(res, { error: "Kunde inte radera bokning" });
+      }
+    });
+  }
+  // SLUT ------ Bookings / Mina sidor -----------------------------------------------
 
   // using express-validator to validate the data sent through the API during user-registration
   addRegisterRoute() {
@@ -214,13 +313,25 @@ export default class RestApi {
   addBookingRoute() {
     this.app.post(this.prefix + "makeBooking", async (req, res) => {
       try {
-        const { screening_id, user_id, seats } = req.body;
+        const { screening_id, seats } = req.body;
+
+        if (!req.session.user || !req.session.user.id) {
+          return res.status(401).json({ error: "Ej inloggad" });
+        }
+        const user_id = req.session.user.id;
+
+        console.log(
+          "Booking attempt - user_id:",
+          user_id,
+          "screening_id:",
+          screening_id
+        );
 
         // --- 1️⃣ Validering ---
         if (!screening_id || !Array.isArray(seats) || seats.length === 0) {
-          return res
-            .status(400)
-            .json({ error: "Du måste ange screening_id och minst en stol." });
+          return res.status(400).json({
+            error: "Du måste ange screening_id och minst en stol.",
+          });
         }
 
         for (const seat of seats) {
@@ -231,20 +342,30 @@ export default class RestApi {
           }
         }
 
-        // --- 2️⃣ Starta transaktion ---
-        await this.db.query("POST", req.url, "START TRANSACTION;", {});
+        // --- 2️⃣ Kontrollera att användaren finns ---
+        const userCheck = await this.db.query(
+          "POST",
+          req.url,
+          "SELECT id FROM users WHERE id = :user_id",
+          { user_id }
+        );
+
+        if (userCheck.length === 0) {
+          return res.status(404).json({ error: "Användaren finns inte." });
+        }
 
         // --- 3️⃣ Kontrollera att visningen finns ---
         const screening = await this.db.query(
           "POST",
           req.url,
-          "SELECT * FROM screenings WHERE id = :id",
-          { id: screening_id }
+          "SELECT * FROM screenings WHERE id = :screening_id",
+          { screening_id }
         );
-        if (!screening.length)
-          throw { status: 404, message: "Visningen finns inte." };
 
-        // Hämta och formatera screeningens datum och tid
+        if (!screening.length) {
+          return res.status(404).json({ error: "Visningen finns inte." });
+        }
+
         const screeningTimeRaw = screening[0].screening_time;
         const screeningTime = new Date(screeningTimeRaw).toLocaleString(
           "sv-SE",
@@ -255,39 +376,36 @@ export default class RestApi {
         );
 
         // --- 4️⃣ Kontrollera lediga stolar ---
-        // 4a) Plocka ut efterfrågade seat_id som tal
         const requestedSeatIds = seats.map((s) => Number(s.seat_id));
 
-        // 4b) Blockera dubbletter i samma anrop (UX)
-        const duplicatesInPayload = [
-          ...new Set(
-            requestedSeatIds.filter((id, idx, arr) => arr.indexOf(id) !== idx)
-          ),
-        ];
-        if (duplicatesInPayload.length) {
+        // Kontrollera dubbletter i payload
+        const seatIdSet = new Set();
+        const duplicates = [];
+        requestedSeatIds.forEach((id) => {
+          if (seatIdSet.has(id)) duplicates.push(id);
+          else seatIdSet.add(id);
+        });
+
+        if (duplicates.length > 0) {
           return res.status(400).json({
-            error: `Dubbletter i anropet: stolar ${duplicatesInPayload.join(
-              ", "
-            )}.`,
+            error: `Dubbletter i anropet: stol ${duplicates.join(", ")}.`,
           });
         }
 
-        // 4c) Hämta redan bokade stolar för visningen
+        // Hämta redan bokade stolar
         const booked = await this.db.query(
           "POST",
           req.url,
-          "SELECT seat_id FROM bookingsXseats WHERE screening_id = :id",
-          { id: screening_id }
+          "SELECT seat_id FROM bookingsXseats WHERE screening_id = :screening_id",
+          { screening_id }
         );
-        const bookedSeats = new Set(booked.map((r) => Number(r.seat_id)));
 
-        // 4d) Samla *alla* konflikter (inte bara första)
+        const bookedSeats = new Set(booked.map((r) => Number(r.seat_id)));
         const conflicts = requestedSeatIds.filter((id) => bookedSeats.has(id));
-        if (conflicts.length) {
+
+        if (conflicts.length > 0) {
           return res.status(409).json({
-            error: `Följande stolar är redan bokade: ${[
-              ...new Set(conflicts),
-            ].join(", ")}.`,
+            error: `Följande stolar är redan bokade: ${conflicts.join(", ")}.`,
           });
         }
 
@@ -306,17 +424,21 @@ export default class RestApi {
           `SELECT id, ticketType_price FROM ticketTypes WHERE id IN (${placeholders})`,
           params
         );
+
         const ticketMap = Object.fromEntries(
           ticketRows.map((r) => [r.id, r.ticketType_price])
         );
+
         const totalPrice = seats.reduce(
-          (sum, s) => sum + ticketMap[s.ticketType_id],
+          (sum, s) => sum + (ticketMap[s.ticketType_id] || 0),
           0
         );
 
         // --- 6️⃣ Skapa bokningen ---
         const crypto = await import("crypto");
         const confirmation = crypto.randomBytes(8).toString("hex");
+
+        console.log("Skapar bokning med user_id:", user_id);
 
         const bookingResult = await this.db.query(
           "POST",
@@ -325,44 +447,63 @@ export default class RestApi {
          VALUES (NOW(), :confirmation, :screening_id, :user_id)`,
           { confirmation, screening_id, user_id }
         );
-        const booking_id = bookingResult.insertId;
+        console.log("Booking result:", bookingResult);
 
-        // --- 7️⃣ Reservera stolar ---
-        for (const s of seats) {
-          try {
-            await this.db.query(
-              "POST",
-              req.url,
-              `INSERT INTO bookingsXseats (screening_id, seat_id, ticketType_id, booking_id)
-       VALUES (:screening_id, :seat_id, :ticketType_id, :booking_id)`,
-              {
-                screening_id,
-                seat_id: s.seat_id,
-                ticketType_id: s.ticketType_id,
-                booking_id,
-              }
-            );
-          } catch (e) {
-            // Om databasen har uniknyckel på (screening_id, seat_id) blir detta ett snyggt 409-svar
-            if (
-              e &&
-              (e.code === "ER_DUP_ENTRY" || /Duplicate entry/.test(String(e)))
-            ) {
-              throw {
-                status: 409,
-                message: `Stol ${s.seat_id} är redan bokad.`,
-              };
-            }
-            throw e;
-          }
+        // ✅ FIX: Hämta booking_id korrekt
+        let booking_id;
+
+        if (bookingResult && bookingResult.insertId) {
+          booking_id = bookingResult.insertId;
+        } else if (bookingResult && bookingResult.insertid) {
+          booking_id = bookingResult.insertid;
+        } else if (bookingResult && bookingResult.lastID) {
+          booking_id = bookingResult.lastID;
+        } else {
+          // Om inget fungerar, hämta den senaste bokningen för denna användare
+          const lastBooking = await this.db.query(
+            "POST",
+            req.url,
+            "SELECT id FROM bookings WHERE user_id = :user_id ORDER BY id DESC LIMIT 1",
+            { user_id }
+          );
+          booking_id = lastBooking[0]?.id;
         }
 
-        // --- 8️⃣ Bekräfta bokningen ---
-        await this.db.query("POST", req.url, "COMMIT;", {});
+        console.log("Final booking_id:", booking_id);
+
+        if (!booking_id) {
+          throw new Error("Kunde inte hämta booking_id från insert-operation");
+        }
+
+        // --- 7️⃣ Reservera stolar ---
+        console.log("Skapar bookingsXseats med booking_id:", booking_id);
+
+        for (const s of seats) {
+          console.log("Infogar seat:", {
+            screening_id,
+            seat_id: s.seat_id,
+            ticketType_id: s.ticketType_id,
+            booking_id,
+          });
+
+          const seatResult = await this.db.query(
+            "POST",
+            req.url,
+            `INSERT INTO bookingsXseats (screening_id, seat_id, ticketType_id, booking_id)
+           VALUES (:screening_id, :seat_id, :ticketType_id, :booking_id)`,
+            {
+              screening_id,
+              seat_id: s.seat_id,
+              ticketType_id: s.ticketType_id,
+              booking_id: booking_id,
+            }
+          );
+          console.log("Seat insert result:", seatResult);
+        }
 
         res.status(201).json({
           message: "Bokning skapad!",
-          booking_id,
+          booking_id: booking_id,
           booking_confirmation: confirmation,
           total_price: totalPrice,
           screening_id,
@@ -371,9 +512,25 @@ export default class RestApi {
         });
       } catch (err) {
         console.error("Booking error:", err);
-        await this.db.query("POST", req.url, "ROLLBACK;", {});
+
         const status = err.status || 500;
-        res.status(status).json({ error: err.message || "Internt serverfel." });
+        let errorMessage = err.message || "Internt serverfel.";
+
+        // ✅ Bättre felmeddelanden för foreign key errors
+        if (err.message && err.message.includes("foreign key constraint")) {
+          if (err.message.includes("user_id")) {
+            errorMessage =
+              "Ogiltigt användar-ID. Kontrollera att du är inloggad.";
+          } else if (err.message.includes("screening_id")) {
+            errorMessage = "Ogiltigt screening-ID.";
+          }
+        }
+
+        res.status(status).json({
+          error: errorMessage,
+          details:
+            process.env.NODE_ENV === "development" ? err.stack : undefined,
+        });
       }
     });
   }

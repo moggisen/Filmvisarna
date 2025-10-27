@@ -19,7 +19,6 @@ import guardianmarathonImg from "../assets/banners/guardianmarathon.png";
 import carousel1Img from "../assets/banners/deadpool.jpg";
 import carousel2Img from "../assets/banners/ironMan2013.jpg";
 import carousel3Img from "../assets/banners/venom2018.jpg";
-import type { Route } from "./types";
 
 interface Movie {
   id: number;

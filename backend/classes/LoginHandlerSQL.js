@@ -20,7 +20,7 @@ export default class LoginHandler {
     // add login routes
     this.addPostRoute();
     this.addGetRoute();
-    this.adddDeleteRoute();
+    this.addDeleteRoute();
   }
 
   setupSessionHandling() {
@@ -111,7 +111,7 @@ export default class LoginHandler {
 
   // Delete route -> used to LOGOUT
   // (delete the user property of our session)
-  adddDeleteRoute() {
+  addDeleteRoute() {
     this.app.delete(this.prefix + "login", (req, res) =>
       this.restApi.sendJsonResponse(
         res,

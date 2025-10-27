@@ -51,7 +51,7 @@ $dark: #b81c21 !default;
       display: flex !important;
       min-width: 0 !important; /* viktigt för att kunna bli smalare än textens min-content */
       box-sizing: border-box;
-      border: 1px $secondary solid;
+      // border: 1px $secondary solid;
       margin: 2px;
 
       /* ========== BUTTONS i varje item ========== */
@@ -67,7 +67,7 @@ $dark: #b81c21 !default;
 
         /* bra touch-storlek + snygg text-hantering */
         min-height: 3.5rem;
-        line-height: 1.2;
+        line-height: 3 !important;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
