@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../styles/detail.scss";
 
@@ -24,14 +25,8 @@ interface MovieDetailProps {
 }
 
 //make api path start with /api
-const apiUrl = (path: string) => (path.startsWith("/") ? `/api${path}` : `/api/${path}`);
-
-//get id from url
-const getQueryId = (): number | null => {
-  const raw = new URLSearchParams(window.location.search).get("id");
-  const n = raw ? Number(raw) : NaN;
-  return Number.isFinite(n) && n > 0 ? n : null;
-};
+const apiUrl = (path: string) =>
+  path.startsWith("/") ? `/api${path}` : `/api/${path}`;
 
 //get youtube id from link
 const toYouTubeId = (val?: string): string => {
@@ -66,17 +61,17 @@ const posterPath = (val?: string): string => {
 //main component
 export default function MovieDetail({ onBook, movieId }: MovieDetailProps) {
   //find movie id
+  const { id: idParam } = useParams<{ id: string }>();
   const resolvedId = useMemo<number | null>(() => {
-    if (typeof movieId === "number" && Number.isFinite(movieId) && movieId > 0) return movieId;
-    const qid = getQueryId();
-    if (qid) return qid;
+    const n = idParam ? Number(idParam) : NaN;
+    if (Number.isFinite(n) && n > 0) return n;
     try {
       const stored = localStorage.getItem("selectedMovieId");
-      const n = stored ? Number(stored) : NaN;
-      if (Number.isFinite(n) && n > 0) return n;
+      const m = stored ? Number(stored) : NaN;
+      if (Number.isFinite(m) && m > 0) return m;
     } catch {}
     return null;
-  }, [movieId]);
+  }, [idParam]);
 
   //main states
   const [loading, setLoading] = useState(true);
@@ -89,7 +84,9 @@ export default function MovieDetail({ onBook, movieId }: MovieDetailProps) {
     if (resolvedId === null) {
       setLoading(false);
       setMovie(null);
-      setError("Saknar film id. Öppna detaljvyn via Info eller lägg till id i URL:en.");
+      setError(
+        "Saknar film id. Öppna detaljvyn via Info eller lägg till id i URL:en."
+      );
       return;
     }
 
@@ -100,16 +97,22 @@ export default function MovieDetail({ onBook, movieId }: MovieDetailProps) {
         setError(null);
         setNotFound(false);
 
-        const res = await fetch(apiUrl(`/movies/${resolvedId}`), { signal: ac.signal });
+        const res = await fetch(apiUrl(`/movies/${resolvedId}`), {
+          signal: ac.signal,
+        });
         const json = await res.json().catch(() => null);
 
         if (!res.ok) {
-          setError((json && (json.error || json.message)) || `HTTP ${res.status}`);
+          setError(
+            (json && (json.error || json.message)) || `HTTP ${res.status}`
+          );
           setLoading(false);
           return;
         }
 
-        const payload: Movie | null = Array.isArray(json) ? (json[0] ?? null) : (json?.data ?? json ?? null);
+        const payload: Movie | null = Array.isArray(json)
+          ? json[0] ?? null
+          : json?.data ?? json ?? null;
         if (!payload) {
           setNotFound(true);
           setLoading(false);
@@ -135,7 +138,8 @@ export default function MovieDetail({ onBook, movieId }: MovieDetailProps) {
       <div className="movie-detail-theme min-vh-100 d-flex flex-column">
         <main className="container-xxl py-4 flex-grow-1">
           <div className="alert alert-warning">
-            <strong>Saknar film-id.</strong> Öppna via <em>Info</em> eller lägg till <code>?id=1</code> i adressfältet.
+            <strong>Saknar film-id.</strong> Öppna via <em>Info</em> eller lägg
+            till <code>?id=1</code> i adressfältet.
           </div>
         </main>
       </div>
@@ -164,7 +168,8 @@ export default function MovieDetail({ onBook, movieId }: MovieDetailProps) {
       <div className="movie-detail-theme min-vh-100 d-flex flex-column">
         <main className="container-xxl py-4 flex-grow-1">
           <section className="alert alert-info">
-            <strong>404.</strong> Filmen med id <code>{resolvedId}</code> kunde inte hittas.
+            <strong>404.</strong> Filmen med id <code>{resolvedId}</code> kunde
+            inte hittas.
           </section>
         </main>
       </div>
@@ -230,9 +235,15 @@ export default function MovieDetail({ onBook, movieId }: MovieDetailProps) {
                     Mer info
                   </button>
                 </h2>
-                <div id="collapseInfo" className="accordion-collapse collapse show" data-bs-parent="#filmAccordion">
+                <div
+                  id="collapseInfo"
+                  className="accordion-collapse collapse show"
+                  data-bs-parent="#filmAccordion"
+                >
                   <div className="accordion-body movie-body-text">
-                    <p><strong>Regi:</strong> {m.movie_director || "–"}</p>
+                    <p>
+                      <strong>Regi:</strong> {m.movie_director || "–"}
+                    </p>
                     <p>
                       <strong>Skådespelare:</strong>{" "}
                       {cast.length ? (
@@ -245,7 +256,9 @@ export default function MovieDetail({ onBook, movieId }: MovieDetailProps) {
                         "-"
                       )}
                     </p>
-                    <p><strong>Premiär:</strong> {m.movie_premier || "–"}</p>
+                    <p>
+                      <strong>Premiär:</strong> {m.movie_premier || "–"}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -263,7 +276,11 @@ export default function MovieDetail({ onBook, movieId }: MovieDetailProps) {
                     Recensioner
                   </button>
                 </h2>
-                <div id="collapseReviews" className="accordion-collapse collapse" data-bs-parent="#filmAccordion">
+                <div
+                  id="collapseReviews"
+                  className="accordion-collapse collapse"
+                  data-bs-parent="#filmAccordion"
+                >
                   <div className="accordion-body movie-body-text">
                     <p className="mb-0 text-muted">Inga recensioner ännu.</p>
                   </div>
@@ -289,18 +306,23 @@ export default function MovieDetail({ onBook, movieId }: MovieDetailProps) {
                   alt="Film poster"
                   className="img-fluid rounded-2"
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/assets/posters/placeholder.jpg";
+                    (e.currentTarget as HTMLImageElement).src =
+                      "/assets/posters/placeholder.jpg";
                   }}
                 />
               </figure>
             ) : (
-              <div className="alert alert-secondary d-none d-lg-block">Ingen bild tillgänglig.</div>
+              <div className="alert alert-secondary d-none d-lg-block">
+                Ingen bild tillgänglig.
+              </div>
             )}
 
             {/*trailer*/}
             <section className="movie-trailer-wrapper">
               {!trailerId ? (
-                <div className="alert alert-secondary mb-0">Ingen trailer tillgänglig.</div>
+                <div className="alert alert-secondary mb-0">
+                  Ingen trailer tillgänglig.
+                </div>
               ) : (
                 <div className="movie-trailer-iframe ratio ratio-16x9">
                   <iframe
