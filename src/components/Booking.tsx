@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { BookingSummary } from "./types";
 import "../styles/booking.scss";
 
@@ -29,7 +30,9 @@ const PRICES = { adult: 140, child: 80, senior: 120 } as const;
 type SeatMeta = { ri: number; ci: number };
 
 const fmtSEK = (n: number) =>
-  new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK" }).format(n);
+  new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK" }).format(
+    n
+  );
 
 // Unik nyckel för visning
 const screeningKey = (movieId: string, showtime: string, salonIndex: number) =>
@@ -60,13 +63,22 @@ function makeShowtimes() {
   return out;
 }
 
-export default function Booking({ onConfirm, onNavigate, authed }: BookingProps) {
+export default function Booking({
+  onConfirm,
+  onNavigate,
+  authed,
+}: BookingProps) {
+  const navigate = useNavigate();
   // ===== UI-state =====
   const [salonIndex, setSalonIndex] = useState(0);
   const [movieId, setMovieId] = useState("ironman");
   const showtimes = useMemo(makeShowtimes, []);
   const [showtime, setShowtime] = useState(showtimes[0]?.value ?? "");
-  const [tickets, setTickets] = useState<Tickets>({ adult: 0, child: 0, senior: 0 });
+  const [tickets, setTickets] = useState<Tickets>({
+    adult: 0,
+    child: 0,
+    senior: 0,
+  });
 
   useEffect(() => {
     setSalonIndex(MOVIE_TO_SALON[movieId] ?? 0);
@@ -95,18 +107,26 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
 
   // ===== Realtid via SSE =====
   const [occupied, setOccupied] = useState<Set<number>>(new Set());
-  const sid = useMemo(() => screeningKey(movieId, showtime, salonIndex), [movieId, showtime, salonIndex]);
+  const sid = useMemo(
+    () => screeningKey(movieId, showtime, salonIndex),
+    [movieId, showtime, salonIndex]
+  );
 
   useEffect(() => {
     if (!sid) return;
-    const es = new EventSource(`${API_PREFIX}/screenings/${encodeURIComponent(sid)}/seats/stream`);
+    const es = new EventSource(
+      `${API_PREFIX}/screenings/${encodeURIComponent(sid)}/seats/stream`
+    );
 
     const apply = (msg: { type: string; seats?: number[] }) => {
       setOccupied((prev) => {
-        if (msg.type === "snapshot" && Array.isArray(msg.seats)) return new Set(msg.seats);
+        if (msg.type === "snapshot" && Array.isArray(msg.seats))
+          return new Set(msg.seats);
         const next = new Set(prev);
-        if (msg.type === "booked" && Array.isArray(msg.seats)) msg.seats.forEach((n) => next.add(n));
-        if (msg.type === "released" && Array.isArray(msg.seats)) msg.seats.forEach((n) => next.delete(n));
+        if (msg.type === "booked" && Array.isArray(msg.seats))
+          msg.seats.forEach((n) => next.add(n));
+        if (msg.type === "released" && Array.isArray(msg.seats))
+          msg.seats.forEach((n) => next.delete(n));
         return next;
       });
     };
@@ -116,9 +136,15 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
         apply(JSON.parse(ev.data));
       } catch {}
     };
-    es.addEventListener("snapshot", (ev) => apply(JSON.parse((ev as MessageEvent).data)));
-    es.addEventListener("booked", (ev) => apply(JSON.parse((ev as MessageEvent).data)));
-    es.addEventListener("released", (ev) => apply(JSON.parse((ev as MessageEvent).data)));
+    es.addEventListener("snapshot", (ev) =>
+      apply(JSON.parse((ev as MessageEvent).data))
+    );
+    es.addEventListener("booked", (ev) =>
+      apply(JSON.parse((ev as MessageEvent).data))
+    );
+    es.addEventListener("released", (ev) =>
+      apply(JSON.parse((ev as MessageEvent).data))
+    );
     es.onerror = () => {
       // EventSource auto-reconnectar; här kan man logga om man vill
       // console.warn("SSE error");
@@ -171,7 +197,9 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
         starts.sort((a, b) => a.bias - b.bias);
         for (const { s } of starts) {
           const segment = rowNos.slice(s, s + size);
-          const ok = segment.every((no) => !occupied.has(no) && !exclude?.has(no));
+          const ok = segment.every(
+            (no) => !occupied.has(no) && !exclude?.has(no)
+          );
           if (ok) return segment;
         }
       }
@@ -187,10 +215,11 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
       if (needed <= 0) return next;
       const block = findBestContiguousBlock(needed);
       if (block.length === needed) block.forEach((n) => next.add(n));
-      else for (const n of bestSeatOrder()) {
-        if (next.size >= needed) break;
-        next.add(n);
-      }
+      else
+        for (const n of bestSeatOrder()) {
+          if (next.size >= needed) break;
+          next.add(n);
+        }
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -205,10 +234,11 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
         const exclude = new Set<number>(curr);
         const block = findBestContiguousBlock(diff, exclude);
         if (block.length === diff) block.forEach((n) => curr.add(n));
-        else for (const n of bestSeatOrder(exclude)) {
-          if (curr.size >= needed) break;
-          curr.add(n);
-        }
+        else
+          for (const n of bestSeatOrder(exclude)) {
+            if (curr.size >= needed) break;
+            curr.add(n);
+          }
       } else if (diff < 0) {
         const arr = Array.from(curr);
         const toRemove = arr.slice(needed);
@@ -254,7 +284,13 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
   useEffect(() => {
     const id = requestAnimationFrame(fitSeatsToViewport);
     return () => cancelAnimationFrame(id);
-  }, [fitSeatsToViewport, salonIndex, showtime, selected.size, seatStruct.totalSeats]);
+  }, [
+    fitSeatsToViewport,
+    salonIndex,
+    showtime,
+    selected.size,
+    seatStruct.totalSeats,
+  ]);
   useEffect(() => {
     const onR = () => fitSeatsToViewport();
     window.addEventListener("resize", onR);
@@ -282,7 +318,7 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
   // Boka
   async function finalizeBooking(email?: string) {
     const seatsArr = Array.from(selected).sort((a, b) => a - b);
-    const resp = await fetch(`${API_PREFIX}/bookings/create`, { 
+    const resp = await fetch(`${API_PREFIX}/bookings/create`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ screeningId: sid, seats: seatsArr, email }),
@@ -290,7 +326,9 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
 
     if (resp.status === 409) {
       const data = await resp.json().catch(() => ({}));
-      const taken: number[] = Array.isArray((data as any).taken) ? (data as any).taken : [];
+      const taken: number[] = Array.isArray((data as any).taken)
+        ? (data as any).taken
+        : [];
       setSelected((prev) => {
         const next = new Set(prev);
         taken.forEach((n) => next.delete(n));
@@ -305,17 +343,44 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
       return;
     }
 
+    // Läs backend-svaret (förväntar t.ex. { id, booking_confirmation, ... })
+    const data = await resp.json().catch(() => null);
+
+    // Plocka fram id + conf med säkra fallbacks
+    const backendId = (data && (data.id ?? data.booking_id)) ?? null;
+    const confCode =
+      (data && (data.booking_confirmation ?? data.confirmation ?? data.conf)) ??
+      null;
+
+    // Skapa (fortfarande) lokal sammanfattning för profil/LS om ni vill
     const booking: BookingSummary = {
       movieId,
       movieTitle: getMovieTitle(movieId),
-      tickets: { vuxen: tickets.adult, barn: tickets.child, pensionar: tickets.senior },
+      tickets: {
+        vuxen: tickets.adult,
+        barn: tickets.child,
+        pensionar: tickets.senior,
+      },
       seats: convertSeats(selected),
       total: ticketTotal,
-      bookingId: "M-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
+      bookingId: backendId
+        ? String(backendId)
+        : "M-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
       showtime,
     };
+
     onConfirm(booking);
     if (showAuth) closeAuth();
+
+    // Navigera till bekräftelse med riktiga queryparametrar
+    if (backendId) {
+      const q = new URLSearchParams({ booking_id: String(backendId) });
+      if (confCode) q.set("conf", String(confCode));
+      navigate(`/confirm?${q.toString()}`, { replace: true });
+    } else {
+      // Fallback (om backend inte gav id): visa i profil men saknar confirm-detaljer
+      alert("Bokningen skapades men inget booking_id returnerades.");
+    }
   }
 
   function getMovieTitle(id: string): string {
@@ -327,7 +392,9 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
     return titles[id] || "Okänd film";
   }
 
-  function convertSeats(seatNumbers: Set<number>): { row: string; number: number }[] {
+  function convertSeats(
+    seatNumbers: Set<number>
+  ): { row: string; number: number }[] {
     // TODO: Mappa till rad A/B/C via seatStruct om du vill visa exakt radbokstav.
     return Array.from(seatNumbers).map((no) => ({ row: "A", number: no }));
   }
@@ -343,7 +410,11 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
               <div className="card-body">
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Film</label>
-                  <select className="form-select" value={movieId} onChange={(e) => setMovieId(e.target.value)}>
+                  <select
+                    className="form-select"
+                    value={movieId}
+                    onChange={(e) => setMovieId(e.target.value)}
+                  >
                     <option value="ironman">Iron Man</option>
                     <option value="avengers">The Avengers</option>
                     <option value="blackpanther">Black Panther</option>
@@ -352,7 +423,11 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
 
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Datum & tid</label>
-                  <select className="form-select" value={showtime} onChange={(e) => setShowtime(e.target.value)}>
+                  <select
+                    className="form-select"
+                    value={showtime}
+                    onChange={(e) => setShowtime(e.target.value)}
+                  >
                     {showtimes.map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.label}
@@ -362,26 +437,34 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
                 </div>
 
                 <label className="form-label fw-semibold">Salong</label>
-                <div className="form-control-plaintext hidden-text">{SALONGER[salonIndex].name}</div>
+                <div className="form-control-plaintext hidden-text">
+                  {SALONGER[salonIndex].name}
+                </div>
 
                 <h6 className="mb-3 fw-bold">Antal biljetter</h6>
                 <TicketRow
                   label="Vuxen"
                   price={PRICES.adult}
                   value={tickets.adult}
-                  onChange={(v) => setTickets({ ...tickets, adult: Math.max(0, v) })}
+                  onChange={(v) =>
+                    setTickets({ ...tickets, adult: Math.max(0, v) })
+                  }
                 />
                 <TicketRow
                   label="Barn"
                   price={PRICES.child}
                   value={tickets.child}
-                  onChange={(v) => setTickets({ ...tickets, child: Math.max(0, v) })}
+                  onChange={(v) =>
+                    setTickets({ ...tickets, child: Math.max(0, v) })
+                  }
                 />
                 <TicketRow
                   label="Pensionär"
                   price={PRICES.senior}
                   value={tickets.senior}
-                  onChange={(v) => setTickets({ ...tickets, senior: Math.max(0, v) })}
+                  onChange={(v) =>
+                    setTickets({ ...tickets, senior: Math.max(0, v) })
+                  }
                 />
               </div>
             </div>
@@ -406,14 +489,29 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
                             {rowNos.map((no) => {
                               const isTaken = occupied.has(no);
                               const isActive = selected.has(no);
-                              const disabled = isTaken || (!isActive && selected.size >= needed);
+                              const disabled =
+                                isTaken ||
+                                (!isActive && selected.size >= needed);
                               return (
                                 <button
                                   key={no}
                                   type="button"
-                                  className={"seat" + (isTaken ? " seat-taken" : isActive ? " seat-active" : "")}
+                                  className={
+                                    "seat" +
+                                    (isTaken
+                                      ? " seat-taken"
+                                      : isActive
+                                      ? " seat-active"
+                                      : "")
+                                  }
                                   aria-pressed={isActive}
-                                  aria-label={`Plats ${no}${isTaken ? " (upptagen)" : isActive ? " (vald)" : ""}`}
+                                  aria-label={`Plats ${no}${
+                                    isTaken
+                                      ? " (upptagen)"
+                                      : isActive
+                                      ? " (vald)"
+                                      : ""
+                                  }`}
                                   disabled={disabled}
                                   onClick={() => onToggleSeat(no)}
                                 >
@@ -457,7 +555,12 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
                   </button>
                   <button
                     className="btn btn-primary btn-confirm"
-                    disabled={needed === 0 || selected.size !== needed || !showtime || !movieId}
+                    disabled={
+                      needed === 0 ||
+                      selected.size !== needed ||
+                      !showtime ||
+                      !movieId
+                    }
                     onClick={openAuth}
                   >
                     Boka
@@ -466,7 +569,11 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
 
                 {/* Live region för a11y */}
                 <div className="visually-hidden" aria-live="polite">
-                  {`Totalt ${fmtSEK(ticketTotal)} för ${needed} biljett(er). Valda platser: ${selected.size}.`}
+                  {`Totalt ${fmtSEK(
+                    ticketTotal
+                  )} för ${needed} biljett(er). Valda platser: ${
+                    selected.size
+                  }.`}
                 </div>
               </div>
             </div>
@@ -527,16 +634,30 @@ function AuthModal(props: {
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title">Fortsätt för att boka</h5>
-              <button type="button" className="btn-close" aria-label="Stäng" onClick={onClose}></button>
+              <button
+                type="button"
+                className="btn-close"
+                aria-label="Stäng"
+                onClick={onClose}
+              ></button>
             </div>
 
             {step === "choose" && (
               <div className="modal-body">
                 <p className="mb-3">Välj hur du vill fortsätta:</p>
                 <div className="d-grid gap-2">
-                  <button className="btn btn-primary" onClick={onLoginRedirect}>Logga in</button>
-                  <button className="btn btn-primary" onClick={onSignupRedirect}>Bli medlem</button>
-                  <button className="btn btn-primary" onClick={onPickGuest}>Fortsätt som gäst</button>
+                  <button className="btn btn-primary" onClick={onLoginRedirect}>
+                    Logga in
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={onSignupRedirect}
+                  >
+                    Bli medlem
+                  </button>
+                  <button className="btn btn-primary" onClick={onPickGuest}>
+                    Fortsätt som gäst
+                  </button>
                 </div>
               </div>
             )}
@@ -558,9 +679,16 @@ function AuthModal(props: {
             )}
 
             <div className="modal-footer">
-              <button className="btn btn-cancel" onClick={onClose}>Stäng</button>
+              <button className="btn btn-cancel" onClick={onClose}>
+                Stäng
+              </button>
               {step === "guest" && (
-                <button className="btn btn-primary btn-confirm" onClick={onConfirmGuest}>Bekräfta</button>
+                <button
+                  className="btn btn-primary btn-confirm"
+                  onClick={onConfirmGuest}
+                >
+                  Bekräfta
+                </button>
               )}
             </div>
           </div>
@@ -583,7 +711,10 @@ function TicketRow({
   onChange: (v: number) => void;
 }) {
   const fmtSEK = (n: number) =>
-    new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK" }).format(n);
+    new Intl.NumberFormat("sv-SE", {
+      style: "currency",
+      currency: "SEK",
+    }).format(n);
   return (
     <div className="mb-2 d-flex align-items-center justify-content-between">
       <div>
@@ -591,9 +722,21 @@ function TicketRow({
         <div className="booking-hint">{fmtSEK(price)}</div>
       </div>
       <div className="btn-group">
-        <button className="btn btn-outline-info btn-sm" onClick={() => onChange(Math.max(0, value - 1))}>−</button>
-        <button className="btn btn-info btn-sm" disabled>{value}</button>
-        <button className="btn btn-outline-info btn-sm" onClick={() => onChange(value + 1)}>+</button>
+        <button
+          className="btn btn-outline-info btn-sm"
+          onClick={() => onChange(Math.max(0, value - 1))}
+        >
+          −
+        </button>
+        <button className="btn btn-info btn-sm" disabled>
+          {value}
+        </button>
+        <button
+          className="btn btn-outline-info btn-sm"
+          onClick={() => onChange(value + 1)}
+        >
+          +
+        </button>
       </div>
     </div>
   );
@@ -608,6 +751,8 @@ function getMovieTitle(id: string): string {
   return titles[id] || "Okänd film";
 }
 
-function convertSeats(seatNumbers: Set<number>): { row: string; number: number }[] {
+function convertSeats(
+  seatNumbers: Set<number>
+): { row: string; number: number }[] {
   return Array.from(seatNumbers).map((no) => ({ row: "A", number: no }));
 }

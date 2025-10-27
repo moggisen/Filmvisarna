@@ -146,14 +146,11 @@ export default function App() {
             element={
               <Booking
                 authed={authed}
-                // Denna onConfirm anropas av Booking när den "skapar" en bokning (mock eller riktig)
                 onConfirm={(b) => {
+                  // Spara i lokal historik om ni vill
                   addBooking(b);
-                  // Om ni använder backendens /makeBooking -> navigera hit med riktiga queryparametrar:
-                  // navigate(`/confirm?booking_id=${id}&conf=${conf}`);
-                  navigate(routePath.confirm);
+                  // OBS: Ingen navigate här – Booking navigerar till /confirm?booking_id=...
                 }}
-                // Om din Booking fortfarande kräver onNavigate-prop (från mock)
                 onNavigate={(name) =>
                   navigate(routePath[name as keyof typeof routePath] ?? "/")
                 }
