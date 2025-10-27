@@ -49,6 +49,18 @@ export default class RestApi {
       this.seatsHub.stream(req, res)
     );
 
+    app.get("/api/ticketTypes", async (req, res) => {
+      try {
+        const [rows] = await this.db.query(
+          "SELECT * FROM ticketTypes ORDER BY id"
+        );
+        res.json(rows);
+      } catch (error) {
+        console.error("Error fetching ticket types:", error);
+        res.status(500).json({ error: "Kunde inte hämta biljettyper" });
+      }
+    });
+
     // Viktigt: undvik krock med "POST /api/:table" genom att använda en djupare path
     this.app.post(this.prefix + "bookings/create", async (req, res) => {
       const { screeningId, seats } = req.body || {};
