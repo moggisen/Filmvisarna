@@ -11,7 +11,10 @@ interface BookingProps {
 // ===== Konfig från .env =====
 const API_PREFIX = import.meta.env.VITE_API_PREFIX || "/api";
 
-// ===== Salonger =====
+// ===== Filmer (från API) =====
+type Movie = { id: string; title: string };
+
+// ===== Salonger (oförändrat – tills screenings kopplas in) =====
 type Salon = { name: string; seatsPerRow: number[] };
 const SALONGER: Salon[] = [
   { name: "Stora Salongen", seatsPerRow: [8, 9, 10, 10, 10, 10, 12, 12] },
@@ -31,7 +34,6 @@ type SeatMeta = { ri: number; ci: number };
 const fmtSEK = (n: number) =>
   new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK" }).format(n);
 
-// Unik nyckel för visning
 const screeningKey = (movieId: string, showtime: string, salonIndex: number) =>
   `${movieId}|${showtime}|${salonIndex}`;
 
@@ -61,9 +63,47 @@ function makeShowtimes() {
 }
 
 export default function Booking({ onConfirm, onNavigate, authed }: BookingProps) {
+  // ===== Filmer från API =====
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [loadingMovies, setLoadingMovies] = useState(true);
+  const [movieError, setMovieError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoadingMovies(true);
+        const resp = await fetch(`${API_PREFIX}/movies`);
+        if (!resp.ok) throw new Error("Kunde inte hämta filmer");
+        const raw = await resp.json();
+
+        // Normalisera fält från API:t
+        const data: Movie[] = (Array.isArray(raw) ? raw : []).map((m: any) => ({
+          id: String(m.id ?? m.movie_id ?? m.movieId),
+          title: String(m.title ?? m.movie_title ?? m.movieTitle ?? "Okänd film"),
+        }));
+
+        if (!alive) return;
+        setMovies(data);
+        setMovieError(null);
+
+        // välj första film som default om inget är valt
+        if (data.length && !movieId) setMovieId(data[0].id);
+      } catch (e: any) {
+        if (!alive) return;
+        setMovieError(e?.message ?? "Fel vid hämtning av filmer");
+      } finally {
+        if (alive) setLoadingMovies(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // ===== UI-state =====
   const [salonIndex, setSalonIndex] = useState(0);
-  const [movieId, setMovieId] = useState("ironman");
+  const [movieId, setMovieId] = useState(""); // init tom, sätts efter movies-load
   const showtimes = useMemo(makeShowtimes, []);
   const [showtime, setShowtime] = useState(showtimes[0]?.value ?? "");
   const [tickets, setTickets] = useState<Tickets>({ adult: 0, child: 0, senior: 0 });
@@ -120,8 +160,6 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
     es.addEventListener("booked", (ev) => apply(JSON.parse((ev as MessageEvent).data)));
     es.addEventListener("released", (ev) => apply(JSON.parse((ev as MessageEvent).data)));
     es.onerror = () => {
-      // EventSource auto-reconnectar; här kan man logga om man vill
-      // console.warn("SSE error");
     };
     return () => es.close();
   }, [sid]);
@@ -282,7 +320,7 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
   // Boka
   async function finalizeBooking(email?: string) {
     const seatsArr = Array.from(selected).sort((a, b) => a - b);
-    const resp = await fetch(`${API_PREFIX}/bookings/create`, { 
+    const resp = await fetch(`${API_PREFIX}/bookings/create`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ screeningId: sid, seats: seatsArr, email }),
@@ -305,9 +343,10 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
       return;
     }
 
+    const movie = movies.find((m) => m.id === movieId);
     const booking: BookingSummary = {
       movieId,
-      movieTitle: getMovieTitle(movieId),
+      movieTitle: movie?.title ?? "Okänd film",
       tickets: { vuxen: tickets.adult, barn: tickets.child, pensionar: tickets.senior },
       seats: convertSeats(selected),
       total: ticketTotal,
@@ -316,15 +355,6 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
     };
     onConfirm(booking);
     if (showAuth) closeAuth();
-  }
-
-  function getMovieTitle(id: string): string {
-    const titles: Record<string, string> = {
-      ironman: "Iron Man",
-      avengers: "The Avengers",
-      blackpanther: "Black Panther",
-    };
-    return titles[id] || "Okänd film";
   }
 
   function convertSeats(seatNumbers: Set<number>): { row: string; number: number }[] {
@@ -343,11 +373,23 @@ export default function Booking({ onConfirm, onNavigate, authed }: BookingProps)
               <div className="card-body">
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Film</label>
-                  <select className="form-select" value={movieId} onChange={(e) => setMovieId(e.target.value)}>
-                    <option value="ironman">Iron Man</option>
-                    <option value="avengers">The Avengers</option>
-                    <option value="blackpanther">Black Panther</option>
-                  </select>
+                  {loadingMovies ? (
+                    <div className="form-control-plaintext">Laddar filmer…</div>
+                  ) : movieError ? (
+                    <div className="text-danger small">{movieError}</div>
+                  ) : (
+                    <select
+                      className="form-select"
+                      value={movieId}
+                      onChange={(e) => setMovieId(e.target.value)}
+                    >
+                      {movies.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -597,17 +639,4 @@ function TicketRow({
       </div>
     </div>
   );
-}
-
-function getMovieTitle(id: string): string {
-  const titles: Record<string, string> = {
-    ironman: "Iron Man",
-    avengers: "The Avengers",
-    blackpanther: "Black Panther",
-  };
-  return titles[id] || "Okänd film";
-}
-
-function convertSeats(seatNumbers: Set<number>): { row: string; number: number }[] {
-  return Array.from(seatNumbers).map((no) => ({ row: "A", number: no }));
 }
