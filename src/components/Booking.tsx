@@ -12,7 +12,10 @@ interface BookingProps {
 // ===== Konfig från .env =====
 const API_PREFIX = import.meta.env.VITE_API_PREFIX || "/api";
 
-// ===== Salonger =====
+// ===== Filmer (från API) =====
+type Movie = { id: string; title: string };
+
+// ===== Salonger (oförändrat – tills screenings kopplas in) =====
 type Salon = { name: string; seatsPerRow: number[] };
 const SALONGER: Salon[] = [
   { name: "Stora Salongen", seatsPerRow: [8, 9, 10, 10, 10, 10, 12, 12] },
@@ -29,7 +32,12 @@ type Screening = {
 };
 
 type Tickets = { adult: number; child: number; senior: number };
-const PRICES = { adult: 140, child: 80, senior: 120 } as const;
+type TicketType = {
+  id: number;
+  ticketType_name: string;
+  ticketType_price: number;
+};
+type Prices = { adult: number; child: number; senior: number };
 type SeatMeta = { ri: number; ci: number };
 
 const fmtSEK = (n: number) =>
@@ -114,6 +122,30 @@ export default function Booking({
       });
   }, [allScreenings, movieId]);
 
+export default function Booking({
+  onConfirm,
+  onNavigate,
+  authed,
+}: BookingProps) {
+  // ===== UI-state =====
+  const [salonIndex, setSalonIndex] = useState(0);
+  const [movieId, setMovieId] = useState(""); // init tom, sätts efter movies-load
+  const showtimes = useMemo(makeShowtimes, []);
+  const [showtime, setShowtime] = useState(showtimes[0]?.value ?? "");
+  const [tickets, setTickets] = useState<Tickets>({
+    adult: 0,
+    child: 0,
+    senior: 0,
+  });
+
+  // ===== State för ticket types =====
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
+  const [prices, setPrices] = useState<Prices>({
+    adult: 0,
+    child: 0,
+    senior: 0,
+  });
+
   // När film ändras: välj första screening för den filmen och uppdatera salong
   useEffect(() => {
     if (movieId == null) return;
@@ -136,6 +168,38 @@ export default function Booking({
       setSelectedScreeningId(null);
     }
   }, [movieId, screeningsForMovie]);
+
+  // Hämta ticket types från databasen
+  useEffect(() => {
+    const fetchTicketTypes = async () => {
+      try {
+        const response = await fetch(`api/ticketTypes`);
+        if (!response.ok) {
+          throw new Error("Kunde inte hämta biljettyper");
+        }
+        const data: TicketType[] = await response.json();
+        setTicketTypes(data);
+
+        // Konvertera till PRICES-format
+        const newPrices: Prices = { adult: 0, child: 0, senior: 0 };
+        data.forEach((ticket) => {
+          if (ticket.ticketType_name === "vuxen")
+            newPrices.adult = ticket.ticketType_price;
+          if (ticket.ticketType_name === "barn")
+            newPrices.child = ticket.ticketType_price;
+          if (ticket.ticketType_name === "pensionär")
+            newPrices.senior = ticket.ticketType_price;
+        });
+        setPrices(newPrices);
+      } catch (error) {
+        console.error("Error fetching ticket types:", error);
+        // Fallback till hårdkodade priser om API-anropet misslyckas
+        setPrices({ adult: 140, child: 80, senior: 120 });
+      }
+    };
+
+    fetchTicketTypes();
+  }, []);
 
   // ===== Seat-structure =====
   const needed = tickets.adult + tickets.child + tickets.senior;
@@ -197,8 +261,6 @@ export default function Booking({
       apply(JSON.parse((ev as MessageEvent).data))
     );
     es.onerror = () => {
-      // EventSource auto-reconnectar; här kan man logga om man vill
-      // console.warn("SSE error");
     };
     return () => es.close();
   }, [sid]);
@@ -319,9 +381,9 @@ export default function Booking({
 
   // Totalsumma
   const ticketTotal =
-    tickets.adult * PRICES.adult +
-    tickets.child * PRICES.child +
-    tickets.senior * PRICES.senior;
+    tickets.adult * prices.adult +
+    tickets.child * prices.child +
+    tickets.senior * prices.senior;
 
   // Mobil-fit (skala + centrera)
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -470,22 +532,23 @@ export default function Booking({
               <div className="card-body">
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Film</label>
-                  <select
-                    className="form-select"
-                    value={movieId ?? ""}
-                    onChange={(e) => {
-                      const n = Number(e.target.value);
-                      setMovieId(Number.isFinite(n) ? n : null);
-                    }}
-                  >
-                    <option value="">Välj film…</option>
-
-                    {/* Tillfälliga hårdkodade tills kollegan kopplar riktiga filmer */}
-                    <option value={1}>Deadpool & Wolverine</option>
-                    <option value={10}>Venom</option>
-                    <option value={13}>Guardians of the Galaxy</option>
-                    {/* osv */}
-                  </select>
+                  {loadingMovies ? (
+                    <div className="form-control-plaintext">Laddar filmer…</div>
+                  ) : movieError ? (
+                    <div className="text-danger small">{movieError}</div>
+                  ) : (
+                    <select
+                      className="form-select"
+                      value={movieId}
+                      onChange={(e) => setMovieId(e.target.value)}
+                    >
+                      {movies.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -533,7 +596,7 @@ export default function Booking({
                 <h6 className="mb-3 fw-bold">Antal biljetter</h6>
                 <TicketRow
                   label="Vuxen"
-                  price={PRICES.adult}
+                  price={prices.adult}
                   value={tickets.adult}
                   onChange={(v) =>
                     setTickets({ ...tickets, adult: Math.max(0, v) })
@@ -541,7 +604,7 @@ export default function Booking({
                 />
                 <TicketRow
                   label="Barn"
-                  price={PRICES.child}
+                  price={prices.child}
                   value={tickets.child}
                   onChange={(v) =>
                     setTickets({ ...tickets, child: Math.max(0, v) })
@@ -549,7 +612,7 @@ export default function Booking({
                 />
                 <TicketRow
                   label="Pensionär"
-                  price={PRICES.senior}
+                  price={prices.senior}
                   value={tickets.senior}
                   onChange={(v) =>
                     setTickets({ ...tickets, senior: Math.max(0, v) })
