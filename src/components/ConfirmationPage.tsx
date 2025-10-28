@@ -35,11 +35,11 @@ type MovieRow = {
   id: number;
   movie_title: string;
 };
-type BxsRow = {
-  screening_id: number;
+type SeatDetailedRow = {
   seat_id: number;
   ticketType_id: number;
-  booking_id: number;
+  row_index: number; // 1 = rad A, 2 = rad B, etc
+  seat_number: number; // stolnumret i den raden
 };
 type TicketTypeRow = {
   id: number;
@@ -65,7 +65,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   const [booking, setBooking] = useState<BookingRow | null>(null);
   const [screening, setScreening] = useState<ScreeningRow | null>(null);
   const [movie, setMovie] = useState<MovieRow | null>(null);
-  const [seats, setSeats] = useState<BxsRow[]>([]);
+  const [seats, setSeats] = useState<SeatDetailedRow[]>([]);
   const [ticketsTotal, setTicketsTotal] = useState<number | null>(null);
 
   useEffect(() => {
@@ -110,13 +110,11 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
         if (isDead) return;
         setMovie(mvJson);
 
-        // 5) Hämta platser i bokning
-        const bxRes = await fetch(
-          `/api/bookingsXseats?booking_id=${encodeURIComponent(bJson.id)}`
-        );
+        // 5) Hämta platser (inkl rader/nummer) för denna bokning
+        const bxRes = await fetch(`/api/bookings/${bJson.id}/seatsDetailed`);
         if (!bxRes.ok)
           throw new Error(`Kunde inte hämta stolar (${bxRes.status}).`);
-        const bxJson: BxsRow[] = await bxRes.json();
+        const bxJson: SeatDetailedRow[] = await bxRes.json();
         if (isDead) return;
         setSeats(bxJson);
 
@@ -214,12 +212,28 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
     return null; // borde ej hända pga felhantering ovan
   }
 
+  // helper: gör om row_index (1,2,3...) till A,B,C...
+  function rowIndexToLetter(rowIndex: number): string {
+    // row_index = 1 -> 'A', 2 -> 'B', osv
+    const baseCharCode = "A".charCodeAt(0);
+    return String.fromCharCode(baseCharCode + (rowIndex - 1));
+  }
+
   // Presentationsdata
   const bookingCode = booking.booking_confirmation;
   const showtimeLabel = formatDateTimeISO(screening.screening_time);
+
+  // Bygg "A7, A8, B12 ..."
   const seatList = seats
-    .map((s) => s.seat_id)
-    .sort((a, b) => a - b)
+    .slice() // kopia så vi kan sortera utan att mutera state
+    .sort((a, b) => {
+      // sortera först på row_index, sen på seat_number
+      if (a.row_index !== b.row_index) {
+        return a.row_index - b.row_index;
+      }
+      return a.seat_number - b.seat_number;
+    })
+    .map((s) => rowIndexToLetter(s.row_index) + s.seat_number)
     .join(", ");
 
   return (
