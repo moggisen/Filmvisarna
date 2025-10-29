@@ -4,6 +4,7 @@ import {
   useNavigate,
   useSearchParams,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { useEffect, useState } from "react";
 
@@ -47,8 +48,10 @@ export default function App() {
     loadBookings()
   );
 
-  // Stay logged in----------------------------------------------------------
+  const navigate = useNavigate();
+  const location = useLocation();
 
+  // Stay logged in----------------------------------------------------------
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -74,13 +77,27 @@ export default function App() {
 
   useEffect(() => saveBookings(bookings), [bookings]);
 
-  const navigate = useNavigate();
-
-  // ---- handlers (flyttade) ----
+  // ✅ Uppdaterad handleAuthSuccess som kollar location.state
   const handleAuthSuccess = () => {
     setAuthed(true);
-    navigate(routePath.home);
+
+    // Kolla om användaren kom från navigation (via location.state)
+    const fromNavigation = location.state?.fromNavigation;
+
+    if (fromNavigation) {
+      // Om användaren kom från navigation, skicka till "mina sidor"
+      navigate("/profile", { replace: true });
+    } else {
+      // Annars gå till startsidan
+      navigate(routePath.home, { replace: true });
+    }
+
+    // ✅ Reload för att uppdatera navigationen
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
+
   const handleLogout = async () => {
     try {
       const response = await fetch("/api/login", {
@@ -104,9 +121,8 @@ export default function App() {
 
   const addBooking = (booking: BookingSummary) => {
     setBookings((prev) => [booking, ...prev]);
-    // Om ni vill stanna på confirm via query (nuvarande flow), låt Booking själv navigera
-    // eller gör navigate(`/confirm?booking_id=${...}&conf=${...}`) när ni har id/confirmation.
   };
+
   const cancelBooking = (bookingId: string) => {
     setBookings((prev) => prev.filter((b) => b.bookingId !== bookingId));
   };
@@ -118,7 +134,7 @@ export default function App() {
       Number.isFinite(movieId) &&
       movieId > 0
     ) {
-      const target = buildPath("movie-detail", { id: movieId }); // => /movies/123
+      const target = buildPath("movie-detail", { id: movieId });
       try {
         localStorage.setItem("selectedMovieId", String(movieId));
       } catch {}
@@ -147,9 +163,7 @@ export default function App() {
               <Booking
                 authed={authed}
                 onConfirm={(b) => {
-                  // Spara i lokal historik om ni vill
                   addBooking(b);
-                  // OBS: Ingen navigate här – Booking navigerar till /confirm?booking_id=...
                 }}
                 onNavigate={(name) =>
                   navigate(routePath[name as keyof typeof routePath] ?? "/")
@@ -197,7 +211,7 @@ export default function App() {
 
           {/* MOVIE DETAIL */}
           <Route
-            path={routePath["movie-detail"]} // "/movies/:id"
+            path={routePath["movie-detail"]}
             element={<MovieDetail onBook={() => navigate(routePath.biljett)} />}
           />
 
