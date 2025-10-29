@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { Button, Card, Form } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
+import { useNavigate, useLocation } from "react-router-dom";
 import "../styles/authpage.scss";
 
 interface AuthPageProps {
   mode: "login" | "signup";
   onSuccess: () => void;
   onBack: () => void;
+}
+
+interface LocationState {
+  fromNavigation?: boolean;
 }
 
 const validateForm = (
@@ -29,6 +34,10 @@ const validateForm = (
 export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const locationState = location.state as LocationState;
 
   const [formData, setFormData] = useState({
     email: "",
@@ -43,6 +52,37 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setFormData((prev) => ({ ...prev, [field]: e.target.value }));
     };
+
+  const handleSuccessfulAuth = () => {
+    // Kolla om vi kom från en bokningssession (via AuthModal i Booking)
+    const shouldRestoreBooking = sessionStorage.getItem("shouldRestoreBooking");
+    const returnTo = sessionStorage.getItem("returnTo");
+
+    // Rensa session storage oavsett
+    sessionStorage.removeItem("returnTo");
+    sessionStorage.removeItem("shouldRestoreBooking");
+    sessionStorage.removeItem("bookingSessionId");
+
+    if (shouldRestoreBooking === "true" && returnTo) {
+      // Återgå till bokningssidan där sessionen kommer restore:a automatiskt
+      navigate(returnTo, { replace: true });
+    } else {
+      // Kolla om vi kom från navigation via location.state
+      const fromNavigation = locationState?.fromNavigation;
+
+      if (fromNavigation) {
+        // Om användaren kom från navigation, skicka till "mina sidor"
+        navigate("/profile", { replace: true });
+      } else {
+        // Annars använd standard onSuccess (som förmodligen går till föregående sida)
+        onSuccess();
+      }
+    }
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +132,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
       if (mode === "signup") {
         setShowModal(true);
       } else {
-        onSuccess();
+        handleSuccessfulAuth();
       }
     } catch (err: any) {
       alert(err.message);
@@ -103,7 +143,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
 
   const handleCloseModal = () => {
     setShowModal(false);
-    onSuccess();
+    handleSuccessfulAuth();
   };
 
   const isLoginMode = mode === "login";
@@ -221,6 +261,11 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
           <p className="auth-body-text">
             Tack för att du blev medlem hos Filmvisarna!
           </p>
+          <p className="auth-body-text small">
+            {sessionStorage.getItem("shouldRestoreBooking") === "true"
+              ? "Du kommer nu återgå till din bokning."
+              : "Du kommer nu till dina sidor."}
+          </p>
         </Modal.Body>
         <Modal.Footer>
           <Button
@@ -228,7 +273,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
             onClick={handleCloseModal}
             className="auth-btn auth-btn-modal"
           >
-            Stäng
+            Fortsätt
           </Button>
         </Modal.Footer>
       </Modal>
