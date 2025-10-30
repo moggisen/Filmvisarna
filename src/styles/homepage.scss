@@ -43,8 +43,8 @@
   border-radius: 12px;
 
   .card-img-top {
-    height: 300px;
-    object-fit: cover;
+    height: 330px;
+    object-fit: fit;
   }
 
   .card-body {
@@ -181,13 +181,13 @@
 .homepage-calendar {
   margin-inline: auto;
   .react-calendar__month-view__weekdays {
-    font-size: 0.7rem; // mindre text
-    height: 1.5rem; // minskar höjden på raden
-    line-height: 1rem; // centrerar texten vertikalt
+    font-size: 0.7rem; 
+    height: 1.5rem; 
+    line-height: 1rem; 
   }
 
   .react-calendar__month-view__weekdays__weekday {
-    padding: 0; // tar bort extra padding
+    padding: 0; 
   }
 }
 
