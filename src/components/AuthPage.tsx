@@ -92,7 +92,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
       if (mode === "signup") {
         setShowModal(true);
       } else {
-        onSuccess(); // ✅ Anropa onSuccess direkt - navigering hanteras i App.tsx
+        onSuccess();
       }
     } catch (err: any) {
       alert(err.message);

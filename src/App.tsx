@@ -21,7 +21,14 @@ import { routePath, buildPath } from "./routes";
 import type { RouteKey } from "./routes";
 import type { BookingSummary } from "./components/types";
 
-// --- LocalStorage helpers (från gamla Auth.tsx) ---
+// --- Types för auth-state ---
+interface AuthState {
+  isAuthenticated: boolean;
+  isGuest: boolean;
+  userData: any | null;
+}
+
+// --- LocalStorage helpers ---
 function loadBookings(): BookingSummary[] {
   try {
     const raw = localStorage.getItem("bookings");
@@ -42,8 +49,12 @@ function ConfirmWrapper() {
 }
 
 export default function App() {
-  // ==== Global app-state (flyttat från Auth.tsx) ====
-  const [authed, setAuthed] = useState(false);
+  // ==== Uppdaterad auth-state ====
+  const [authState, setAuthState] = useState<AuthState>({
+    isAuthenticated: false,
+    isGuest: false,
+    userData: null,
+  });
   const [bookings, setBookings] = useState<BookingSummary[]>(() =>
     loadBookings()
   );
@@ -51,7 +62,7 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Stay logged in----------------------------------------------------------
+  // Uppdaterad auth-check som hanterar gästsessioner
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -65,39 +76,91 @@ export default function App() {
         console.log("Auth check: ", data);
 
         if (response.ok && !data.error) {
-          setAuthed(true);
+          // Kolla om det är en gästsession
+          const isGuest = !!data.is_guest;
+
+          setAuthState({
+            isAuthenticated: !isGuest, // Endast icke-gäster är "authed"
+            isGuest: isGuest,
+            userData: data,
+          });
+        } else {
+          // Ingen session eller fel
+          setAuthState({
+            isAuthenticated: false,
+            isGuest: false,
+            userData: null,
+          });
         }
       } catch (err) {
         console.error("Fel vid kontroll av inloggning: ", err);
+        setAuthState({
+          isAuthenticated: false,
+          isGuest: false,
+          userData: null,
+        });
       }
     }
     checkAuth();
   }, []);
-  // ------------------------------------------------------------------------
 
   useEffect(() => saveBookings(bookings), [bookings]);
 
-  // ✅ Uppdaterad handleAuthSuccess som kollar location.state
+  // Uppdaterad handleAuthSuccess
   const handleAuthSuccess = () => {
-    setAuthed(true);
+    // Kör auth-check igen för att få korrekt state
+    async function refreshAuth() {
+      try {
+        const response = await fetch("/api/login", {
+          method: "GET",
+          credentials: "include",
+        });
 
-    // Kolla om användaren kom från navigation (via location.state)
-    const fromNavigation = location.state?.fromNavigation;
+        const data = await response.json();
 
-    if (fromNavigation) {
-      // Om användaren kom från navigation, skicka till "mina sidor"
-      navigate("/profile", { replace: true });
-    } else {
-      // Annars gå till startsidan
-      navigate(routePath.home, { replace: true });
+        if (response.ok && !data.error) {
+          const isGuest = !!data.is_guest;
+
+          setAuthState({
+            isAuthenticated: !isGuest,
+            isGuest: isGuest,
+            userData: data,
+          });
+
+          // Navigeringslogik
+          const shouldRestoreBooking = sessionStorage.getItem(
+            "shouldRestoreBooking"
+          );
+          const returnTo = sessionStorage.getItem("returnTo");
+
+          console.log(
+            "Auth success - shouldRestoreBooking:",
+            shouldRestoreBooking,
+            "returnTo:",
+            returnTo
+          );
+
+          if (shouldRestoreBooking === "true" && returnTo) {
+            console.log("Navigating back to booking:", returnTo);
+            navigate(returnTo, { replace: true });
+          } else {
+            const fromNavigation = location.state?.fromNavigation;
+            if (fromNavigation) {
+              navigate("/profile", { replace: true });
+            } else {
+              navigate(routePath.home, { replace: true });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Fel vid auth refresh: ", err);
+      }
     }
 
-    // ✅ Reload för att uppdatera navigationen
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
+    refreshAuth();
   };
 
+  // Uppdaterad handleLogout
   const handleLogout = async () => {
     try {
       const response = await fetch("/api/login", {
@@ -109,7 +172,11 @@ export default function App() {
 
       if (response.ok && data.success) {
         console.log(data.success);
-        setAuthed(false);
+        setAuthState({
+          isAuthenticated: false,
+          isGuest: false,
+          userData: null,
+        });
         navigate(routePath.home);
       } else {
         console.error(data.error || "Kunde inte logga ut.");
@@ -145,9 +212,17 @@ export default function App() {
     navigate(routePath[name] ?? routePath.home);
   };
 
+  // Helper för bakåtkompatibilitet
+  const isAuthed = authState.isAuthenticated;
+
   return (
     <>
-      <HeaderBar authed={authed} onLogout={handleLogout} />
+      {/* Skicka både isAuthenticated och isGuest till komponenter som behöver det */}
+      <HeaderBar
+        authed={isAuthed}
+        isGuest={authState.isGuest}
+        onLogout={handleLogout}
+      />
       <main className="container py-4">
         <Routes>
           {/* START */}
@@ -161,7 +236,8 @@ export default function App() {
             path={routePath.biljett}
             element={
               <Booking
-                authed={authed}
+                authed={isAuthed} // Använd isAuthenticated (false för gäster)
+                isGuest={authState.isGuest} // Skicka gäst-status om behövs
                 onConfirm={(b) => {
                   addBooking(b);
                 }}
@@ -224,7 +300,12 @@ export default function App() {
           />
         </Routes>
       </main>
-      <BottomNav authed={authed} onLogout={handleLogout} />
+      {/* Skicka både isAuthenticated och isGuest till BottomNav */}
+      <BottomNav
+        authed={isAuthed}
+        isGuest={authState.isGuest}
+        onLogout={handleLogout}
+      />
     </>
   );
 }

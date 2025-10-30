@@ -43,7 +43,7 @@
   border-radius: 12px;
 
   .card-img-top {
-    height: 330px;
+    height: 280px;
     object-fit: fit;
   }
 
@@ -181,13 +181,13 @@
 .homepage-calendar {
   margin-inline: auto;
   .react-calendar__month-view__weekdays {
-    font-size: 0.7rem; 
-    height: 1.5rem; 
-    line-height: 1rem; 
+    font-size: 0.7rem;
+    height: 1.5rem;
+    line-height: 1rem;
   }
 
   .react-calendar__month-view__weekdays__weekday {
-    padding: 0; 
+    padding: 0;
   }
 }
 
@@ -355,7 +355,7 @@
   color: var(--home-text); // din önskade färg
   font-weight: bold;
   font-size: 0.95rem; // lagom storlek
-  min-height: 3.0rem; // säkerställer att alla kort får samma höjd för titeln
+  min-height: 3rem; // säkerställer att alla kort får samma höjd för titeln
   overflow: hidden;
   text-overflow: ellipsis;
   display: flex;
