@@ -34,6 +34,8 @@ export default class RestApi {
     this.addRegisterRoute();
     this.addUserBookingsRoute();
     this.addUserBookingDeleteRoute();
+    this.addBookingSeatDetailsRoute();
+    this.addGuestUserRoute();
     this.addPostRoutes(); // C
     this.addGetRoutes(); // R
     this.addPutRoutes(); // U
@@ -48,6 +50,95 @@ export default class RestApi {
     this.app.get(this.prefix + "screenings/:id/seats/stream", (req, res) =>
       this.seatsHub.stream(req, res)
     );
+
+    app.get("/api/ticketTypes", async (req, res) => {
+      try {
+        const [rows] = await this.db.query(
+          "SELECT * FROM ticketTypes ORDER BY id"
+        );
+        res.json(rows);
+      } catch (error) {
+        console.error("Error fetching ticket types:", error);
+        res.status(500).json({ error: "Kunde inte hämta biljettyper" });
+      }
+    });
+
+    // Hämta salongslayout + vilka platser som är bokade för en screening
+    this.app.get(this.prefix + "screenings/:id/layout", async (req, res) => {
+      const screening_id = req.params.id;
+
+      try {
+        // 1. Hämta visningen för att veta vilken salong
+        const screeningRows = await this.db.query(
+          "GET",
+          req.url,
+          `SELECT s.id, s.auditorium_id, a.auditorium_name
+           FROM screenings s
+           JOIN auditoriums a ON s.auditorium_id = a.id
+           WHERE s.id = :screening_id`,
+          { screening_id }
+        );
+
+        if (!screeningRows.length) {
+          return res.status(404).json({ error: "Screening hittades inte" });
+        }
+
+        const { auditorium_id, auditorium_name } = screeningRows[0];
+
+        // 2. Hämta ALLA säten i den salongen med rad/nummer
+        const seatRows = await this.db.query(
+          "GET",
+          req.url,
+          `SELECT id, row_index, seat_number
+           FROM seats
+           WHERE auditorium_id = :auditorium_id
+           ORDER BY row_index, seat_number`,
+          { auditorium_id }
+        );
+
+        // 3. Hämta redan bokade säten för just denna screening
+        const bookedRows = await this.db.query(
+          "GET",
+          req.url,
+          `SELECT seat_id
+           FROM bookingsXseats
+           WHERE screening_id = :screening_id`,
+          { screening_id }
+        );
+        const bookedSet = new Set(bookedRows.map((r) => Number(r.seat_id)));
+
+        // 4. Bygg struktur per rad
+        // rowsMap[row_index] = [ {id, seatNumber, taken}, ... ]
+        const rowsMap = new Map();
+        for (const seat of seatRows) {
+          const r = seat.row_index;
+          if (!rowsMap.has(r)) rowsMap.set(r, []);
+          rowsMap.get(r).push({
+            id: seat.id,
+            seatNumber: seat.seat_number,
+            taken: bookedSet.has(Number(seat.id)),
+          });
+        }
+
+        // 5. Konvertera Map -> array med sorter
+        const rows = Array.from(rowsMap.entries())
+          .sort((a, b) => a[0] - b[0]) // sortera efter row_index
+          .map(([rowIndex, seats]) => ({
+            rowIndex,
+            seats: seats.sort((a, b) => a.seatNumber - b.seatNumber),
+          }));
+
+        // 6. Skicka svaret
+        res.json({
+          auditorium_id,
+          auditorium_name,
+          rows,
+        });
+      } catch (err) {
+        console.error("Fel i GET /screenings/:id/layout:", err);
+        res.status(500).json({ error: "Kunde inte hämta layout" });
+      }
+    });
 
     // Viktigt: undvik krock med "POST /api/:table" genom att använda en djupare path
     this.app.post(this.prefix + "bookings/create", async (req, res) => {
@@ -195,9 +286,55 @@ export default class RestApi {
       }
     });
   }
+
+  // Hämtar platser + rad/nummer för en viss booking
+  addBookingSeatDetailsRoute() {
+    this.app.get(
+      this.prefix + "bookings/:id/seatsDetailed",
+      async (req, res) => {
+        const booking_id = req.params.id;
+
+        try {
+          // Hämta alla säten för bokningen och joina mot seats
+          const rows = await this.db.query(
+            "GET",
+            req.url,
+            `
+          SELECT 
+            bxs.seat_id,
+            bxs.ticketType_id,
+            s.row_index,
+            s.seat_number
+          FROM bookingsXseats bxs
+          JOIN seats s ON bxs.seat_id = s.id
+          WHERE bxs.booking_id = :booking_id
+          ORDER BY s.row_index, s.seat_number
+        `,
+            { booking_id }
+          );
+
+          // rows ser nu ut som:
+          // [
+          //   { seat_id: 27, ticketType_id: 1, row_index: 1, seat_number: 7 },
+          //   { seat_id: 28, ticketType_id: 2, row_index: 1, seat_number: 8 },
+          //   ...
+          // ]
+
+          res.json(rows);
+        } catch (err) {
+          console.error("Error fetching seat details for booking:", err);
+          res.status(500).json({
+            error: "Kunde inte hämta sätesinformation för bokningen.",
+          });
+        }
+      }
+    );
+  }
+
   // SLUT ------ Bookings / Mina sidor -----------------------------------------------
 
   // using express-validator to validate the data sent through the API during user-registration
+  // I din RestApiSQL.js - Uppdatera addRegisterRoute
   addRegisterRoute() {
     this.app.post(
       this.prefix + "register",
@@ -205,7 +342,7 @@ export default class RestApi {
         body("user_email")
           .trim()
           .notEmpty()
-          .withMessage("Email är obligatoriskt ")
+          .withMessage("Email är obligatoriskt")
           .isEmail()
           .withMessage("Måste vara en giltig email"),
         body("user_password_hash")
@@ -232,22 +369,30 @@ export default class RestApi {
           user_password_hash,
           user_name,
           user_phoneNumber,
+          is_guest = false, // ✅ Ny parameter för gäster
         } = req.body;
 
-        // Kontrollera att inte båda finns
-        if (user_password && user_password_hash) {
-          return res.status(400).json({
-            error:
-              "Skicka endast user_password eller user_password_hash, inte båda.",
-          });
-        }
-
-        // Kontrollera att minst en finns
-        if (!user_password && !user_password_hash) {
-          return res.status(400).json({
-            error:
-              "Du måste skicka antingen user_password eller user_password_hash.",
-          });
+        // ✅ Guest logic: om is_guest är true, acceptera utan password
+        if (is_guest) {
+          if (user_password || user_password_hash) {
+            return res.status(400).json({
+              error: "Gästanvändare kan inte ha lösenord",
+            });
+          }
+        } else {
+          // Normal user måste ha password
+          if (user_password && user_password_hash) {
+            return res.status(400).json({
+              error:
+                "Skicka endast user_password eller user_password_hash, inte båda.",
+            });
+          }
+          if (!user_password && !user_password_hash) {
+            return res.status(400).json({
+              error:
+                "Du måste skicka antingen user_password eller user_password_hash.",
+            });
+          }
         }
 
         try {
@@ -255,26 +400,81 @@ export default class RestApi {
           const existingUser = await this.db.query(
             "POST",
             req.url,
-            "SELECT id FROM users WHERE user_email = :user_email",
+            "SELECT id, user_password_hash FROM users WHERE user_email = :user_email",
             { user_email }
           );
 
           if (existingUser.length > 0) {
+            const user = existingUser[0];
+
+            // ✅ Om användaren finns som gäst (har inget lösenord) och vi försöker skapa gäst
+            if (is_guest && !user.user_password_hash) {
+              // Returnera den befintliga gästanvändaren
+              return res.status(200).json({
+                success: true,
+                message: "Gästanvändare finns redan",
+                user: { id: user.id, user_email, user_name, user_phoneNumber },
+                is_guest: true,
+              });
+            }
+
+            // ✅ Om användaren finns som gäst och vill bli medlem
+            if (!is_guest && !user.user_password_hash) {
+              // Uppgradera gäst till medlem
+              const userObj = {
+                user_password_hash: user_password_hash || user_password,
+                user_name: user_name || null,
+                user_phoneNumber: user_phoneNumber || null,
+              };
+
+              if (user_password) {
+                await PasswordEncryptor.encrypt(userObj);
+              }
+
+              await this.db.query(
+                "PUT",
+                req.url,
+                `UPDATE users 
+               SET user_password_hash = :user_password_hash, 
+                   user_name = :user_name, 
+                   user_phoneNumber = :user_phoneNumber 
+               WHERE id = :id`,
+                { ...userObj, id: user.id }
+              );
+
+              const updatedUser = await this.db.query(
+                "GET",
+                req.url,
+                `SELECT id, user_email, user_name, user_phoneNumber FROM users WHERE id = :id`,
+                { id: user.id }
+              );
+
+              req.session.user = updatedUser[0];
+
+              return res.status(200).json({
+                success: true,
+                message: "Gäst uppgraderad till medlem",
+                user: updatedUser[0],
+                is_guest: false,
+              });
+            }
+
             return res
               .status(400)
               .json({ error: "E-postadressen används redan" });
           }
 
-          // Skapa userObj
+          // ✅ Skapa ny användare (gäst eller medlem)
           const userObj = {
             user_email,
-            user_password_hash: user_password_hash || user_password,
+            user_password_hash: is_guest
+              ? null
+              : user_password_hash || user_password,
             user_name: user_name || null,
             user_phoneNumber: user_phoneNumber || null,
           };
 
-          // Hasha lösenordet om det inte redan är en hash
-          if (user_password) {
+          if (!is_guest && user_password) {
             await PasswordEncryptor.encrypt(userObj);
           }
 
@@ -294,12 +494,18 @@ export default class RestApi {
             { id: result.insertId }
           );
 
-          req.session.user = newUser[0];
+          // ✅ Logga in automatiskt om det inte är en gäst
+          if (!is_guest) {
+            req.session.user = newUser[0];
+          }
 
           res.status(201).json({
             success: true,
-            message: "Användare registrerad och inloggad",
+            message: is_guest
+              ? "Gästanvändare skapad"
+              : "Användare registrerad och inloggad",
             user: newUser[0],
+            is_guest,
           });
         } catch (error) {
           console.error(error);
@@ -309,16 +515,111 @@ export default class RestApi {
     );
   }
 
+  addGuestUserRoute() {
+    this.app.post(this.prefix + "guest", async (req, res) => {
+      const { user_email } = req.body;
+
+      if (!user_email) {
+        return res.status(400).json({ error: "Email krävs för gäst" });
+      }
+
+      try {
+        // Använd samma register-logik men med is_guest = true
+        const guestReq = {
+          body: {
+            user_email,
+            is_guest: true,
+          },
+        };
+
+        // Simulera register-anrop för gäst
+        const existingUser = await this.db.query(
+          "POST",
+          req.url,
+          "SELECT id, user_email FROM users WHERE user_email = :user_email AND user_password_hash IS NULL",
+          { user_email }
+        );
+
+        if (existingUser.length > 0) {
+          return res.json({
+            success: true,
+            user: existingUser[0],
+            is_guest: true,
+          });
+        }
+
+        // Skapa ny gäst
+        const result = await this.db.query(
+          "POST",
+          req.url,
+          `INSERT INTO users (user_email, user_password_hash, user_name, user_phoneNumber)
+         VALUES (:user_email, NULL, NULL, NULL)`,
+          { user_email }
+        );
+
+        const newGuest = await this.db.query(
+          "GET",
+          req.url,
+          `SELECT id, user_email FROM users WHERE id = :id`,
+          { id: result.insertId }
+        );
+
+        res.json({
+          success: true,
+          user: newGuest[0],
+          is_guest: true,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Kunde inte skapa gästanvändare" });
+      }
+    });
+  }
+
   // I din RestApiSQL.js
   addBookingRoute() {
     this.app.post(this.prefix + "makeBooking", async (req, res) => {
       try {
-        const { screening_id, seats } = req.body;
+        const { screening_id, seats, guest_email } = req.body;
 
-        if (!req.session.user || !req.session.user.id) {
-          return res.status(401).json({ error: "Ej inloggad" });
+        let user_id;
+
+        // ✅ Guest booking logic - FIXA authorization
+        if (guest_email) {
+          console.log("Guest booking attempt with email:", guest_email);
+
+          // Skapa eller hämta guest user
+          const guestResult = await this.db.query(
+            "POST",
+            req.url,
+            "SELECT id FROM users WHERE user_email = :guest_email AND user_password_hash IS NULL",
+            { guest_email }
+          );
+
+          if (guestResult.length > 0) {
+            user_id = guestResult[0].id;
+            console.log("Found existing guest user:", user_id);
+          } else {
+            // Skapa ny guest user
+            const newGuest = await this.db.query(
+              "POST",
+              req.url,
+              "INSERT INTO users (user_email, user_password_hash) VALUES (:guest_email, NULL)",
+              { guest_email }
+            );
+            user_id = newGuest.insertId;
+            console.log("Created new guest user:", user_id);
+          }
+
+          // ✅ Sätt session user för guest (så att authorization fungerar)
+          req.session.user = { id: user_id, user_email: guest_email };
+        } else {
+          // Normal booking för inloggad användare
+          if (!req.session.user || !req.session.user.id) {
+            return res.status(401).json({ error: "Ej inloggad" });
+          }
+          user_id = req.session.user.id;
         }
-        const user_id = req.session.user.id;
 
         console.log(
           "Booking attempt - user_id:",
@@ -502,13 +803,14 @@ export default class RestApi {
         }
 
         res.status(201).json({
-          message: "Bokning skapad!",
+          message: guest_email ? "Gästbokning skapad!" : "Bokning skapad!",
           booking_id: booking_id,
           booking_confirmation: confirmation,
           total_price: totalPrice,
           screening_id,
           screening_time: screeningTime,
           seats,
+          is_guest: !!guest_email,
         });
       } catch (err) {
         console.error("Booking error:", err);

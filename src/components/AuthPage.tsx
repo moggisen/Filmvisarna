@@ -92,7 +92,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
       if (mode === "signup") {
         setShowModal(true);
       } else {
-        onSuccess();
+        onSuccess(); // ✅ Anropa onSuccess direkt - navigering hanteras i App.tsx
       }
     } catch (err: any) {
       alert(err.message);
@@ -103,7 +103,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
 
   const handleCloseModal = () => {
     setShowModal(false);
-    onSuccess();
+    onSuccess(); // ✅ Anropa onSuccess direkt - navigering hanteras i App.tsx
   };
 
   const isLoginMode = mode === "login";
@@ -228,7 +228,7 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
             onClick={handleCloseModal}
             className="auth-btn auth-btn-modal"
           >
-            Stäng
+            Fortsätt
           </Button>
         </Modal.Footer>
       </Modal>
