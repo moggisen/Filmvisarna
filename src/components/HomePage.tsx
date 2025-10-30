@@ -58,7 +58,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         if (!res.ok) throw new Error("Misslyckades att hämta filmer");
         const data = await res.json();
         setMovies(data);
-        console.log(data);
       } catch (err) {
         console.error("Fel vid hämtning av filmer:", err);
       } finally {
