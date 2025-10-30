@@ -1070,6 +1070,15 @@ export default function Booking({
               </div>
 
               <div className="card-body">
+                {/* MOBIL: dropdown för platser */}
+                <SeatPickerMobile
+                  totalSeats={seatStruct.indexByRow.flat().length}
+                  occupied={occupied}
+                  selected={selected}
+                  needed={needed}
+                  onToggle={toggleSeat}
+                />
+                {/* DESKTOP: vanlig seat-grid (döljs på mobil) */}
                 <div className="seat-viewport" ref={viewportRef}>
                   <div className="seat-stage" ref={stageRef}>
                     <div className="screenbar" />
@@ -1308,6 +1317,80 @@ function TicketRow({
           +
         </button>
       </div>
+    </div>
+  );
+}
+
+function SeatPickerMobile({
+  totalSeats,
+  occupied,
+  selected,
+  needed,
+  onToggle,
+}: {
+  totalSeats: number;
+  occupied: Set<number>;
+  selected: Set<number>;
+  needed: number;
+  onToggle: (no: number) => void;
+}) {
+  const canAddMore = selected.size < needed;
+
+  // Skapa en lista med alla platser från alla rader
+  const allSeats = useMemo(() => {
+    const seats: number[] = [];
+    for (let i = 1; i <= totalSeats; i++) {
+      seats.push(i);
+    }
+    return seats;
+  }, [totalSeats]);
+
+  return (
+    <div className="seat-picker-mobile d-lg-none">
+      <label className="form-label fw-semibold">
+        Välj platser{" "}
+        {needed > 0 ? `(behöver ${needed})` : `(välj antal biljetter först)`}
+      </label>
+
+      {/* En enkel "dropdown" med checkboxar */}
+      <details className="spm-dropdown">
+        <summary className="btn form-select w-100 d-flex justify-content-between align-items-center">
+          {selected.size
+            ? `Platser: ${Array.from(selected)
+                .sort((a, b) => a - b)
+                .join(", ")}`
+            : "Öppna och bocka i platser"}
+          <span className="ms-2">▾</span>
+        </summary>
+
+        <div className="spm-panel mt-2">
+          {allSeats.map((seatId) => {
+            const taken = occupied.has(seatId);
+            const checked = selected.has(seatId);
+            // tillåt bocka UR alltid; blockera nya val om max är nått eller inga biljetter valda
+            const disabled = taken || (!checked && !canAddMore) || needed === 0;
+
+            return (
+              <label
+                key={seatId}
+                className="form-check d-flex align-items-center gap-2 spm-item"
+              >
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  checked={checked}
+                  disabled={disabled}
+                  onChange={() => onToggle(seatId)}
+                />
+                <span>
+                  Plats {seatId}
+                  {taken ? " (upptagen)" : ""}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </details>
     </div>
   );
 }

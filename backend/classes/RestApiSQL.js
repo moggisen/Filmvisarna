@@ -379,6 +379,12 @@ export default class RestApi {
               error: "Gästanvändare kan inte ha lösenord",
             });
           }
+
+          req.session.user = {
+            id: newUser[0].id,
+            user_email: user_email,
+            is_guest: true,
+          };
         } else {
           // Normal user måste ha password
           if (user_password && user_password_hash) {
@@ -611,8 +617,12 @@ export default class RestApi {
             console.log("Created new guest user:", user_id);
           }
 
-          // ✅ Sätt session user för guest (så att authorization fungerar)
-          req.session.user = { id: user_id, user_email: guest_email };
+          // Sätt session user för guest (så att authorization fungerar)
+          req.session.user = {
+            id: user_id,
+            user_email: guest_email,
+            is_guest: true,
+          };
         } else {
           // Normal booking för inloggad användare
           if (!req.session.user || !req.session.user.id) {
@@ -620,13 +630,6 @@ export default class RestApi {
           }
           user_id = req.session.user.id;
         }
-
-        console.log(
-          "Booking attempt - user_id:",
-          user_id,
-          "screening_id:",
-          screening_id
-        );
 
         // --- 1️⃣ Validering ---
         if (!screening_id || !Array.isArray(seats) || seats.length === 0) {
