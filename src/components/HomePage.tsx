@@ -286,7 +286,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       >
         <Row>
           {/* SIDOFILTER */}
-          <Col md={4} lg={2} className="sidebar p-1 mt-2 position-sticky">
+          <Col md={4} lg={3} className="sidebar p-1 mt-2 position-sticky">
             <h5 className="homepage-heading">Åldersgräns</h5>
             <Form.Group className="homepage-form mb-3">
               <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
@@ -319,7 +319,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           </Col>
 
           {/* FILMLISTA */}
-          <Col md={8} lg={10} className="p-4">
+          <Col md={8} lg={9} className="p-4">
             <h5 className="homepage-heading">
               {selectedDate
                 ? `Filmer som går den ${selectedDate.toLocaleDateString()}`
