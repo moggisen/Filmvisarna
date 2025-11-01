@@ -587,6 +587,7 @@ export default class RestApi {
     this.app.post(this.prefix + "makeBooking", async (req, res) => {
       try {
         const { screening_id, seats, guest_email } = req.body;
+        const isGuestBooking = !!guest_email;
 
         let user_id;
 
@@ -753,7 +754,6 @@ export default class RestApi {
         );
         console.log("Booking result:", bookingResult);
 
-        // ✅ FIX: Hämta booking_id korrekt
         let booking_id;
 
         if (bookingResult && bookingResult.insertId) {
@@ -803,6 +803,14 @@ export default class RestApi {
             }
           );
           console.log("Seat insert result:", seatResult);
+        }
+
+        if (isGuestBooking) {
+          const guestSessionData = { ...req.session.user };
+
+          delete req.session.user;
+
+          console.log("Guest session cleared after booking:", guestSessionData);
         }
 
         res.status(201).json({
