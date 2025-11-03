@@ -1,7 +1,11 @@
-// homepage.scss
-// Endast styling som är specifik för HomePage.tsx
+// ==========================================================
+// 🏠 HOMEPAGE.SCSS
+// Endast styling för HomePage.tsx
+// ==========================================================
 
-// Färgvariabler specifika för startsidan
+// ==========================================================
+// 🎨 Färgvariabler
+// ==========================================================
 :root {
   --home-primary: #0d253f;
   --home-primary-dark: #071422;
@@ -13,14 +17,11 @@
   --home-text-muted: #d0dbe6;
 }
 
-// Huvudcontainer för startsidan
+// ==========================================================
+// 🧱 Huvudcontainer
+// ==========================================================
 .homepage-container {
-  // Mobilvy
-  &.d-md-none {
-    padding: 1rem;
-  }
-
-  // Desktopvy
+  &.d-md-none { padding: 1rem; }
   &.d-none.d-md-block {
     .position-sticky {
       background: var(--home-secondary);
@@ -30,7 +31,9 @@
   }
 }
 
-// Rubriker
+// ==========================================================
+// 📝 Rubriker
+// ==========================================================
 .homepage-heading {
   font-family: "Inter", sans-serif;
   font-weight: 700;
@@ -38,9 +41,17 @@
   margin-bottom: 1rem;
 }
 
-// Filmkort
+// ==========================================================
+// 🎬 Filmkort
+// ==========================================================
 .homepage-movie-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
   border-radius: 12px;
+  background: transparent !important;
+  border: none;
 
   .card-img-top {
     height: 330px;
@@ -50,8 +61,21 @@
   .card-body {
     background: var(--home-primary-dark);
     color: var(--home-text);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
 
-    .card-title {
+    .homepage-btn {
+      flex: 1;              
+      height: 40px;         
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;  
+      text-align: center;
+    }
+
+    .card-title { 
       font-family: "Inter", sans-serif;
       font-weight: 600;
       font-size: 1rem;
@@ -59,34 +83,27 @@
     }
   }
 
-  // Hover-effekt på desktop
   @media (min-width: 768px) {
     transition: transform 0.2s ease;
-
-    &:hover {
-      transform: translateY(-2px);
-    }
+    &:hover { transform: translateY(-2px); }
   }
 }
 
-// Event-kort
+// ==========================================================
+// 🎟️ Eventkort
+// ==========================================================
 .homepage-event-card {
   background-color: var(--home-primary) !important;
   color: var(--home-text);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
   transition: transform 0.2s ease;
   height: 100%;
 
-  &:hover {
-    transform: translateY(-5px);
-  }
+  &:hover { transform: translateY(-5px); }
 
-  .card-img-top {
-    height: 180px;
-    object-fit: cover;
-  }
+  .card-img-top { height: 180px; object-fit: cover; }
 
   .card-title {
     font-family: "Bebas Neue", sans-serif;
@@ -105,7 +122,7 @@
   .homepage-event-date {
     display: inline-block;
     background-color: var(--home-accent-dark);
-    color: #ffffff;
+    color: #fff;
     font-weight: bold;
     padding: 0.3rem 0.6rem;
     border-radius: 8px;
@@ -115,110 +132,71 @@
   }
 }
 
-.sidebar {
-  background-color: var(--home-primary-dark) !important;
-}
+// ==========================================================
+// 🧭 Sidebar
+// ==========================================================
+.sidebar { background-color: var(--home-primary-dark) !important; }
 
-// Kalender styling
+// ==========================================================
+// 📅 Kalender
+// ==========================================================
 .homepage-calendar {
   width: 100%;
-  color: #194e83;
   border: none;
-  border-radius: 8px;
+  color: #194e83;
 
-  // Navigation (månad + pilar)
   .react-calendar__navigation {
     background-color: #343a40;
     border-bottom: 1px solid #495057;
-
     button {
       color: #d0dbe6;
       background: none;
       border: none;
-
       &:hover {
         background-color: #495057;
         color: var(--home-warning);
         border-radius: 4px;
       }
     }
-
-    .react-calendar__navigation__label {
-      font-size: 0.75rem;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .react-calendar__navigation__label { font-size: 0.75rem; overflow: hidden; }
   }
 
-  // Dagar
   .react-calendar__tile {
     background-color: #495057;
     color: var(--home-text);
-
-    &:hover {
-      background-color: #6c757d;
-    }
+    &:hover { background-color: #6c757d; }
   }
 
-  // Markerad dag
-  .react-calendar__tile--active {
-    background-color: var(--home-warning) !important;
-    color: #000 !important;
-  }
+  .react-calendar__tile--active { background-color: var(--home-warning) !important; color: #000 !important; }
+  .react-calendar__tile--now { background-color: #17a2b8; color: #fff; }
+  .react-calendar__month-view__days__day--neighboringMonth { color: #adb5bd; }
 
-  // Dagens datum
-  .react-calendar__tile--now {
-    background-color: #17a2b8;
-    color: #fff;
-  }
-
-  // Gråa datum (andra månader)
-  .react-calendar__month-view__days__day--neighboringMonth {
-    color: #adb5bd;
-  }
+  .react-calendar__month-view__weekdays { font-size: 0.7rem; height: 1.5rem; line-height: 1rem; }
+  .react-calendar__month-view__weekdays__weekday { padding: 0; }
 }
 
-.homepage-calendar {
-  margin-inline: auto;
-  .react-calendar__month-view__weekdays {
-    font-size: 0.7rem; 
-    height: 1.5rem; 
-    line-height: 1rem; 
-  }
-
-  .react-calendar__month-view__weekdays__weekday {
-    padding: 0; 
-  }
-}
-
-// Formulärelement
+// ==========================================================
+// 🧾 Formulärelement
+// ==========================================================
 .homepage-form {
-  .form-label {
-    color: var(--home-text);
-    font-family: "Inter", sans-serif;
-    font-weight: 600;
-  }
-
-  .form-control,
-  .form-select {
+  .form-label { color: var(--home-text); font-family: "Inter", sans-serif; font-weight: 600; }
+  .form-control, .form-select {
     background-color: var(--home-primary);
     border-color: var(--home-text-muted);
     color: var(--home-text);
-
     &:focus {
       background-color: var(--home-primary);
       border-color: var(--home-warning);
       color: var(--home-text);
-      box-shadow: 0 0 0 0.2rem rgba(255, 215, 0, 0.25);
+      box-shadow: 0 0 0 0.2rem rgba(255,215,0,0.25);
     }
   }
-
-  .form-control::placeholder {
-    color: var(--home-text-muted);
-  }
+  .form-control::placeholder { color: var(--home-text-muted); }
 }
 
-// Knappar
+// ==========================================================
+// 🔘 Knappar (alla storlekar)
+// ==========================================================
 .homepage-btn {
   font-family: "Inter", sans-serif;
   font-weight: 700;
@@ -227,138 +205,74 @@
   &.homepage-btn-secondary {
     background-color: var(--home-accent);
     border-color: var(--home-accent);
-
-    &:hover {
-      background-color: var(--home-accent-dark);
-      border-color: var(--home-accent-dark);
-    }
+    &:hover { background-color: var(--home-accent-dark); border-color: var(--home-accent-dark); }
   }
 
   &.homepage-btn-dark {
     background-color: var(--home-primary);
     border-color: var(--home-text-muted);
-
-    &:hover {
-      background-color: var(--home-secondary);
-      border-color: var(--home-text);
-    }
+    &:hover { background-color: var(--home-secondary); border-color: var(--home-text); }
   }
 }
 
-// Grid layout
+// ==========================================================
+// 🧩 Grid-layout
+// ==========================================================
 .homepage-movie-grid {
-  .col {
-    margin-inline: auto;
-  }
-  .row {
-    --bs-gutter-x: 1rem;
-    --bs-gutter-y: 1rem;
-  }
+  .col { margin-inline: auto; }
+  .row { --bs-gutter-x: 1rem; --bs-gutter-y: 1rem; }
 
-  // Mobil layout (2 kolumner)
-  &.homepage-mobile-grid {
-    .col {
-      flex: 0 0 calc(50% - 0.5rem);
-      max-width: calc(50% - 0.5rem);
-    }
-  }
-
-  // Desktop layout (responsive kolumner)
-  &.homepage-desktop-grid {
-    .col {
-      margin-bottom: 1rem;
-    }
-  }
+  &.homepage-mobile-grid { .col { flex: 0 0 calc(50% - 0.5rem); max-width: calc(50% - 0.5rem); } }
+  &.homepage-desktop-grid { .col { margin-bottom: 1rem; } }
 }
 
-// Nyaste filmen sektion
+// ==========================================================
+// 🎞️ Nyaste filmen
+// ==========================================================
 .homepage-newest-movie {
   margin-bottom: 1.5rem;
   background-color: var(--home-primary) !important;
   border: none !important;
   .card {
-    border: none;
+    border: none; 
     border-radius: 12px;
-
-    .card-img-top {
-      height: 250px;
-      object-fit: cover;
-    }
-
-    .card-body {
-      .card-title {
-        font-family: "Inter", sans-serif;
-        font-weight: 700;
-        color: var(--home-text);
-        margin-bottom: 1rem;
-      }
+    .card-img-top { height: 250px; object-fit: cover; }
+    .card-body .card-title {
+      font-family: "Inter", sans-serif; font-weight: 700; color: var(--home-text); margin-bottom: 1rem;
     }
   }
 }
 
-// Responsiv design
-@media (max-width: 767.98px) {
-  .homepage-container {
-    .homepage-movie-card {
-      border-color: var(--home-primary-dark);
-      .card-body {
-        padding: 0.75rem;
-
-        .btn-group {
-          display: flex;
-          gap: 0.25rem;
-
-          .btn {
-            flex: 1;
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-          }
-        }
-      }
-    }
-
-    .homepage-calendar {
-      margin-bottom: 1rem;
-    }
-  }
-}
-
-@media (min-width: 768px) {
-  .homepage-container {
-    .homepage-movie-card {
-      border-color: var(--home-primary-dark);
-
-      .card-body {
-        .btn {
-          margin: 0 0.25rem;
-        }
-      }
-    }
-  }
-}
-
-.homepage-movie-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 100%;
-  background: transparent !important; // Tar bort vit bakgrund
-  border: none; // Tar bort kortets kantlinje
-}
-
-.movie-title-container {
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
+// ==========================================================
+// 🧩 Extra layoutjusteringar (titel, text m.m.)
+// ==========================================================
 .movie-title-wrapper {
-  color: var(--home-text); // din önskade färg
+  color: var(--home-text);
   font-weight: bold;
-  font-size: 0.95rem; // lagom storlek
-  min-height: 3.0rem; // säkerställer att alla kort får samma höjd för titeln
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 0.95rem;
+  text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 0.25rem;
+  min-height: 3rem;
+  line-height: 1.2;
+
+  @media (max-width: 991px) { min-height: 2.75rem; }
+  @media (max-width: 767px) { min-height: 2.5rem; }
+}
+
+//  Centrera kalendern i mobilvy
+@media (max-width: 768px) {
+  .homepage-calendar {
+    display:block;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto; 
+    width: 90%;     
+  }
+
+
 }
