@@ -433,102 +433,47 @@ export default function HomePage({ onNavigate }: HomePageProps) {
 
           {/* FILMLISTA */}
           <Col md={8} lg={9} className="p-4">
-            {selectedDate ? (
-              moviesForDate.length > 0 ? (
-                <>
-                  <h5
-                    className="homepage-heading"
-                    style={{ textAlign: "center", marginTop: "1.25rem", marginBottom: "1rem" }}
-                  >
-                    Filmer som går den {selectedDate.toLocaleDateString()}
-                  </h5>
-                  <Row
-                    xs={1}
-                    sm={2}
-                    md={3}
-                    lg={4}
-                    className="homepage-movie-grid homepage-desktop-grid g-4 mb-5 justify-content-start"
-                  >
-                    {moviesForDate.map((movie) => (
-                      <Col key={movie.id}>
-                        <Card className="homepage-movie-card h-100 d-flex flex-column">
-                          <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
-                          <div className="movie-title-wrapper text-center mt-2 mb-2">
-                            {movie.movie_title}
-                          </div>
-                          <Card.Body className="text-center mt-auto">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="me-2 homepage-btn homepage-btn-secondary"
-                              onClick={() => onNavigate("biljett", movie.id)}
-                            >
-                              Biljett
-                            </Button>
-                            <Button
-                              variant="dark"
-                              size="sm"
-                              className="homepage-btn homepage-btn-dark"
-                              onClick={() => onNavigate("movie-detail", movie.id)}
-                            >
-                              Info
-                            </Button>
-                          </Card.Body>
-                        </Card>
-                      </Col>
-                    ))}
-                  </Row>
-                </>
-              ) : (
-                <div className="text-center mt-4 mb-5">
-                  <p style={{ fontStyle: "italic", color: "#666" }}>
-                    Ingen film visas detta datum 🎬
-                  </p>
-                </div>
-              )
-            ) : (
-              <>
-                <h5 className="homepage-heading" style={{ textAlign: "center", marginTop: "1.25rem" }}>
-                  Alla filmer
-                </h5>
-                <Row
-                  xs={1}
-                  sm={2}
-                  md={3}
-                  lg={4}
-                  className="homepage-movie-grid homepage-desktop-grid g-4 mb-5 justify-content-start"
-                >
-                  {filteredMovies.map((movie) => (
-                    <Col key={movie.id}>
-                      <Card className="homepage-movie-card h-100 d-flex flex-column">
-                        <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
-                        <div className="movie-title-wrapper text-center mt-2 mb-2">
-                          {movie.movie_title}
-                        </div>
-                        <Card.Body className="text-center mt-auto">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="me-2 homepage-btn homepage-btn-secondary"
-                            onClick={() => onNavigate("biljett", movie.id)}
-                          >
-                            Biljett
-                          </Button>
-                          <Button
-                            variant="dark"
-                            size="sm"
-                            className="homepage-btn homepage-btn-dark"
-                            onClick={() => onNavigate("movie-detail", movie.id)}
-                          >
-                            Info
-                          </Button>
-                        </Card.Body>
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-              </>
-            )}
+            <h5 className="homepage-heading">
+              {selectedDate
+                ? `Filmer som går den ${selectedDate.toLocaleDateString()}`
+                : "Alla filmer"}
+            </h5>
+            <Row
+              xs={1}
+              sm={2}
+              md={3}
+              lg={4}
+              className="homepage-movie-grid homepage-desktop-grid g-4 justify-content-start"
+            >
+              {(selectedDate ? moviesForDate : filteredMovies).map((movie) => (
+                <Col key={movie.id}>
+                  <Card className="homepage-movie-card h-100 d-flex flex-column">
+                    <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
+                    <div className="movie-title-wrapper text-center mt-2 mb-2">
+                      {movie.movie_title}
+                    </div>
+                    <Card.Body className="text-center mt-auto">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="me-2 homepage-btn homepage-btn-secondary"
+                        onClick={() => onNavigate("biljett", movie.id)}
+                      >
+                        Biljett
+                      </Button>
+                      <Button
+                        variant="dark"
+                        size="sm"
+                        className="homepage-btn homepage-btn-dark"
+                        onClick={() => onNavigate("movie-detail", movie.id)}
+                      >
+                        Info
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
           </Col>
         </Row>
       </Container>

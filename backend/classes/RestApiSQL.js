@@ -379,6 +379,12 @@ export default class RestApi {
               error: "Gästanvändare kan inte ha lösenord",
             });
           }
+
+          req.session.user = {
+            id: newUser[0].id,
+            user_email: user_email,
+            is_guest: true,
+          };
         } else {
           // Normal user måste ha password
           if (user_password && user_password_hash) {
@@ -581,6 +587,7 @@ export default class RestApi {
     this.app.post(this.prefix + "makeBooking", async (req, res) => {
       try {
         const { screening_id, seats, guest_email } = req.body;
+        const isGuestBooking = !!guest_email;
 
         let user_id;
 
@@ -611,8 +618,12 @@ export default class RestApi {
             console.log("Created new guest user:", user_id);
           }
 
-          // ✅ Sätt session user för guest (så att authorization fungerar)
-          req.session.user = { id: user_id, user_email: guest_email };
+          // Sätt session user för guest (så att authorization fungerar)
+          req.session.user = {
+            id: user_id,
+            user_email: guest_email,
+            is_guest: true,
+          };
         } else {
           // Normal booking för inloggad användare
           if (!req.session.user || !req.session.user.id) {
@@ -620,13 +631,6 @@ export default class RestApi {
           }
           user_id = req.session.user.id;
         }
-
-        console.log(
-          "Booking attempt - user_id:",
-          user_id,
-          "screening_id:",
-          screening_id
-        );
 
         // --- 1️⃣ Validering ---
         if (!screening_id || !Array.isArray(seats) || seats.length === 0) {
@@ -750,7 +754,6 @@ export default class RestApi {
         );
         console.log("Booking result:", bookingResult);
 
-        // ✅ FIX: Hämta booking_id korrekt
         let booking_id;
 
         if (bookingResult && bookingResult.insertId) {
@@ -800,6 +803,14 @@ export default class RestApi {
             }
           );
           console.log("Seat insert result:", seatResult);
+        }
+
+        if (isGuestBooking) {
+          const guestSessionData = { ...req.session.user };
+
+          delete req.session.user;
+
+          console.log("Guest session cleared after booking:", guestSessionData);
         }
 
         res.status(201).json({

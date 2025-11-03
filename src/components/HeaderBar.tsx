@@ -1,4 +1,3 @@
-
 import { Navbar, Container } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import NavigationButtons from "./NavigationButtons";
@@ -6,10 +5,15 @@ import "../styles/headerbar.scss";
 
 interface HeaderBarProps {
   authed: boolean;
+  isGuest?: boolean;
   onLogout: () => void;
 }
 
-export default function HeaderBar({ authed, onLogout }: HeaderBarProps) {
+export default function HeaderBar({
+  authed,
+  isGuest = false,
+  onLogout,
+}: HeaderBarProps) {
   return (
     <Navbar className="header-navbar" sticky="top">
       <Container className="header-container">
@@ -20,6 +24,7 @@ export default function HeaderBar({ authed, onLogout }: HeaderBarProps) {
         <div className="header-desktop-nav">
           <NavigationButtons
             authed={authed}
+            isGuest={isGuest}
             onLogout={onLogout}
             btnClass="header-top-buttons"
           />
