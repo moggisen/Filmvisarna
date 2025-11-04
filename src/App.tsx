@@ -4,6 +4,7 @@ import {
   useNavigate,
   useSearchParams,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { useEffect, useState } from "react";
 
@@ -20,7 +21,14 @@ import { routePath, buildPath } from "./routes";
 import type { RouteKey } from "./routes";
 import type { BookingSummary } from "./components/types";
 
-// --- LocalStorage helpers (från gamla Auth.tsx) ---
+// --- Types för auth-state ---
+interface AuthState {
+  isAuthenticated: boolean;
+  isGuest: boolean;
+  userData: any | null;
+}
+
+// --- LocalStorage helpers ---
 function loadBookings(): BookingSummary[] {
   try {
     const raw = localStorage.getItem("bookings");
@@ -41,14 +49,20 @@ function ConfirmWrapper() {
 }
 
 export default function App() {
-  // ==== Global app-state (flyttat från Auth.tsx) ====
-  const [authed, setAuthed] = useState(false);
+  // ==== Uppdaterad auth-state ====
+  const [authState, setAuthState] = useState<AuthState>({
+    isAuthenticated: false,
+    isGuest: false,
+    userData: null,
+  });
   const [bookings, setBookings] = useState<BookingSummary[]>(() =>
     loadBookings()
   );
 
-  // Stay logged in----------------------------------------------------------
+  const navigate = useNavigate();
+  const location = useLocation();
 
+  // Uppdaterad auth-check som hanterar gästsessioner
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -62,25 +76,91 @@ export default function App() {
         console.log("Auth check: ", data);
 
         if (response.ok && !data.error) {
-          setAuthed(true);
+          // Kolla om det är en gästsession
+          const isGuest = !!data.is_guest;
+
+          setAuthState({
+            isAuthenticated: !isGuest, // Endast icke-gäster är "authed"
+            isGuest: isGuest,
+            userData: data,
+          });
+        } else {
+          // Ingen session eller fel
+          setAuthState({
+            isAuthenticated: false,
+            isGuest: false,
+            userData: null,
+          });
         }
       } catch (err) {
         console.error("Fel vid kontroll av inloggning: ", err);
+        setAuthState({
+          isAuthenticated: false,
+          isGuest: false,
+          userData: null,
+        });
       }
     }
     checkAuth();
   }, []);
-  // ------------------------------------------------------------------------
 
   useEffect(() => saveBookings(bookings), [bookings]);
 
-  const navigate = useNavigate();
-
-  // ---- handlers (flyttade) ----
+  // Uppdaterad handleAuthSuccess
   const handleAuthSuccess = () => {
-    setAuthed(true);
-    navigate(routePath.home);
+    // Kör auth-check igen för att få korrekt state
+    async function refreshAuth() {
+      try {
+        const response = await fetch("/api/login", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        const data = await response.json();
+
+        if (response.ok && !data.error) {
+          const isGuest = !!data.is_guest;
+
+          setAuthState({
+            isAuthenticated: !isGuest,
+            isGuest: isGuest,
+            userData: data,
+          });
+
+          // Navigeringslogik
+          const shouldRestoreBooking = sessionStorage.getItem(
+            "shouldRestoreBooking"
+          );
+          const returnTo = sessionStorage.getItem("returnTo");
+
+          console.log(
+            "Auth success - shouldRestoreBooking:",
+            shouldRestoreBooking,
+            "returnTo:",
+            returnTo
+          );
+
+          if (shouldRestoreBooking === "true" && returnTo) {
+            console.log("Navigating back to booking:", returnTo);
+            navigate(returnTo, { replace: true });
+          } else {
+            const fromNavigation = location.state?.fromNavigation;
+            if (fromNavigation) {
+              navigate("/profile", { replace: true });
+            } else {
+              navigate(routePath.home, { replace: true });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Fel vid auth refresh: ", err);
+      }
+    }
+
+    refreshAuth();
   };
+
+  // Uppdaterad handleLogout
   const handleLogout = async () => {
     try {
       const response = await fetch("/api/login", {
@@ -92,7 +172,11 @@ export default function App() {
 
       if (response.ok && data.success) {
         console.log(data.success);
-        setAuthed(false);
+        setAuthState({
+          isAuthenticated: false,
+          isGuest: false,
+          userData: null,
+        });
         navigate(routePath.home);
       } else {
         console.error(data.error || "Kunde inte logga ut.");
@@ -104,9 +188,8 @@ export default function App() {
 
   const addBooking = (booking: BookingSummary) => {
     setBookings((prev) => [booking, ...prev]);
-    // Om ni vill stanna på confirm via query (nuvarande flow), låt Booking själv navigera
-    // eller gör navigate(`/confirm?booking_id=${...}&conf=${...}`) när ni har id/confirmation.
   };
+
   const cancelBooking = (bookingId: string) => {
     setBookings((prev) => prev.filter((b) => b.bookingId !== bookingId));
   };
@@ -118,7 +201,7 @@ export default function App() {
       Number.isFinite(movieId) &&
       movieId > 0
     ) {
-      const target = buildPath("movie-detail", { id: movieId }); // => /movies/123
+      const target = buildPath("movie-detail", { id: movieId });
       try {
         localStorage.setItem("selectedMovieId", String(movieId));
       } catch {}
@@ -129,9 +212,17 @@ export default function App() {
     navigate(routePath[name] ?? routePath.home);
   };
 
+  // Helper för bakåtkompatibilitet
+  const isAuthed = authState.isAuthenticated;
+
   return (
     <>
-      <HeaderBar authed={authed} onLogout={handleLogout} />
+      {/* Skicka både isAuthenticated och isGuest till komponenter som behöver det */}
+      <HeaderBar
+        authed={isAuthed}
+        isGuest={authState.isGuest}
+        onLogout={handleLogout}
+      />
       <main className="container py-4">
         <Routes>
           {/* START */}
@@ -145,11 +236,10 @@ export default function App() {
             path={routePath.biljett}
             element={
               <Booking
-                authed={authed}
+                authed={isAuthed} // Använd isAuthenticated (false för gäster)
+                isGuest={authState.isGuest} // Skicka gäst-status om behövs
                 onConfirm={(b) => {
-                  // Spara i lokal historik om ni vill
                   addBooking(b);
-                  // OBS: Ingen navigate här – Booking navigerar till /confirm?booking_id=...
                 }}
                 onNavigate={(name) =>
                   navigate(routePath[name as keyof typeof routePath] ?? "/")
@@ -197,7 +287,7 @@ export default function App() {
 
           {/* MOVIE DETAIL */}
           <Route
-            path={routePath["movie-detail"]} // "/movies/:id"
+            path={routePath["movie-detail"]}
             element={<MovieDetail onBook={() => navigate(routePath.biljett)} />}
           />
 
@@ -210,7 +300,12 @@ export default function App() {
           />
         </Routes>
       </main>
-      <BottomNav authed={authed} onLogout={handleLogout} />
+      {/* Skicka både isAuthenticated och isGuest till BottomNav */}
+      <BottomNav
+        authed={isAuthed}
+        isGuest={authState.isGuest}
+        onLogout={handleLogout}
+      />
     </>
   );
 }
