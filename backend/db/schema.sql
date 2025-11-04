@@ -55,6 +55,8 @@ CREATE TABLE bookings (
 CREATE TABLE seats (
     id INT AUTO_INCREMENT PRIMARY KEY,
     auditorium_id INT NOT NULL,
+    row_index INT NOT NULL,
+    seat_number INT NOT NULL,
     FOREIGN KEY (auditorium_id) REFERENCES auditoriums(id)
 );
 

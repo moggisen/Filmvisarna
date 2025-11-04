@@ -1,6 +1,6 @@
 import session from "express-session";
-import Acl from "./Acl.js";
 import sessionStore from "../helpers/sessionStore.js";
+import Acl from "./Acl.js";
 import PasswordEncryptor from "../helpers/PasswordEncryptor.js";
 import rateLimit from "express-rate-limit";
 
@@ -43,7 +43,7 @@ export default class LoginHandler {
     // Creating a limiter for the attempts to login, after set max-attempts user gets locked out for set amount of time
     const loginLimiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 5000000, // max 5 login attempts
+      max: 5000000, // max X login attempts  <--------- ÄNDRA DETTA ----------------------------------------------------------------------------------
       message: {
         error: "För många inloggningsförsök, försök igen om 15 minuter",
       },
