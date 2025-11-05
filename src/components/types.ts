@@ -10,4 +10,6 @@ export type BookingSummary = {
   total: number;
   bookingId: string;
   showtime: string;
+  isGuestBooking?: boolean;
+  guestEmail?: string;
 };

@@ -19,6 +19,7 @@ import guardianmarathonImg from "../assets/banners/guardianmarathon.png";
 import carousel1Img from "../assets/banners/deadpool.jpg";
 import carousel2Img from "../assets/banners/ironMan2013.jpg";
 import carousel3Img from "../assets/banners/venom2018.jpg";
+import type { Route } from "./types";
 
 interface Movie {
   id: number;
@@ -29,7 +30,15 @@ interface Movie {
   movie_cast: string;
   movie_premier: string;
   movie_poster: string;
+  movie_banner: string;
   age_limit: number;
+}
+
+interface Screening {
+  id: number;
+  screening_time: string;
+  movie_id: number;
+  auditorium_id: number;
 }
 
 interface Event {
@@ -45,12 +54,14 @@ interface HomePageProps {
 
 export default function HomePage({ onNavigate }: HomePageProps) {
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [screenings, setScreenings] = useState<Screening[]>([]);
   const [loading, setLoading] = useState(true);
   const [age, setAge] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
-  const [date, setDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [moviesForDate, setMoviesForDate] = useState<Movie[]>([]);
 
-  // Hämta filmer från backend
+  // Hämta filmer
   useEffect(() => {
     const fetchMovies = async () => {
       try {
@@ -58,15 +69,76 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         if (!res.ok) throw new Error("Misslyckades att hämta filmer");
         const data = await res.json();
         setMovies(data);
-        console.log(data);
       } catch (err) {
-        console.error("Fel vid hämtning av filmer:", err);
-      } finally {
-        setLoading(false);
+        console.error(err);
       }
     };
     fetchMovies();
   }, []);
+
+  // Hämta visningar
+  useEffect(() => {
+    const fetchScreenings = async () => {
+      try {
+        const res = await fetch("/api/screenings");
+        if (!res.ok) throw new Error("Misslyckades att hämta visningar");
+        const data = await res.json();
+        setScreenings(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchScreenings();
+  }, []);
+
+  // Filtrera filmer baserat på valt datum
+  useEffect(() => {
+    if (!selectedDate) {
+      setMoviesForDate([]);
+      return;
+    }
+
+    const selectedDay = selectedDate.getDate();
+    const selectedMonth = selectedDate.getMonth();
+    const selectedYear = selectedDate.getFullYear();
+
+    // Filtrera visningar baserat på LOKALT datum
+    const screeningsOnDate = screenings.filter((s) => {
+      const screeningDate = new Date(s.screening_time);
+      return (
+        screeningDate.getDate() === selectedDay &&
+        screeningDate.getMonth() === selectedMonth &&
+        screeningDate.getFullYear() === selectedYear
+      );
+    });
+
+    // Hitta filmer + tider
+    const filteredMovies = movies
+      .map((movie) => {
+        const times = screeningsOnDate
+          .filter((s) => s.movie_id === movie.id)
+          .map((s) =>
+            new Date(s.screening_time).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          );
+        if (times.length > 0) return { ...movie, times };
+        return null;
+      })
+      .filter(Boolean) as (Movie & { times: string[] })[];
+    setMoviesForDate(filteredMovies);
+  }, [selectedDate, screenings, movies]);
+
+  const filteredMovies = movies.filter((movie) => {
+    const matchesSearch = movie.movie_title
+      .toLowerCase()
+      .includes(search.toLowerCase());
+    const matchesAge = age === "all" || movie.age_limit === parseInt(age);
+    return matchesSearch && matchesAge;
+  });
 
   const events: Event[] = [
     {
@@ -82,14 +154,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       img: guardianmarathonImg,
     },
   ];
-
-  const filteredMovies = movies.filter((movie) => {
-    const matchesSearch = movie.movie_title
-      .toLowerCase()
-      .includes(search.toLowerCase());
-    const matchesAge = age === "all" || movie.age_limit === parseInt(age);
-    return matchesSearch && matchesAge;
-  });
 
   // Hårdkodade nyaste filmer för mobil-karusell
   const newestMoviesHardcoded = [
@@ -110,7 +174,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     <>
       {/* ------------------ MOBILVY ------------------ */}
       <Container fluid className="d-md-none p-3">
-        {/* Karusell med bilder endast */}
         <Carousel variant="dark" className="homepage-newest-carousel mb-4">
           {newestMoviesHardcoded.map((movie) => (
             <Carousel.Item key={movie.movie_id}>
@@ -167,48 +230,132 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         {/* KALENDER */}
         <h5 className="homepage-heading">Välj datum</h5>
         <Calendar
-          value={date}
-          onChange={(value: Date | Date[]) =>
-            setDate(Array.isArray(value) ? value[0] || null : value)
-          }
+          value={selectedDate}
+          onChange={(value: Date | Date[]) => {
+            const newDate = Array.isArray(value) ? value[0] || null : value;
+            if (
+              selectedDate &&
+              newDate &&
+              selectedDate.toDateString() === newDate.toDateString()
+            ) {
+              setSelectedDate(null);
+            } else {
+              setSelectedDate(newDate);
+            }
+          }}
           className="homepage-calendar"
-          formatShortWeekday={(locale, date) =>
+          formatShortWeekday={(_, date) =>
             ["sön", "mån", "tis", "ons", "tor", "fre", "lör"][date.getDay()]
           }
         />
 
-        {/* ALLA FILMER */}
-        <h5 className="homepage-heading">Alla filmer</h5>
-        <Row xs={2} xl={4} className="homepage-movie-grid g-3">
-          {filteredMovies.map((movie) => (
-            <Col key={movie.id}>
-              <Card className="homepage-movie-card h-100 d-flex flex-column">
-                <Card.Img variant="top" src={`src/${movie.movie_poster}`} />
-                <div className="movie-title-wrapper text-center mt-2 mb-2">
-                  {movie.movie_title}
-                </div>
-                <Card.Body className="text-center mt-auto">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="me-2 homepage-btn homepage-btn-secondary"
-                    onClick={() => onNavigate("biljett", movie.id)}
-                  >
-                    Biljett
-                  </Button>
-                  <Button
-                    variant="dark"
-                    size="sm"
-                    className="homepage-btn homepage-btn-dark"
-                    onClick={() => onNavigate("movie-detail", movie.id)}
-                  >
-                    Info
-                  </Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
+        {/* Vit, centrerad knapp för att återgå */}
+       {selectedDate && (
+  <div className="text-center" style={{ marginTop: 12, marginBottom: 28 }}>
+    <Button
+      variant="light"
+      size="sm"
+      className="border shadow-sm"
+      style={{
+        backgroundColor: "transparent",
+        color: "white",
+        borderColor: "white",
+        boxShadow: "none",
+      }}
+      onClick={() => setSelectedDate(null)}
+      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")}
+      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+    >
+      Visa alla filmer
+    </Button>
+  </div>
+)}
+
+        {/* FILMER FÖR VALT DATUM / ALLA */}
+        {selectedDate ? (
+          moviesForDate.length > 0 ? (
+            <>
+              <h5
+                className="homepage-heading text-center"
+                style={{ marginTop: "1.25rem", marginBottom: "1rem" }}
+              >
+                Filmer som går den {selectedDate.toLocaleDateString()}
+              </h5>
+              <Row xs={2} xl={4} className="homepage-movie-grid g-3 mb-5">
+                {moviesForDate.map((movie) => (
+                  <Col key={movie.id}>
+                    <Card className="homepage-movie-card h-100 d-flex flex-column">
+                      <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
+                      <div className="movie-title-wrapper text-center mt-2 mb-2">
+                        {movie.movie_title}
+                      </div>
+                      <Card.Body className="text-center mt-auto">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="me-2 homepage-btn homepage-btn-secondary"
+                          onClick={() => onNavigate("biljett", movie.id)}
+                        >
+                          Biljett
+                        </Button>
+                        <Button
+                          variant="dark"
+                          size="sm"
+                          className="homepage-btn homepage-btn-dark"
+                          onClick={() => onNavigate("movie-detail", movie.id)}
+                        >
+                          Info
+                        </Button>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            </>
+          ) : (
+            <div className="text-center mt-4 mb-5">
+              <p style={{ fontStyle: "italic", color: "#666" }}>
+                Ingen film visas detta datum 🎬
+              </p>
+            </div>
+          )
+        ) : (
+          <>
+            <h5 className="homepage-heading text-center" style={{ marginTop: "1.25rem" }}>
+              Alla filmer
+            </h5>
+            <Row xs={2} xl={4} className="homepage-movie-grid g-3 mb-5">
+              {filteredMovies.map((movie) => (
+                <Col key={movie.id}>
+                  <Card className="homepage-movie-card h-100 d-flex flex-column">
+                    <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
+                    <div className="movie-title-wrapper text-center mt-2 mb-2">
+                      {movie.movie_title}
+                    </div>
+                    <Card.Body className="text-center mt-auto">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="me-2 homepage-btn homepage-btn-secondary"
+                        onClick={() => onNavigate("biljett", movie.id)}
+                      >
+                        Biljett
+                      </Button>
+                      <Button
+                        variant="dark"
+                        size="sm"
+                        className="homepage-btn homepage-btn-dark"
+                        onClick={() => onNavigate("movie-detail", movie.id)}
+                      >
+                        Info
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          </>
+        )}
       </Container>
 
       {/* ------------------ DESKTOPVY ------------------ */}
@@ -219,14 +366,14 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       >
         <Row>
           {/* SIDOFILTER */}
-          <Col md={4} lg={2} className="sidebar p-1 mt-2 position-sticky">
+          <Col md={4} lg={3} className="sidebar p-1 mt-2 position-sticky">
             <h5 className="homepage-heading">Åldersgräns</h5>
             <Form.Group className="homepage-form mb-3">
               <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
                 <option value="all">Alla</option>
                 <option value="7">7 år</option>
-                <option value="11">11 år</option>
-                <option value="15">15 år</option>
+                <option value="11">11 år (7år i vuxet sällskap)</option>
+                <option value="15">15 år (11år i vuxet sällskap)</option>
               </Form.Select>
             </Form.Group>
 
@@ -242,25 +389,63 @@ export default function HomePage({ onNavigate }: HomePageProps) {
 
             <h5 className="homepage-heading">Välj datum</h5>
             <Calendar
-              value={date}
-              onChange={setDate}
+              value={selectedDate}
+              onChange={(value: Date | Date[]) => {
+                const newDate = Array.isArray(value) ? value[0] || null : value;
+                if (
+                  selectedDate &&
+                  newDate &&
+                  selectedDate.toDateString() === newDate.toDateString()
+                ) {
+                  setSelectedDate(null); // klicka samma datum igen = rensa
+                } else {
+                  setSelectedDate(newDate);
+                }
+              }}
               className="homepage-calendar"
-              formatShortWeekday={(locale, date) =>
+              formatShortWeekday={(_, date) =>
                 ["sön", "mån", "tis", "ons", "tor", "fre", "lör"][date.getDay()]
               }
             />
+
+            {/* Vit knapp även i desktop-sidokolumn */}
+          {selectedDate && (
+  <div className="text-center" style={{ marginTop: 12, marginBottom: 20 }}>
+    <Button
+      variant="light"
+      size="sm"
+      className="border shadow-sm"
+      style={{
+        backgroundColor: "transparent",
+        color: "white",
+        borderColor: "white",
+        boxShadow: "none",
+      }}
+      onClick={() => setSelectedDate(null)}
+      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")}
+      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+    >
+      Visa alla filmer
+    </Button>
+  </div>
+)}
           </Col>
 
           {/* FILMLISTA */}
-          <Col md={8} lg={10} className="p-4">
+          <Col md={8} lg={9} className="p-4">
+            <h5 className="homepage-heading">
+              {selectedDate
+                ? `Filmer som går den ${selectedDate.toLocaleDateString()}`
+                : "Alla filmer"}
+            </h5>
             <Row
               xs={1}
               sm={2}
               md={3}
-              lg={5}
-              className="homepage-movie-grid homepage-desktop-grid g-4"
+              lg={4}
+              className="homepage-movie-grid homepage-desktop-grid g-4 justify-content-start"
             >
-              {filteredMovies.map((movie) => (
+              {(selectedDate ? moviesForDate : filteredMovies).map((movie) => (
                 <Col key={movie.id}>
                   <Card className="homepage-movie-card h-100 d-flex flex-column">
                     <Card.Img variant="top" src={`src/${movie.movie_banner}`} />

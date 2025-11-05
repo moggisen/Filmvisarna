@@ -35,6 +35,7 @@ export default class RestApi {
     this.addUserBookingsRoute();
     this.addUserBookingDeleteRoute();
     this.addBookingSeatDetailsRoute();
+    this.addGuestUserRoute();
     this.addPostRoutes(); // C
     this.addGetRoutes(); // R
     this.addPutRoutes(); // U
@@ -333,6 +334,7 @@ export default class RestApi {
   // SLUT ------ Bookings / Mina sidor -----------------------------------------------
 
   // using express-validator to validate the data sent through the API during user-registration
+  // I din RestApiSQL.js - Uppdatera addRegisterRoute
   addRegisterRoute() {
     this.app.post(
       this.prefix + "register",
@@ -340,7 +342,7 @@ export default class RestApi {
         body("user_email")
           .trim()
           .notEmpty()
-          .withMessage("Email är obligatoriskt ")
+          .withMessage("Email är obligatoriskt")
           .isEmail()
           .withMessage("Måste vara en giltig email"),
         body("user_password_hash")
@@ -367,22 +369,36 @@ export default class RestApi {
           user_password_hash,
           user_name,
           user_phoneNumber,
+          is_guest = false, // ✅ Ny parameter för gäster
         } = req.body;
 
-        // Kontrollera att inte båda finns
-        if (user_password && user_password_hash) {
-          return res.status(400).json({
-            error:
-              "Skicka endast user_password eller user_password_hash, inte båda.",
-          });
-        }
+        // ✅ Guest logic: om is_guest är true, acceptera utan password
+        if (is_guest) {
+          if (user_password || user_password_hash) {
+            return res.status(400).json({
+              error: "Gästanvändare kan inte ha lösenord",
+            });
+          }
 
-        // Kontrollera att minst en finns
-        if (!user_password && !user_password_hash) {
-          return res.status(400).json({
-            error:
-              "Du måste skicka antingen user_password eller user_password_hash.",
-          });
+          req.session.user = {
+            id: newUser[0].id,
+            user_email: user_email,
+            is_guest: true,
+          };
+        } else {
+          // Normal user måste ha password
+          if (user_password && user_password_hash) {
+            return res.status(400).json({
+              error:
+                "Skicka endast user_password eller user_password_hash, inte båda.",
+            });
+          }
+          if (!user_password && !user_password_hash) {
+            return res.status(400).json({
+              error:
+                "Du måste skicka antingen user_password eller user_password_hash.",
+            });
+          }
         }
 
         try {
@@ -390,26 +406,81 @@ export default class RestApi {
           const existingUser = await this.db.query(
             "POST",
             req.url,
-            "SELECT id FROM users WHERE user_email = :user_email",
+            "SELECT id, user_password_hash FROM users WHERE user_email = :user_email",
             { user_email }
           );
 
           if (existingUser.length > 0) {
+            const user = existingUser[0];
+
+            // ✅ Om användaren finns som gäst (har inget lösenord) och vi försöker skapa gäst
+            if (is_guest && !user.user_password_hash) {
+              // Returnera den befintliga gästanvändaren
+              return res.status(200).json({
+                success: true,
+                message: "Gästanvändare finns redan",
+                user: { id: user.id, user_email, user_name, user_phoneNumber },
+                is_guest: true,
+              });
+            }
+
+            // ✅ Om användaren finns som gäst och vill bli medlem
+            if (!is_guest && !user.user_password_hash) {
+              // Uppgradera gäst till medlem
+              const userObj = {
+                user_password_hash: user_password_hash || user_password,
+                user_name: user_name || null,
+                user_phoneNumber: user_phoneNumber || null,
+              };
+
+              if (user_password) {
+                await PasswordEncryptor.encrypt(userObj);
+              }
+
+              await this.db.query(
+                "PUT",
+                req.url,
+                `UPDATE users 
+               SET user_password_hash = :user_password_hash, 
+                   user_name = :user_name, 
+                   user_phoneNumber = :user_phoneNumber 
+               WHERE id = :id`,
+                { ...userObj, id: user.id }
+              );
+
+              const updatedUser = await this.db.query(
+                "GET",
+                req.url,
+                `SELECT id, user_email, user_name, user_phoneNumber FROM users WHERE id = :id`,
+                { id: user.id }
+              );
+
+              req.session.user = updatedUser[0];
+
+              return res.status(200).json({
+                success: true,
+                message: "Gäst uppgraderad till medlem",
+                user: updatedUser[0],
+                is_guest: false,
+              });
+            }
+
             return res
               .status(400)
               .json({ error: "E-postadressen används redan" });
           }
 
-          // Skapa userObj
+          // ✅ Skapa ny användare (gäst eller medlem)
           const userObj = {
             user_email,
-            user_password_hash: user_password_hash || user_password,
+            user_password_hash: is_guest
+              ? null
+              : user_password_hash || user_password,
             user_name: user_name || null,
             user_phoneNumber: user_phoneNumber || null,
           };
 
-          // Hasha lösenordet om det inte redan är en hash
-          if (user_password) {
+          if (!is_guest && user_password) {
             await PasswordEncryptor.encrypt(userObj);
           }
 
@@ -429,12 +500,18 @@ export default class RestApi {
             { id: result.insertId }
           );
 
-          req.session.user = newUser[0];
+          // ✅ Logga in automatiskt om det inte är en gäst
+          if (!is_guest) {
+            req.session.user = newUser[0];
+          }
 
           res.status(201).json({
             success: true,
-            message: "Användare registrerad och inloggad",
+            message: is_guest
+              ? "Gästanvändare skapad"
+              : "Användare registrerad och inloggad",
             user: newUser[0],
+            is_guest,
           });
         } catch (error) {
           console.error(error);
@@ -444,23 +521,116 @@ export default class RestApi {
     );
   }
 
+  addGuestUserRoute() {
+    this.app.post(this.prefix + "guest", async (req, res) => {
+      const { user_email } = req.body;
+
+      if (!user_email) {
+        return res.status(400).json({ error: "Email krävs för gäst" });
+      }
+
+      try {
+        // Använd samma register-logik men med is_guest = true
+        const guestReq = {
+          body: {
+            user_email,
+            is_guest: true,
+          },
+        };
+
+        // Simulera register-anrop för gäst
+        const existingUser = await this.db.query(
+          "POST",
+          req.url,
+          "SELECT id, user_email FROM users WHERE user_email = :user_email AND user_password_hash IS NULL",
+          { user_email }
+        );
+
+        if (existingUser.length > 0) {
+          return res.json({
+            success: true,
+            user: existingUser[0],
+            is_guest: true,
+          });
+        }
+
+        // Skapa ny gäst
+        const result = await this.db.query(
+          "POST",
+          req.url,
+          `INSERT INTO users (user_email, user_password_hash, user_name, user_phoneNumber)
+         VALUES (:user_email, NULL, NULL, NULL)`,
+          { user_email }
+        );
+
+        const newGuest = await this.db.query(
+          "GET",
+          req.url,
+          `SELECT id, user_email FROM users WHERE id = :id`,
+          { id: result.insertId }
+        );
+
+        res.json({
+          success: true,
+          user: newGuest[0],
+          is_guest: true,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Kunde inte skapa gästanvändare" });
+      }
+    });
+  }
+
   // I din RestApiSQL.js
   addBookingRoute() {
     this.app.post(this.prefix + "makeBooking", async (req, res) => {
       try {
-        const { screening_id, seats } = req.body;
+        const { screening_id, seats, guest_email } = req.body;
+        const isGuestBooking = !!guest_email;
 
-        if (!req.session.user || !req.session.user.id) {
-          return res.status(401).json({ error: "Ej inloggad" });
+        let user_id;
+
+        // ✅ Guest booking logic - FIXA authorization
+        if (guest_email) {
+          console.log("Guest booking attempt with email:", guest_email);
+
+          // Skapa eller hämta guest user
+          const guestResult = await this.db.query(
+            "POST",
+            req.url,
+            "SELECT id FROM users WHERE user_email = :guest_email AND user_password_hash IS NULL",
+            { guest_email }
+          );
+
+          if (guestResult.length > 0) {
+            user_id = guestResult[0].id;
+            console.log("Found existing guest user:", user_id);
+          } else {
+            // Skapa ny guest user
+            const newGuest = await this.db.query(
+              "POST",
+              req.url,
+              "INSERT INTO users (user_email, user_password_hash) VALUES (:guest_email, NULL)",
+              { guest_email }
+            );
+            user_id = newGuest.insertId;
+            console.log("Created new guest user:", user_id);
+          }
+
+          // Sätt session user för guest (så att authorization fungerar)
+          req.session.user = {
+            id: user_id,
+            user_email: guest_email,
+            is_guest: true,
+          };
+        } else {
+          // Normal booking för inloggad användare
+          if (!req.session.user || !req.session.user.id) {
+            return res.status(401).json({ error: "Ej inloggad" });
+          }
+          user_id = req.session.user.id;
         }
-        const user_id = req.session.user.id;
-
-        console.log(
-          "Booking attempt - user_id:",
-          user_id,
-          "screening_id:",
-          screening_id
-        );
 
         // --- 1️⃣ Validering ---
         if (!screening_id || !Array.isArray(seats) || seats.length === 0) {
@@ -584,7 +754,6 @@ export default class RestApi {
         );
         console.log("Booking result:", bookingResult);
 
-        // ✅ FIX: Hämta booking_id korrekt
         let booking_id;
 
         if (bookingResult && bookingResult.insertId) {
@@ -636,14 +805,23 @@ export default class RestApi {
           console.log("Seat insert result:", seatResult);
         }
 
+        if (isGuestBooking) {
+          const guestSessionData = { ...req.session.user };
+
+          delete req.session.user;
+
+          console.log("Guest session cleared after booking:", guestSessionData);
+        }
+
         res.status(201).json({
-          message: "Bokning skapad!",
+          message: guest_email ? "Gästbokning skapad!" : "Bokning skapad!",
           booking_id: booking_id,
           booking_confirmation: confirmation,
           total_price: totalPrice,
           screening_id,
           screening_time: screeningTime,
           seats,
+          is_guest: !!guest_email,
         });
       } catch (err) {
         console.error("Booking error:", err);
