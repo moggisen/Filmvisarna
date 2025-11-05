@@ -337,16 +337,28 @@
   }
 }
 
-// Text hjälpklasser
-.homepage-body-text {
-  font-family: "Roboto", sans-serif;
-  font-weight: 300;
-  color: var(--home-text);
-  line-height: 1.6;
+.homepage-movie-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  background: transparent !important; // Tar bort vit bakgrund
+  border: none; // Tar bort kortets kantlinje
 }
 
-.homepage-heading-text {
-  font-family: "Inter", sans-serif;
-  font-weight: 700;
-  color: var(--home-text) !important;
+.movie-title-container {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.movie-title-wrapper {
+  color: var(--home-text); // din önskade färg
+  font-weight: bold;
+  font-size: 0.95rem; // lagom storlek
+  min-height: 3.0rem; // säkerställer att alla kort får samma höjd för titeln
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
