@@ -1,3 +1,4 @@
+// ProfilePage
 import { useState, useEffect } from "react";
 import { Button, Card, ListGroup, Modal } from "react-bootstrap";
 import type { BookingSummary } from "./types";
@@ -9,6 +10,16 @@ interface ProfilePageProps {
   onCancel: (bookingId: string) => void;
 }
 
+// Lägg till dessa typer för platsinformation
+type SeatDetailedRow = {
+  seat_id: number;
+  ticketType_id: number;
+  row_index: number; // 1 = rad A, 2 = rad B, etc
+  seat_number: number; // stolnumret i den raden
+  ticketType_name: string;
+  ticketType_price: number;
+};
+
 interface UserBooking {
   id: number;
   booking_confirmation: string;
@@ -17,11 +28,7 @@ interface UserBooking {
   movie_title: string;
   auditorium_name: string;
   total_price: number;
-  seats: Array<{
-    seat_id: number;
-    ticketType_name: string;
-    ticketType_price: number;
-  }>;
+  seats: SeatDetailedRow[]; // Uppdatera till den detaljerade typen
 }
 
 function formatPrice(n: number) {
@@ -41,6 +48,12 @@ function formatDateTime(iso: string) {
   return `${date} ${time}`;
 }
 
+// helper: gör om row_index (1,2,3...) till A,B,C...
+function rowIndexToLetter(rowIndex: number): string {
+  const baseCharCode = "A".charCodeAt(0);
+  return String.fromCharCode(baseCharCode + (rowIndex - 1));
+}
+
 export default function ProfilePage({ onBack }: ProfilePageProps) {
   const [userBookings, setUserBookings] = useState<UserBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +70,30 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
 
         if (response.ok) {
           const data = await response.json();
-          setUserBookings(data);
+
+          // För varje bokning, hämta detaljerad platsinformation
+          const bookingsWithDetailedSeats = await Promise.all(
+            data.map(async (booking: any) => {
+              try {
+                const seatsResponse = await fetch(
+                  `/api/bookings/${booking.id}/seatsDetailed`
+                );
+                if (seatsResponse.ok) {
+                  const detailedSeats: SeatDetailedRow[] =
+                    await seatsResponse.json();
+                  return {
+                    ...booking,
+                    seats: detailedSeats,
+                  };
+                }
+              } catch (error) {
+                console.error("Kunde inte hämta detaljerad platsinfo:", error);
+              }
+              return booking; // Fallback till originaldata om det misslyckas
+            })
+          );
+
+          setUserBookings(bookingsWithDetailedSeats);
         } else {
           console.error("Kunde inte hämta bokningar");
         }
@@ -80,7 +116,6 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
       });
 
       if (response.ok) {
-        // Uppdatera listan genom att ta bort den avbokade bokningen
         setUserBookings((prev) =>
           prev.filter((booking) => booking.id !== bookingId)
         );
@@ -99,6 +134,20 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
       setCancelLoading(false);
       setToCancel(null);
     }
+  };
+
+  // Funktion för att formatera platslistan som "A7, A8, B12"
+  const formatSeatList = (seats: SeatDetailedRow[]): string => {
+    return seats
+      .slice()
+      .sort((a, b) => {
+        if (a.row_index !== b.row_index) {
+          return a.row_index - b.row_index;
+        }
+        return a.seat_number - b.seat_number;
+      })
+      .map((seat) => `${rowIndexToLetter(seat.row_index)}${seat.seat_number}`)
+      .join(", ");
   };
 
   // Separate bookings in coming screenings and past screenings based on time of showing
@@ -151,13 +200,17 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
                     Salong: {booking.auditorium_name}
                   </div>
                   <div className="small text-info">
-                    Platser:{" "}
-                    {booking.seats
-                      .map(
-                        (seat) =>
-                          `Stol ${seat.seat_id} (${seat.ticketType_name})`
-                      )
-                      .join(", ")}
+                    Platser: {formatSeatList(booking.seats)}
+                    {booking.seats[0]?.ticketType_name && (
+                      <span>
+                        {" "}
+                        (
+                        {booking.seats
+                          .map((seat) => seat.ticketType_name)
+                          .join(", ")}
+                        )
+                      </span>
+                    )}
                   </div>
                   <div className="small text-info">
                     Bokningsnummer: {booking.booking_confirmation}
@@ -206,13 +259,17 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
                     Salong: {booking.auditorium_name}
                   </div>
                   <div className="small text-info">
-                    Platser:{" "}
-                    {booking.seats
-                      .map(
-                        (seat) =>
-                          `Stol ${seat.seat_id} (${seat.ticketType_name})`
-                      )
-                      .join(", ")}
+                    Platser: {formatSeatList(booking.seats)}
+                    {booking.seats[0]?.ticketType_name && (
+                      <span>
+                        {" "}
+                        (
+                        {booking.seats
+                          .map((seat) => seat.ticketType_name)
+                          .join(", ")}
+                        )
+                      </span>
+                    )}
                   </div>
                   <div className="small text-info">
                     Bokningsnummer: {booking.booking_confirmation}
@@ -261,11 +318,17 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
               <div>
                 Platser:{" "}
                 <span className="text-info">
-                  {toCancel.seats
-                    .map(
-                      (seat) => `Stol ${seat.seat_id} (${seat.ticketType_name})`
-                    )
-                    .join(", ")}
+                  {formatSeatList(toCancel.seats)}
+                  {toCancel.seats[0]?.ticketType_name && (
+                    <span>
+                      {" "}
+                      (
+                      {toCancel.seats
+                        .map((seat) => seat.ticketType_name)
+                        .join(", ")}
+                      )
+                    </span>
+                  )}
                 </span>
               </div>
               <div>
