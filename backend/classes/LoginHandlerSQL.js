@@ -43,23 +43,26 @@ export default class LoginHandler {
     // Creating a limiter for the attempts to login, after set max-attempts user gets locked out for set amount of time
     const loginLimiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 5000000, // max X login attempts  <--------- ÄNDRA DETTA ----------------------------------------------------------------------------------
+      max: 50, // max X login attempts  <--------- ÄNDRA DETTA ----------------------------------------------------------------------------------
       message: {
         error: "För många inloggningsförsök, försök igen om 15 minuter",
       },
     });
 
-    // Note: This code would have been slightly easer to read if we
-    // had hardcoded userTableName, userNameField and passwordFieldName
-    // (but we don't - for flexibility they are set in the settings.json file)
     this.app.post(this.prefix + "login", loginLimiter, async (req, res) => {
-      // If a user is already logged in, then do not allow login
-      if (req.session.user) {
+      // If a user is already logged in, then do not allow login. If a guest is "logged in", allow user to log in.
+      if (req.session.user && !req.session.user.is_guest) {
         this.restApi.sendJsonResponse(res, {
           error: "Someone is already logged in.",
         });
         return;
       }
+
+      // If it is a guest-session, allow users to log in
+      if (req.session.user && req.session.user.is_guest) {
+        console.log("Overwriting guest session with real login");
+      }
+
       // get the user from the db
       const result = await this.db.query(
         req.method,

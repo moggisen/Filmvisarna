@@ -85,7 +85,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
     return null;
   }, [idParam]);
 
-    //main states
+  //main states
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [screenings, setScreenings] = useState<Screening[]>([]);
@@ -94,39 +94,41 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
   const [movie, setMovie] = useState<Movie | null>(null);
 
   //fetch movie data
-useEffect(() => {
-  if (resolvedId === null) return;
+  useEffect(() => {
+    if (resolvedId === null) return;
 
-  const ac = new AbortController();
-  let cancelled = false;
+    const ac = new AbortController();
+    let cancelled = false;
 
-  (async () => {
-    try {
-      const res = await fetch(apiUrl(`/movies/${resolvedId}`), {
-        signal: ac.signal,
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    (async () => {
+      try {
+        const res = await fetch(apiUrl(`/movies/${resolvedId}`), {
+          signal: ac.signal,
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      const payload: Movie = Array.isArray(json) ? json[0] : json?.data ?? json;
-      if (!payload) throw new Error("Filmen hittades inte");
+        const payload: Movie = Array.isArray(json)
+          ? json[0]
+          : json?.data ?? json;
+        if (!payload) throw new Error("Filmen hittades inte");
 
-      if (!cancelled) setMovie(payload);
-    } catch (e: any) {
-      const name = e?.name ?? "";
-      const msg = e?.message ?? "";
-      if (name === "AbortError" || msg.includes("aborted")) return;
-      if (!cancelled) setError(msg || "Nätverksfel");
-    } finally {
-      if (!cancelled) setLoading(false);
-    }
-  })();
+        if (!cancelled) setMovie(payload);
+      } catch (e: any) {
+        const name = e?.name ?? "";
+        const msg = e?.message ?? "";
+        if (name === "AbortError" || msg.includes("aborted")) return;
+        if (!cancelled) setError(msg || "Nätverksfel");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
 
-  return () => {
-    cancelled = true;
-    ac.abort();
-  };
-}, [resolvedId]);
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [resolvedId]);
 
   //fetch screenings
   useEffect(() => {
@@ -224,7 +226,7 @@ useEffect(() => {
             {/*Accordion */}
             <Accordion defaultActiveKey="info">
               <Accordion.Item eventKey="info">
-                 {/*more info*/}
+                {/*more info*/}
                 <Accordion.Header>Mer info</Accordion.Header>
                 <Accordion.Body>
                   <p>
@@ -247,15 +249,15 @@ useEffect(() => {
                   </p>
                 </Accordion.Body>
               </Accordion.Item>
-             {/* reviews */}
+              {/* reviews */}
               <Accordion.Item eventKey="reviews">
                 <Accordion.Header>Recensioner</Accordion.Header>
                 <Accordion.Body>
                   <p className="mb-0 text-muted">Inga recensioner ännu.</p>
                 </Accordion.Body>
               </Accordion.Item>
-                
-                {/*book ticket*/}
+
+              {/*book ticket*/}
               <Accordion.Item eventKey="bookings">
                 <Accordion.Header>Föreställningar & bokning</Accordion.Header>
                 <Accordion.Body>
@@ -271,16 +273,32 @@ useEffect(() => {
                           className="d-flex align-items-center justify-content-between border-bottom pb-1"
                         >
                           <span>
-                            {fmtDate(s.screening_time)} • {fmtTime(s.screening_time)} • Salong{" "}
+                            {fmtDate(s.screening_time)} •{" "}
+                            {fmtTime(s.screening_time)} • Salong{" "}
                             {s.auditorium_id}
                           </span>
                           <Button
                             variant="primary"
                             size="sm"
                             onClick={() => {
-                              localStorage.setItem("selectedScreeningId", String(s.id));
-                              localStorage.setItem("selectedScreeningTime", s.screening_time);
-                              localStorage.setItem("selectedAuditoriumId", String(s.auditorium_id));
+                              console.log(
+                                "Klickade på Boka för screening:",
+                                s.id,
+                                "film:",
+                                m.id
+                              );
+                              localStorage.setItem(
+                                "selectedScreeningId",
+                                String(s.id)
+                              );
+                              localStorage.setItem(
+                                "selectedScreeningTime",
+                                s.screening_time
+                              );
+                              localStorage.setItem(
+                                "selectedAuditoriumId",
+                                String(s.auditorium_id)
+                              );
                               onBook();
                             }}
                           >
@@ -295,7 +313,7 @@ useEffect(() => {
             </Accordion>
           </article>
 
-            {/*poster*/}
+          {/*poster*/}
           <aside className="col-lg-5 order-1 order-lg-2 d-grid gap-3">
             {poster ? (
               <figure className="movie-poster d-none d-lg-flex justify-content-center">
