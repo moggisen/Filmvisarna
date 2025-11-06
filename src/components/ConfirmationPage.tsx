@@ -220,7 +220,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   }
 
   // Presentationsdata
-  const bookingCode = booking.booking_confirmation;
+  const bookingCode = (booking.booking_confirmation?.slice(0, 6) || "------").toUpperCase();
   const showtimeLabel = formatDateTimeISO(screening.screening_time);
 
   // Bygg "A7, A8, B12 ..."
