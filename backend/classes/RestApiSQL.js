@@ -353,6 +353,10 @@ export default class RestApi {
           .optional()
           .isLength({ min: 8, max: 35 })
           .withMessage("Lösenordet måste vara minst 8 tecken"),
+        body("user_phoneNumber")
+          .optional()
+          .matches(/^(\+46|0)[\d\s-]{7,15}$/)
+          .withMessage("Ange ett giltigt mobilnummer"),
       ],
       async (req, res) => {
         const result = validationResult(req);
