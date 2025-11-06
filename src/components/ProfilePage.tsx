@@ -1,6 +1,13 @@
 // ProfilePage
 import { useState, useEffect } from "react";
-import { Button, Card, ListGroup, Modal } from "react-bootstrap";
+import {
+  Button,
+  Card,
+  ListGroup,
+  Modal,
+  OverlayTrigger,
+  Tooltip,
+} from "react-bootstrap";
 import type { BookingSummary } from "./types";
 import "../styles/ConfirmationAndProfile.scss";
 
@@ -52,6 +59,15 @@ function formatDateTime(iso: string) {
 function rowIndexToLetter(rowIndex: number): string {
   const baseCharCode = "A".charCodeAt(0);
   return String.fromCharCode(baseCharCode + (rowIndex - 1));
+}
+
+// Funktion för att kolla om en bokning går att avboka (mer än 1 timme kvar)
+function canCancelBooking(screeningTime: string): boolean {
+  const now = new Date();
+  const screeningDate = new Date(screeningTime);
+  const timeDiff = screeningDate.getTime() - now.getTime();
+  const hoursDiff = timeDiff / (1000 * 60 * 60);
+  return hoursDiff > 1;
 }
 
 export default function ProfilePage({ onBack }: ProfilePageProps) {
@@ -186,52 +202,76 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
               Inga kommande bokningar.
             </ListGroup.Item>
           ) : (
-            upcomingBookings.map((booking) => (
-              <ListGroup.Item
-                key={booking.id}
-                className="bg-secondary border-primary text-info d-flex justify-content-between align-items-start py-4"
-              >
-                <div>
-                  <div className="fw-semibold">{booking.movie_title}</div>
-                  <div className="small text-info">
-                    {formatDateTime(booking.screening_time)}
-                  </div>
-                  <div className="small text-info">
-                    Salong: {booking.auditorium_name}
-                  </div>
-                  <div className="small text-info">
-                    Platser: {formatSeatList(booking.seats)}
-                    {booking.seats[0]?.ticketType_name && (
-                      <span>
-                        {" "}
-                        (
-                        {booking.seats
-                          .map((seat) => seat.ticketType_name)
-                          .join(", ")}
-                        )
-                      </span>
+            upcomingBookings.map((booking) => {
+              const canCancel = canCancelBooking(booking.screening_time);
+
+              return (
+                <ListGroup.Item
+                  key={booking.id}
+                  className="bg-secondary border-primary text-info d-flex justify-content-between align-items-start py-4"
+                >
+                  <div>
+                    <div className="fw-semibold">{booking.movie_title}</div>
+                    <div className="small text-info">
+                      {formatDateTime(booking.screening_time)}
+                    </div>
+                    <div className="small text-info">
+                      Salong: {booking.auditorium_name}
+                    </div>
+                    <div className="small text-info">
+                      Platser: {formatSeatList(booking.seats)}
+                      {booking.seats[0]?.ticketType_name && (
+                        <span>
+                          {" "}
+                          (
+                          {booking.seats
+                            .map((seat) => seat.ticketType_name)
+                            .join(", ")}
+                          )
+                        </span>
+                      )}
+                    </div>
+                    <div className="small text-info">
+                      Bokningsnummer: {booking.booking_confirmation}
+                    </div>
+                    {!canCancel && (
+                      <div className="small text-warning mt-1">
+                        Kan inte avbokas (mindre än 1 timme kvar)
+                      </div>
                     )}
                   </div>
-                  <div className="small text-info">
-                    Bokningsnummer: {booking.booking_confirmation}
+                  <div className="text-end">
+                    <div className="fw-semibold">
+                      {formatPrice(booking.total_price)}
+                    </div>
+                    <OverlayTrigger
+                      placement="top"
+                      overlay={
+                        <Tooltip>
+                          {canCancel
+                            ? "Avboka denna visning"
+                            : "Går inte att avboka mindre än 1 timme före visning"}
+                        </Tooltip>
+                      }
+                    >
+                      <span>
+                        <Button
+                          size="sm"
+                          variant={canCancel ? "dark" : "secondary"}
+                          className={`border-light mt-2 ${
+                            !canCancel ? "text-danger" : ""
+                          }`}
+                          onClick={() => canCancel && setToCancel(booking)}
+                          disabled={cancelLoading || !canCancel}
+                        >
+                          Avboka
+                        </Button>
+                      </span>
+                    </OverlayTrigger>
                   </div>
-                </div>
-                <div className="text-end">
-                  <div className="fw-semibold">
-                    {formatPrice(booking.total_price)}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="dark"
-                    className="border-light mt-2"
-                    onClick={() => setToCancel(booking)}
-                    disabled={cancelLoading}
-                  >
-                    Avboka
-                  </Button>
-                </div>
-              </ListGroup.Item>
-            ))
+                </ListGroup.Item>
+              );
+            })
           )}
         </ListGroup>
       </Card>
