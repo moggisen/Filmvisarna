@@ -232,7 +232,8 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
                       )}
                     </div>
                     <div className="small text-info">
-                      Bokningsnummer: {booking.booking_confirmation}
+                      Bokningsnummer:{" "}
+                      {booking.booking_confirmation.slice(0, 6).toUpperCase()}
                     </div>
                     {!canCancel && (
                       <div className="small text-warning mt-1">
@@ -312,7 +313,8 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
                     )}
                   </div>
                   <div className="small text-info">
-                    Bokningsnummer: {booking.booking_confirmation}
+                    Bokningsnummer:{" "}
+                    {booking.booking_confirmation.slice(0, 6).toUpperCase()}
                   </div>
                 </div>
                 <div className="text-end">
