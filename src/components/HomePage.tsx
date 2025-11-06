@@ -250,26 +250,34 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         />
 
         {/* Vit, centrerad knapp för att återgå */}
-       {selectedDate && (
-  <div className="text-center" style={{ marginTop: 12, marginBottom: 28 }}>
-    <Button
-      variant="light"
-      size="sm"
-      className="border shadow-sm"
-      style={{
-        backgroundColor: "transparent",
-        color: "white",
-        borderColor: "white",
-        boxShadow: "none",
-      }}
-      onClick={() => setSelectedDate(null)}
-      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")}
-      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-    >
-      Visa alla filmer
-    </Button>
-  </div>
-)}
+        {selectedDate && (
+          <div
+            className="text-center"
+            style={{ marginTop: 12, marginBottom: 28 }}
+          >
+            <Button
+              variant="light"
+              size="sm"
+              className="border shadow-sm"
+              style={{
+                backgroundColor: "transparent",
+                color: "white",
+                borderColor: "white",
+                boxShadow: "none",
+              }}
+              onClick={() => setSelectedDate(null)}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  "rgba(255,255,255,0.1)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = "transparent")
+              }
+            >
+              Visa alla filmer
+            </Button>
+          </div>
+        )}
 
         {/* FILMER FÖR VALT DATUM / ALLA */}
         {selectedDate ? (
@@ -285,7 +293,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 {moviesForDate.map((movie) => (
                   <Col key={movie.id}>
                     <Card className="homepage-movie-card h-100 d-flex flex-column">
-                      <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
+                      <Card.Img
+                        variant="top"
+                        src={`src/${movie.movie_banner}`}
+                      />
                       <div className="movie-title-wrapper text-center mt-2 mb-2">
                         {movie.movie_title}
                       </div>
@@ -321,7 +332,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           )
         ) : (
           <>
-            <h5 className="homepage-heading text-center" style={{ marginTop: "1.25rem" }}>
+            <h5
+              className="homepage-heading text-center"
+              style={{ marginTop: "1.25rem" }}
+            >
               Alla filmer
             </h5>
             <Row xs={2} xl={4} className="homepage-movie-grid g-3 mb-5">
@@ -409,26 +423,34 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             />
 
             {/* Vit knapp även i desktop-sidokolumn */}
-          {selectedDate && (
-  <div className="text-center" style={{ marginTop: 12, marginBottom: 20 }}>
-    <Button
-      variant="light"
-      size="sm"
-      className="border shadow-sm"
-      style={{
-        backgroundColor: "transparent",
-        color: "white",
-        borderColor: "white",
-        boxShadow: "none",
-      }}
-      onClick={() => setSelectedDate(null)}
-      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")}
-      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-    >
-      Visa alla filmer
-    </Button>
-  </div>
-)}
+            {selectedDate && (
+              <div
+                className="text-center"
+                style={{ marginTop: 12, marginBottom: 20 }}
+              >
+                <Button
+                  variant="light"
+                  size="sm"
+                  className="border shadow-sm"
+                  style={{
+                    backgroundColor: "transparent",
+                    color: "white",
+                    borderColor: "white",
+                    boxShadow: "none",
+                  }}
+                  onClick={() => setSelectedDate(null)}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor =
+                      "rgba(255,255,255,0.1)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "transparent")
+                  }
+                >
+                  Visa alla filmer
+                </Button>
+              </div>
+            )}
           </Col>
 
           {/* FILMLISTA */}
