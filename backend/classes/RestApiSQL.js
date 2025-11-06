@@ -25,7 +25,7 @@ export default class RestApi {
     // use middleware to capture malformed json errors
     app.use(catchExpressJsonErrors);
     // use middleware to check password strength
-    PasswordChecker.addMiddleware(app, this.prefix, settings);
+    // PasswordChecker.addMiddleware(app, this.prefix, settings);
     // add login routes
     new LoginHandler(this);
     // add post, get, put and delete routes
@@ -342,6 +342,10 @@ export default class RestApi {
           .optional()
           .isLength({ min: 8, max: 35 })
           .withMessage("Lösenordet måste vara minst 8 tecken"),
+        body("user_phoneNumber")
+          .optional()
+          .matches(/^(\+46|0)[\d\s-]{7,15}$/)
+          .withMessage("Ange ett giltigt mobilnummer"),
       ],
       async (req, res) => {
         const result = validationResult(req);

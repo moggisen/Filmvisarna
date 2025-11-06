@@ -76,7 +76,9 @@ export default class LoginHandler {
       const foundDbUser = result[0] || null;
       // if the user is not  found return an error
       if (!foundDbUser) {
-        this.restApi.sendJsonResponse(res, { error: "No such user." });
+        this.restApi.sendJsonResponse(res, {
+          error: "Ogiltigt användarnamn eller lösenord",
+        });
         return;
       }
       // get the name of the db field with the password
@@ -90,7 +92,9 @@ export default class LoginHandler {
           foundDbUser[passwordFieldlName]
         ))
       ) {
-        this.restApi.sendJsonResponse(res, { error: "Password mismatch." });
+        this.restApi.sendJsonResponse(res, {
+          error: "Ogiltigt användarnamn eller lösenord",
+        });
         return;
       }
       // the user has successfully logged in, store in req.session.user
