@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../styles/detail.scss";
 import Accordion from "react-bootstrap/Accordion";
 import Button from "react-bootstrap/Button";
+import Card from "react-bootstrap/Card";
+
 
 //types for movie data
 interface Movie {
@@ -18,6 +20,8 @@ interface Movie {
   movie_banner?: string;
   movie_trailer?: string;
   age_limit: number;
+  review1?: Review;
+  review2?: Review;
 }
 
 interface Screening {
@@ -25,6 +29,13 @@ interface Screening {
   screening_time: string;
   movie_id: number;
   auditorium_id: number;
+}
+
+
+interface Review {
+  text: string;
+  author: string;
+  rating: number;
 }
 
 //props for component
@@ -87,9 +98,8 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
 
   //main states
   const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const [ notFound ] = useState(false);
   const [screenings, setScreenings] = useState<Screening[]>([]);
-  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [movie, setMovie] = useState<Movie | null>(null);
 
@@ -205,6 +215,10 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
   const trailerId = toYouTubeId(m.movie_trailer);
   const cast = csvToList(m.movie_cast);
 
+   const reviews: Review[] = [m.review1, m.review2].filter(
+    (r): r is Review => Boolean(r && r.text)
+  );
+
   return (
     <div className="movie-detail-theme min-vh-100 d-flex flex-column">
       <main className="container-xxl py-4 flex-grow-1">
@@ -226,6 +240,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
             {/*Accordion */}
             <Accordion defaultActiveKey="info">
               <Accordion.Item eventKey="info">
+
                 {/*more info*/}
                 <Accordion.Header>Mer info</Accordion.Header>
                 <Accordion.Body>
@@ -249,11 +264,30 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                   </p>
                 </Accordion.Body>
               </Accordion.Item>
+
               {/* reviews */}
               <Accordion.Item eventKey="reviews">
                 <Accordion.Header>Recensioner</Accordion.Header>
                 <Accordion.Body>
-                  <p className="mb-0 text-muted">Inga recensioner ännu.</p>
+                  {reviews.length === 0 ? (
+                    <p className="mb-0 text-muted">Inga recensioner ännu.</p>
+                  ) : (
+                    <div className="d-flex flex-column gap-3">
+                      {reviews.map((r, i) => (
+                        <Card key={i} className="border rounded-2">
+                          <Card.Body className="p-3">
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                              <strong>{r.author || "Okänd källa"}</strong>
+                              <span className="badge bg-secondary">
+                                Betyg: {r.rating}/5
+                              </span>
+                            </div>
+                            <p className="mb-0">{r.text}</p>
+                          </Card.Body>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </Accordion.Body>
               </Accordion.Item>
 
