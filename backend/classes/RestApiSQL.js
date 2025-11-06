@@ -4,7 +4,6 @@ import RestSearch from "./RestSearchSQL.js";
 import Acl from "./Acl.js";
 import catchExpressJsonErrors from "../helpers/catchExpressJsonErrors.js";
 import PasswordChecker from "../helpers/PasswordChecker.js";
-import SeatsHub from "../helpers/SeatsHub.js";
 import { body, query, validationResult } from "express-validator";
 
 // import the correct version of the DBQueryMaker
@@ -40,16 +39,6 @@ export default class RestApi {
     this.addGetRoutes(); // R
     this.addPutRoutes(); // U
     this.addDeleteRoutes(); // D
-
-    this.seatsHub = new SeatsHub({
-      // Vill du initialisera upptagna platser från DB per visning?
-      // loadSeatsFromDB: async (screeningId) => new Set()
-    });
-
-    // SSE-ström (krockar inte med CRUD)
-    this.app.get(this.prefix + "screenings/:id/seats/stream", (req, res) =>
-      this.seatsHub.stream(req, res)
-    );
 
     app.get("/api/ticketTypes", async (req, res) => {
       try {

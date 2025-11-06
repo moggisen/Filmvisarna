@@ -16,6 +16,9 @@ if (!isSQLite && !isMySQL && !isMongoDB) {
 const RestApi =
   (await import(isSQL ? './RestAPiSQL.js' : './RestApiMongoDB.js')).default; 
 
+// 🔽 ADD: importera SSE-route + poller
+import SseRoute from './SseRoute.js';
+import { startEventsPoller } from '../helpers/eventsPoller.js';
 
 export default class Server {
 
@@ -35,6 +38,12 @@ export default class Server {
     ));
     // Add rest routes
     new RestApi(this.app, this.settings);
+
+    if (isMySQL) {
+    new SseRoute(this.app, this.settings);
+    startEventsPoller(400); // 300–800 ms är lagom
+    }
+  
     // Add static folder to serve
     this.addStaticFolder();
   }
