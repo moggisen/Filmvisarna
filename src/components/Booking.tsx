@@ -179,29 +179,55 @@ const useSeatManagement = (
     [occupied, seatStruct.indexByRow]
   );
 
-  // SSE för realtidsuppdatering
-  useEffect(() => {
-    if (!screeningId) return;
-    setOccupied(new Set(seatStruct.takenSet));
+  // SSE för realtidsuppdatering (ny backend: /api/bookings/stream)
+useEffect(() => {
+  if (!screeningId) return;
 
-    const es = new EventSource(
-      `${API_PREFIX}/screenings/${screeningId}/seats/stream`
-    );
-    const handleMessage = (msg: any) => {
-      setOccupied((prev) => {
-        if (msg.type === "snapshot" && msg.seats) return new Set(msg.seats);
-        const next = new Set(prev);
-        if (msg.type === "booked" && msg.seats)
-          msg.seats.forEach((n: number) => next.add(n));
-        if (msg.type === "released" && msg.seats)
-          msg.seats.forEach((n: number) => next.delete(n));
-        return next;
-      });
+  // Snabbt seed från layouten så UI inte blinkar i väntan på init-event
+  setOccupied(new Set(seatStruct.takenSet));
+
+  const url = new URL(`${API_PREFIX}/bookings/stream`, window.location.origin);
+  url.searchParams.set("screeningId", String(screeningId));
+
+  const es = new EventSource(url.toString(), { withCredentials: true });
+
+  // 1) Init: backend skickar aktuellt upptagna säten för visningen
+  const onInit = (e: MessageEvent) => {
+    const msg = JSON.parse(e.data) as {
+      screeningId: number;
+      occupied: { seat_id: number }[];
     };
+    setOccupied(new Set(msg.occupied.map((s) => s.seat_id)));
+  };
 
-    es.onmessage = (ev) => handleMessage(JSON.parse(ev.data));
-    return () => es.close();
-  }, [screeningId, seatStruct.takenSet]);
+  // 2) Live: INSERT/DELETE på bookingsXseats → uppdatera occupied
+  const onChanged = (e: MessageEvent) => {
+    const ev = JSON.parse(e.data) as {
+      id: number;
+      op: "INSERT" | "UPDATE" | "DELETE";
+      screeningId: number;
+      seatId: number;
+    };
+    setOccupied((prev) => {
+      const next = new Set(prev);
+      if (ev.op === "INSERT") next.add(ev.seatId);
+      else if (ev.op === "DELETE") next.delete(ev.seatId);
+      // UPDATE påverkar normalt inte upptagen/ledig-status → ignorera
+      return next;
+    });
+  };
+
+  es.addEventListener("init", onInit);
+  es.addEventListener("booking_changed", onChanged);
+
+  es.onerror = () => {
+    // EventSource försöker återansluta automatiskt
+    // valfritt: visa “Återansluter…” i UI
+  };
+
+  return () => es.close();
+}, [screeningId, seatStruct.takenSet]);
+
 
   // Auto-select bästa platser när behov ändras - FIXED: Respektera manuella val
   useEffect(() => {
@@ -973,6 +999,7 @@ export default function Booking({
             <div className="card booking-panel h-100">
               <div className="card-header">Välj föreställning</div>
               <div className="card-body">
+                <section className="auditoriums">
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Film</label>
                   {loadingMovies ? (
@@ -1031,7 +1058,8 @@ export default function Booking({
                 <div className="form-control-plaintext hidden-text">
                   {auditoriumName || "–"}
                 </div>
-
+                </section>
+                <section className="tickets">
                 <h6 className="mb-3 fw-bold">Antal biljetter</h6>
                 <TicketRow
                   label="Vuxen"
@@ -1057,6 +1085,7 @@ export default function Booking({
                     setTickets((t) => ({ ...t, senior: Math.max(0, v) }))
                   }
                 />
+                </section>
               </div>
             </div>
           </div>
@@ -1081,7 +1110,7 @@ export default function Booking({
                 {/* DESKTOP: vanlig seat-grid (döljs på mobil) */}
                 <div className="seat-viewport" ref={viewportRef}>
                   <div className="seat-stage" ref={stageRef}>
-                    <div className="screenbar" />
+                    <div className="screenbar">BIODUK</div>
                     <div className="seat-grid" aria-label="Salsplatser">
                       {seatStruct.indexByRow.map((rowNos, ri) => (
                         <div className="seat-row" key={ri}>

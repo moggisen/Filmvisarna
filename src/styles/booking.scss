@@ -32,6 +32,13 @@
       background-color: #113255;
       color:#fff;
 
+
+    }
+    .auditoriums {
+      padding-top: 30px;
+    }
+    .tickets {
+      padding-top: 50px;
     }
 
     .form-select {
@@ -58,16 +65,24 @@
     font-weight: 700;
     font-size: 15px;
   }
-
   /* ==== Duken/Screen ==== */
   .screenbar {
-    height: 90px;
-    background: #666;
-    border-radius: 8px;
-    margin: 0 auto 14px;
-    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2);
-    width: 600px;
+  height: 60px;
+  //   // background: #666;
+  background: linear-gradient(to bottom, #fff 0%, #eaeaea 100%);
+  transform: perspective(600px) rotateX(-25deg); /* lutning */
+  transform-origin: center bottom;
+  box-shadow: 0 0 40px rgba(255,255,255,0.6);
+  margin: 0 auto 30px;
+  width: 600px;
+  font-size: 30px;
+  color: #2d2d2d;
+  display: flex;
+  justify-content: center;
+  align-items: center;     
+  font-family: "Roboto", sans-serif;
   }
+
 
   /* ==== Seat grid ==== */
   .seat-grid {
@@ -133,8 +148,9 @@
   .seat-viewport {
     position: relative;
     width: 100%;
-    height: 60vh;
+    height: 75vh;
     overflow: hidden;
+    background: radial-gradient(circle at top center, #113e6d, #113255);
 
     .seat-stage {
       position: absolute;
@@ -193,13 +209,13 @@
     --seat-size: 40px;
 
     .seat-viewport {
-      height: 72vh;
+      height: 35vh;
     }
 
     .screenbar {
       height: 48px;
       width: 520px;
-      margin-bottom: 10px;
+      margin-bottom: 50px;
     }
 
     .seat-grid {
