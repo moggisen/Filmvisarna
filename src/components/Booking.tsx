@@ -180,54 +180,56 @@ const useSeatManagement = (
   );
 
   // SSE för realtidsuppdatering (ny backend: /api/bookings/stream)
-useEffect(() => {
-  if (!screeningId) return;
+  useEffect(() => {
+    if (!screeningId) return;
 
-  // Snabbt seed från layouten så UI inte blinkar i väntan på init-event
-  setOccupied(new Set(seatStruct.takenSet));
+    // Snabbt seed från layouten så UI inte blinkar i väntan på init-event
+    setOccupied(new Set(seatStruct.takenSet));
 
-  const url = new URL(`${API_PREFIX}/bookings/stream`, window.location.origin);
-  url.searchParams.set("screeningId", String(screeningId));
+    const url = new URL(
+      `${API_PREFIX}/bookings/stream`,
+      window.location.origin
+    );
+    url.searchParams.set("screeningId", String(screeningId));
 
-  const es = new EventSource(url.toString(), { withCredentials: true });
+    const es = new EventSource(url.toString(), { withCredentials: true });
 
-  // 1) Init: backend skickar aktuellt upptagna säten för visningen
-  const onInit = (e: MessageEvent) => {
-    const msg = JSON.parse(e.data) as {
-      screeningId: number;
-      occupied: { seat_id: number }[];
+    // 1) Init: backend skickar aktuellt upptagna säten för visningen
+    const onInit = (e: MessageEvent) => {
+      const msg = JSON.parse(e.data) as {
+        screeningId: number;
+        occupied: { seat_id: number }[];
+      };
+      setOccupied(new Set(msg.occupied.map((s) => s.seat_id)));
     };
-    setOccupied(new Set(msg.occupied.map((s) => s.seat_id)));
-  };
 
-  // 2) Live: INSERT/DELETE på bookingsXseats → uppdatera occupied
-  const onChanged = (e: MessageEvent) => {
-    const ev = JSON.parse(e.data) as {
-      id: number;
-      op: "INSERT" | "UPDATE" | "DELETE";
-      screeningId: number;
-      seatId: number;
+    // 2) Live: INSERT/DELETE på bookingsXseats → uppdatera occupied
+    const onChanged = (e: MessageEvent) => {
+      const ev = JSON.parse(e.data) as {
+        id: number;
+        op: "INSERT" | "UPDATE" | "DELETE";
+        screeningId: number;
+        seatId: number;
+      };
+      setOccupied((prev) => {
+        const next = new Set(prev);
+        if (ev.op === "INSERT") next.add(ev.seatId);
+        else if (ev.op === "DELETE") next.delete(ev.seatId);
+        // UPDATE påverkar normalt inte upptagen/ledig-status → ignorera
+        return next;
+      });
     };
-    setOccupied((prev) => {
-      const next = new Set(prev);
-      if (ev.op === "INSERT") next.add(ev.seatId);
-      else if (ev.op === "DELETE") next.delete(ev.seatId);
-      // UPDATE påverkar normalt inte upptagen/ledig-status → ignorera
-      return next;
-    });
-  };
 
-  es.addEventListener("init", onInit);
-  es.addEventListener("booking_changed", onChanged);
+    es.addEventListener("init", onInit);
+    es.addEventListener("booking_changed", onChanged);
 
-  es.onerror = () => {
-    // EventSource försöker återansluta automatiskt
-    // valfritt: visa “Återansluter…” i UI
-  };
+    es.onerror = () => {
+      // EventSource försöker återansluta automatiskt
+      // valfritt: visa “Återansluter…” i UI
+    };
 
-  return () => es.close();
-}, [screeningId, seatStruct.takenSet]);
-
+    return () => es.close();
+  }, [screeningId, seatStruct.takenSet]);
 
   // Auto-select bästa platser när behov ändras - FIXED: Respektera manuella val
   useEffect(() => {
@@ -1000,91 +1002,95 @@ export default function Booking({
               <div className="card-header">Välj föreställning</div>
               <div className="card-body">
                 <section className="auditoriums">
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Film</label>
-                  {loadingMovies ? (
-                    <div className="form-control-plaintext">Laddar filmer…</div>
-                  ) : movieError ? (
-                    <div className="text-danger small">{movieError}</div>
-                  ) : (
-                    <select
-                      className="form-select"
-                      value={movieId ?? ""}
-                      onChange={(e) =>
-                        setMovieId(Number(e.target.value) || null)
-                      }
-                    >
-                      {bookableMovies.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.title}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Datum & tid</label>
-                  {loadingScreenings ? (
-                    <div className="form-control-plaintext">
-                      Laddar visningar…
-                    </div>
-                  ) : screeningsError ? (
-                    <div className="text-danger small">
-                      Kunde inte ladda visningar
-                    </div>
-                  ) : (
-                    <select
-                      className="form-select"
-                      value={selectedScreeningId ?? ""}
-                      onChange={(e) =>
-                        setSelectedScreeningId(Number(e.target.value) || null)
-                      }
-                    >
-                      {screeningsForMovie.length === 0 ? (
-                        <option value="">Inga visningar för vald film</option>
-                      ) : (
-                        screeningsForMovie.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Film</label>
+                    {loadingMovies ? (
+                      <div className="form-control-plaintext">
+                        Laddar filmer…
+                      </div>
+                    ) : movieError ? (
+                      <div className="text-danger small">{movieError}</div>
+                    ) : (
+                      <select
+                        className="form-select"
+                        value={movieId ?? ""}
+                        onChange={(e) =>
+                          setMovieId(Number(e.target.value) || null)
+                        }
+                      >
+                        {bookableMovies.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.title}
                           </option>
-                        ))
-                      )}
-                    </select>
-                  )}
-                </div>
+                        ))}
+                      </select>
+                    )}
+                  </div>
 
-                <label className="form-label fw-semibold">Salong</label>
-                <div className="form-control-plaintext hidden-text">
-                  {auditoriumName || "–"}
-                </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">
+                      Datum & tid
+                    </label>
+                    {loadingScreenings ? (
+                      <div className="form-control-plaintext">
+                        Laddar visningar…
+                      </div>
+                    ) : screeningsError ? (
+                      <div className="text-danger small">
+                        Kunde inte ladda visningar
+                      </div>
+                    ) : (
+                      <select
+                        className="form-select"
+                        value={selectedScreeningId ?? ""}
+                        onChange={(e) =>
+                          setSelectedScreeningId(Number(e.target.value) || null)
+                        }
+                      >
+                        {screeningsForMovie.length === 0 ? (
+                          <option value="">Inga visningar för vald film</option>
+                        ) : (
+                          screeningsForMovie.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    )}
+                  </div>
+
+                  <label className="form-label fw-semibold">Salong</label>
+                  <div className="form-control-plaintext hidden-text">
+                    {auditoriumName || "–"}
+                  </div>
                 </section>
                 <section className="tickets">
-                <h6 className="mb-3 fw-bold">Antal biljetter</h6>
-                <TicketRow
-                  label="Vuxen"
-                  price={prices.adult}
-                  value={tickets.adult}
-                  onChange={(v) =>
-                    setTickets((t) => ({ ...t, adult: Math.max(0, v) }))
-                  }
-                />
-                <TicketRow
-                  label="Barn"
-                  price={prices.child}
-                  value={tickets.child}
-                  onChange={(v) =>
-                    setTickets((t) => ({ ...t, child: Math.max(0, v) }))
-                  }
-                />
-                <TicketRow
-                  label="Pensionär"
-                  price={prices.senior}
-                  value={tickets.senior}
-                  onChange={(v) =>
-                    setTickets((t) => ({ ...t, senior: Math.max(0, v) }))
-                  }
-                />
+                  <h6 className="mb-3 fw-bold">Antal biljetter</h6>
+                  <TicketRow
+                    label="Vuxen"
+                    price={prices.adult}
+                    value={tickets.adult}
+                    onChange={(v) =>
+                      setTickets((t) => ({ ...t, adult: Math.max(0, v) }))
+                    }
+                  />
+                  <TicketRow
+                    label="Barn"
+                    price={prices.child}
+                    value={tickets.child}
+                    onChange={(v) =>
+                      setTickets((t) => ({ ...t, child: Math.max(0, v) }))
+                    }
+                  />
+                  <TicketRow
+                    label="Pensionär"
+                    price={prices.senior}
+                    value={tickets.senior}
+                    onChange={(v) =>
+                      setTickets((t) => ({ ...t, senior: Math.max(0, v) }))
+                    }
+                  />
                 </section>
               </div>
             </div>
@@ -1101,11 +1107,12 @@ export default function Booking({
               <div className="card-body">
                 {/* MOBIL: dropdown för platser */}
                 <SeatPickerMobile
-                  totalSeats={seatStruct.indexByRow.flat().length}
+                  rows={seatStruct.indexByRow}
                   occupied={occupied}
                   selected={selected}
                   needed={needed}
                   onToggle={toggleSeat}
+                  getSeatLabel={getSeatLabel}
                 />
                 {/* DESKTOP: vanlig seat-grid (döljs på mobil) */}
                 <div className="seat-viewport" ref={viewportRef}>
@@ -1351,75 +1358,140 @@ function TicketRow({
 }
 
 function SeatPickerMobile({
-  totalSeats,
+  rows,
   occupied,
   selected,
   needed,
   onToggle,
+  getSeatLabel,
 }: {
-  totalSeats: number;
+  rows: number[][];
   occupied: Set<number>;
   selected: Set<number>;
   needed: number;
-  onToggle: (no: number) => void;
+  onToggle: (seatId: number) => void;
+  getSeatLabel: (seatId: number) => string;
 }) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
   const canAddMore = selected.size < needed;
 
-  // Skapa en lista med alla platser från alla rader
-  const allSeats = useMemo(() => {
-    const seats: number[] = [];
-    for (let i = 1; i <= totalSeats; i++) {
-      seats.push(i);
-    }
-    return seats;
-  }, [totalSeats]);
+  // Sorterar efter radbokstav + siffra (A1, A2, A10) istället för sträng-fel
+  const sortBySeatLabel = (a: number, b: number) => {
+    const la = getSeatLabel(a);
+    const lb = getSeatLabel(b);
+
+    const rowA = la.charAt(0);
+    const rowB = lb.charAt(0);
+
+    const numA = parseInt(la.slice(1), 10) || 0;
+    const numB = parseInt(lb.slice(1), 10) || 0;
+
+    if (rowA < rowB) return -1;
+    if (rowA > rowB) return 1;
+    return numA - numB;
+  };
+
+  // Text i "stängd" läge
+  const summaryLabel =
+    selected.size > 0
+      ? `Platser: ${[...selected]
+          .sort(sortBySeatLabel)
+          .map((id) => getSeatLabel(id))
+          .join(", ")}`
+      : needed > 0
+      ? "Öppna och välj platser"
+      : "Välj antal biljetter först";
+
+  // 🔹 Klick utanför → stäng
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (!wrapperRef.current) return;
+      const target = e.target as Node;
+      if (!wrapperRef.current.contains(target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [open]);
 
   return (
-    <div className="seat-picker-mobile d-lg-none">
+    <div className="seat-picker-mobile d-lg-none" ref={wrapperRef}>
       <label className="form-label fw-semibold">
         Välj platser{" "}
         {needed > 0 ? `(behöver ${needed})` : `(välj antal biljetter först)`}
       </label>
 
-      {/* En enkel "dropdown" med checkboxar */}
-      <details className="spm-dropdown">
-        <summary className="btn form-select w-100 d-flex justify-content-between align-items-center">
-          {selected.size
-            ? `Platser: ${Array.from(selected)
-                .sort((a, b) => a - b)
-                .join(", ")}`
-            : "Öppna och bocka i platser"}
-          <span className="ms-2">▾</span>
-        </summary>
+      {/* Klickbar "select" som öppnar/stänger panelen */}
+      <button
+        type="button"
+        className="spm-summary form-select d-flex justify-content-between align-items-center"
+        onClick={() => {
+          if (needed > 0) setOpen((o) => !o);
+        }}
+        disabled={needed === 0}
+      >
+        <span>{summaryLabel}</span>
+        <span className="ms-2">{open ? "▴" : "▾"}</span>
+      </button>
 
+      {open && (
         <div className="spm-panel mt-2">
-          {allSeats.map((seatId) => {
-            const taken = occupied.has(seatId);
-            const checked = selected.has(seatId);
-            // tillåt bocka UR alltid; blockera nya val om max är nått eller inga biljetter valda
-            const disabled = taken || (!checked && !canAddMore) || needed === 0;
+          {rows.map((rowSeatIds, rowIndex) => {
+            if (!rowSeatIds.length) return null;
+
+            const rowLetter = String.fromCharCode("A".charCodeAt(0) + rowIndex);
+
+            const sortedSeats = [...rowSeatIds].sort(sortBySeatLabel);
 
             return (
-              <label
-                key={seatId}
-                className="form-check d-flex align-items-center gap-2 spm-item"
-              >
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  checked={checked}
-                  disabled={disabled}
-                  onChange={() => onToggle(seatId)}
-                />
-                <span>
-                  Plats {seatId}
-                  {taken ? " (upptagen)" : ""}
-                </span>
-              </label>
+              <div key={rowIndex} className="spm-row">
+                <div className="spm-row-label">Rad {rowLetter}</div>
+                <div className="spm-row-seats">
+                  {sortedSeats.map((seatId) => {
+                    const label = getSeatLabel(seatId);
+                    const taken = occupied.has(seatId);
+                    const checked = selected.has(seatId);
+                    const disabled =
+                      taken || (!checked && !canAddMore) || needed === 0;
+
+                    const stateClass = taken
+                      ? "spm-seat-taken"
+                      : checked
+                      ? "spm-seat-selected"
+                      : "spm-seat-free";
+
+                    return (
+                      <button
+                        key={seatId}
+                        type="button"
+                        className={`spm-seat-pill ${stateClass}`}
+                        onClick={() => {
+                          if (!disabled) onToggle(seatId);
+                        }}
+                        disabled={disabled}
+                        aria-pressed={checked}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>
-      </details>
+      )}
     </div>
   );
 }
