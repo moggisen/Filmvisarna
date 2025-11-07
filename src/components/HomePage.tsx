@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import {
   Container,
   Row,
@@ -10,9 +11,10 @@ import {
   Spinner,
   Carousel,
 } from "react-bootstrap";
-import "../styles/homepage.scss";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+
+import "../styles/homepage.scss";
 
 import spidermarathonImg from "../assets/banners/spidermanmarathon.png";
 import guardianmarathonImg from "../assets/banners/guardianmarathon.png";
@@ -20,6 +22,7 @@ import carousel1Img from "../assets/banners/deadpool.jpg";
 import carousel2Img from "../assets/banners/ironMan2013.jpg";
 import carousel3Img from "../assets/banners/venom2018.jpg";
 import type { Route } from "./types";
+import { InfoCircle } from "react-bootstrap-icons";
 
 interface Movie {
   id: number;
@@ -52,6 +55,109 @@ interface HomePageProps {
   onNavigate: (route: Route, movieId?: number) => void;
 }
 
+// ------------------ AgeTooltip-komponent ------------------
+interface AgeTooltipProps {
+  offset?: [number, number];
+  placement?: "top" | "bottom" | "left" | "right";
+}
+
+const AgeTooltip = ({ offset = [85, 0], placement = "bottom" }: AgeTooltipProps) => (
+  <OverlayTrigger
+    placement={placement}
+    popperConfig={{
+      modifiers: [
+        {
+          name: "offset",
+          options: { offset },
+        },
+      ],
+    }}
+    overlay={
+      <Tooltip
+        id="age-tooltip"
+        style={{
+          maxWidth: "90vw",
+          width: "auto",
+          padding: "14px 16px",
+          borderRadius: "8px",
+          border: "1px solid white",
+          backgroundColor: "#000",
+          color: "white",
+          fontSize: "0.85rem",
+          lineHeight: "1.4",
+          boxShadow: "0 4px 15px rgba(0,0,0,0.6)",
+          textAlign: "left",
+        }}
+      >
+        <strong style={{ display: "block", marginBottom: "6px" }}>
+          Regler i Sverige:
+        </strong>
+        • Barn under 7 år får se filmer med 7-årsgräns i vuxet sällskap.
+        <br />
+        • Barn över 11 år får se filmer med 15-årsgräns i vuxet sällskap.
+        <hr
+          style={{
+            border: "none",
+            borderTop: "1px solid rgba(255,255,255,0.2)",
+            margin: "8px 0",
+          }}
+        />
+        <div
+          style={{
+            fontStyle: "italic",
+            fontSize: "0.8rem",
+            color: "rgba(255,255,255,0.85)",
+          }}
+        >
+          <strong>Observera:</strong> Åldersgränsen anger vad som är tillåtet, inte vad som rekommenderas. När en film har en åldersgräns där yngre barn får se den i vuxens sällskap, är det den vuxne som ansvarar för att bedöma om filmen passar barnet utifrån mognad och känslighet.
+        </div>
+      </Tooltip>
+    }
+  >
+    <InfoCircle size={18} color="white" style={{ cursor: "pointer", opacity: 0.8 }} />
+  </OverlayTrigger>
+);
+
+// ------------------ MovieGrid-komponent ------------------
+interface MovieGridProps {
+  movies: (Movie & { times?: string[] })[];
+  onNavigate: (route: Route, movieId?: number) => void;
+}
+
+const MovieGrid = ({ movies, onNavigate }: MovieGridProps) => (
+  <Row xs={2} xl={4} className="homepage-movie-grid g-3 mb-5">
+    {movies.map((movie) => (
+      <Col key={movie.id}>
+        <Card className="homepage-movie-card h-100 d-flex flex-column">
+          <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
+          <div className="movie-title-wrapper text-center mt-2 mb-2">
+            {movie.movie_title}
+          </div>
+          <Card.Body className="text-center mt-auto">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="me-2 homepage-btn homepage-btn-secondary"
+              onClick={() => onNavigate("biljett", movie.id)}
+            >
+              Biljett
+            </Button>
+            <Button
+              variant="dark"
+              size="sm"
+              className="homepage-btn homepage-btn-dark"
+              onClick={() => onNavigate("movie-detail", movie.id)}
+            >
+              Info
+            </Button>
+          </Card.Body>
+        </Card>
+      </Col>
+    ))}
+  </Row>
+);
+
+// ------------------ HomePage-komponent ------------------
 export default function HomePage({ onNavigate }: HomePageProps) {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [screenings, setScreenings] = useState<Screening[]>([]);
@@ -104,7 +210,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     const selectedMonth = selectedDate.getMonth();
     const selectedYear = selectedDate.getFullYear();
 
-    // Filtrera visningar baserat på LOKALT datum
     const screeningsOnDate = screenings.filter((s) => {
       const screeningDate = new Date(s.screening_time);
       return (
@@ -114,7 +219,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       );
     });
 
-    // Hitta filmer + tider
     const filteredMovies = movies
       .map((movie) => {
         const times = screeningsOnDate
@@ -155,7 +259,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     },
   ];
 
-  // Hårdkodade nyaste filmer för mobil-karusell
   const newestMoviesHardcoded = [
     { movie_id: 1, movie_title: "Deadpool", movie_poster: carousel1Img },
     { movie_id: 2, movie_title: "Iron Man 3", movie_poster: carousel2Img },
@@ -170,6 +273,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     );
   }
 
+  // ------------------ Render ------------------
   return (
     <>
       {/* ------------------ MOBILVY ------------------ */}
@@ -206,8 +310,11 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           ))}
         </Row>
 
-        {/* FILTRERING */}
-        <h5 className="homepage-heading">Åldersgräns</h5>
+        {/* ÅLDERSGRÄNS + INFO */}
+        <h5 className="homepage-heading d-flex align-items-center gap-2">
+          Åldersgräns
+          <AgeTooltip offset={[85, 0]} placement="bottom" />
+        </h5>
         <Form.Group className="homepage-form mb-3">
           <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
             <option value="all">Alla</option>
@@ -249,12 +356,9 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           }
         />
 
-        {/* Vit, centrerad knapp för att återgå */}
+        {/* Visa alla filmer-knapp */}
         {selectedDate && (
-          <div
-            className="text-center"
-            style={{ marginTop: 12, marginBottom: 28 }}
-          >
+          <div className="text-center" style={{ marginTop: 12, marginBottom: 28 }}>
             <Button
               variant="light"
               size="sm"
@@ -289,39 +393,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               >
                 Filmer som går den {selectedDate.toLocaleDateString()}
               </h5>
-              <Row xs={2} xl={4} className="homepage-movie-grid g-3 mb-5">
-                {moviesForDate.map((movie) => (
-                  <Col key={movie.id}>
-                    <Card className="homepage-movie-card h-100 d-flex flex-column">
-                      <Card.Img
-                        variant="top"
-                        src={`src/${movie.movie_banner}`}
-                      />
-                      <div className="movie-title-wrapper text-center mt-2 mb-2">
-                        {movie.movie_title}
-                      </div>
-                      <Card.Body className="text-center mt-auto">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="me-2 homepage-btn homepage-btn-secondary"
-                          onClick={() => onNavigate("biljett", movie.id)}
-                        >
-                          Biljett
-                        </Button>
-                        <Button
-                          variant="dark"
-                          size="sm"
-                          className="homepage-btn homepage-btn-dark"
-                          onClick={() => onNavigate("movie-detail", movie.id)}
-                        >
-                          Info
-                        </Button>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
+              <MovieGrid movies={moviesForDate} onNavigate={onNavigate} />
             </>
           ) : (
             <div className="text-center mt-4 mb-5">
@@ -338,50 +410,23 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             >
               Alla filmer
             </h5>
-            <Row xs={2} xl={4} className="homepage-movie-grid g-3 mb-5">
-              {filteredMovies.map((movie) => (
-                <Col key={movie.id}>
-                  <Card className="homepage-movie-card h-100 d-flex flex-column">
-                    <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
-                    <div className="movie-title-wrapper text-center mt-2 mb-2">
-                      {movie.movie_title}
-                    </div>
-                    <Card.Body className="text-center mt-auto">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="me-2 homepage-btn homepage-btn-secondary"
-                        onClick={() => onNavigate("biljett", movie.id)}
-                      >
-                        Biljett
-                      </Button>
-                      <Button
-                        variant="dark"
-                        size="sm"
-                        className="homepage-btn homepage-btn-dark"
-                        onClick={() => onNavigate("movie-detail", movie.id)}
-                      >
-                        Info
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
+            <MovieGrid movies={filteredMovies} onNavigate={onNavigate} />
           </>
         )}
       </Container>
 
       {/* ------------------ DESKTOPVY ------------------ */}
-      <Container
-        fluid
-        className="d-none d-md-block"
-        style={{ width: "100%", paddingLeft: 0, paddingRight: 0 }}
-      >
+      <Container fluid className="d-none d-md-block" style={{ width: "100%", paddingLeft: 0, paddingRight: 0 }}>
         <Row>
           {/* SIDOFILTER */}
           <Col md={4} lg={3} className="sidebar p-1 mt-2 position-sticky">
-            <h5 className="homepage-heading">Åldersgräns</h5>
+            <h5 className="homepage-heading d-flex align-items-center gap-2">
+              Åldersgräns
+              <AgeTooltip
+                offset={[75, 0]}
+                placement={window.innerWidth < 500 ? "bottom" : "right"}
+              />
+            </h5>
             <Form.Group className="homepage-form mb-3">
               <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
                 <option value="all">Alla</option>
@@ -411,7 +456,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                   newDate &&
                   selectedDate.toDateString() === newDate.toDateString()
                 ) {
-                  setSelectedDate(null); // klicka samma datum igen = rensa
+                  setSelectedDate(null);
                 } else {
                   setSelectedDate(newDate);
                 }
@@ -460,42 +505,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 ? `Filmer som går den ${selectedDate.toLocaleDateString()}`
                 : "Alla filmer"}
             </h5>
-            <Row
-              xs={1}
-              sm={2}
-              md={3}
-              lg={4}
-              className="homepage-movie-grid homepage-desktop-grid g-4 justify-content-start"
-            >
-              {(selectedDate ? moviesForDate : filteredMovies).map((movie) => (
-                <Col key={movie.id}>
-                  <Card className="homepage-movie-card h-100 d-flex flex-column">
-                    <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
-                    <div className="movie-title-wrapper text-center mt-2 mb-2">
-                      {movie.movie_title}
-                    </div>
-                    <Card.Body className="text-center mt-auto">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="me-2 homepage-btn homepage-btn-secondary"
-                        onClick={() => onNavigate("biljett", movie.id)}
-                      >
-                        Biljett
-                      </Button>
-                      <Button
-                        variant="dark"
-                        size="sm"
-                        className="homepage-btn homepage-btn-dark"
-                        onClick={() => onNavigate("movie-detail", movie.id)}
-                      >
-                        Info
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
+            <MovieGrid
+              movies={selectedDate ? moviesForDate : filteredMovies}
+              onNavigate={onNavigate}
+            />
           </Col>
         </Row>
       </Container>
