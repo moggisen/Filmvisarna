@@ -371,7 +371,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               }}
               onClick={() => setSelectedDate(null)}
               onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")
+                (e.currentTarget.style.backgroundColor =
+                  "rgba(255,255,255,0.1)")
               }
               onMouseLeave={(e) =>
                 (e.currentTarget.style.backgroundColor = "transparent")
@@ -404,7 +405,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         ) : (
           <>
             <h5
-              className="homepage-heading text-center mt-5"
+              className="homepage-heading text-center"
+              style={{ marginTop: "1.25rem" }}
             >
               Alla filmer
             </h5>
@@ -465,8 +467,12 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               }
             />
 
+            {/* Vit knapp även i desktop-sidokolumn */}
             {selectedDate && (
-              <div className="text-center" style={{ marginTop: 12, marginBottom: 20 }}>
+              <div
+                className="text-center"
+                style={{ marginTop: 12, marginBottom: 20 }}
+              >
                 <Button
                   variant="light"
                   size="sm"
@@ -479,7 +485,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                   }}
                   onClick={() => setSelectedDate(null)}
                   onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")
+                    (e.currentTarget.style.backgroundColor =
+                      "rgba(255,255,255,0.1)")
                   }
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.backgroundColor = "transparent")
