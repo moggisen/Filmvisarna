@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
-import { InfoCircle } from "react-bootstrap-icons";
 import {
   Container,
   Row,
@@ -23,6 +22,7 @@ import carousel1Img from "../assets/banners/deadpool.jpg";
 import carousel2Img from "../assets/banners/ironMan2013.jpg";
 import carousel3Img from "../assets/banners/venom2018.jpg";
 import type { Route } from "./types";
+import { InfoCircle } from "react-bootstrap-icons";
 
 interface Movie {
   id: number;
@@ -116,6 +116,45 @@ const AgeTooltip = ({ offset = [85, 0], placement = "bottom" }: AgeTooltipProps)
   >
     <InfoCircle size={18} color="white" style={{ cursor: "pointer", opacity: 0.8 }} />
   </OverlayTrigger>
+);
+
+// ------------------ MovieGrid-komponent ------------------
+interface MovieGridProps {
+  movies: (Movie & { times?: string[] })[];
+  onNavigate: (route: Route, movieId?: number) => void;
+}
+
+const MovieGrid = ({ movies, onNavigate }: MovieGridProps) => (
+  <Row xs={2} xl={4} className="homepage-movie-grid g-3 mb-5">
+    {movies.map((movie) => (
+      <Col key={movie.id}>
+        <Card className="homepage-movie-card h-100 d-flex flex-column">
+          <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
+          <div className="movie-title-wrapper text-center mt-2 mb-2">
+            {movie.movie_title}
+          </div>
+          <Card.Body className="text-center mt-auto">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="me-2 homepage-btn homepage-btn-secondary"
+              onClick={() => onNavigate("biljett", movie.id)}
+            >
+              Biljett
+            </Button>
+            <Button
+              variant="dark"
+              size="sm"
+              className="homepage-btn homepage-btn-dark"
+              onClick={() => onNavigate("movie-detail", movie.id)}
+            >
+              Info
+            </Button>
+          </Card.Body>
+        </Card>
+      </Col>
+    ))}
+  </Row>
 );
 
 // ------------------ HomePage-komponent ------------------
@@ -252,6 +291,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           ))}
         </Carousel>
 
+        {/* KOMMANDE EVENT */}
         <h5 className="homepage-heading">🎉 Kommande Event</h5>
         <Row xs={1} sm={2} className="mb-3 g-4">
           {events.map((event, idx) => (
@@ -270,12 +310,11 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           ))}
         </Row>
 
-        {/* Åldersgräns */}
+        {/* ÅLDERSGRÄNS + INFO */}
         <h5 className="homepage-heading d-flex align-items-center gap-2">
           Åldersgräns
           <AgeTooltip offset={[85, 0]} placement="bottom" />
         </h5>
-
         <Form.Group className="homepage-form mb-3">
           <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
             <option value="all">Alla</option>
@@ -295,7 +334,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           />
         </Form.Group>
 
-        {/* Kalender */}
+        {/* KALENDER */}
         <h5 className="homepage-heading">Välj datum</h5>
         <Calendar
           value={selectedDate}
@@ -343,10 +382,18 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           </div>
         )}
 
-        {/* Filmlista */}
+        {/* FILMER FÖR VALT DATUM / ALLA */}
         {selectedDate ? (
           moviesForDate.length > 0 ? (
-            <MovieGrid movies={moviesForDate} onNavigate={onNavigate} />
+            <>
+              <h5
+                className="homepage-heading text-center"
+                style={{ marginTop: "1.25rem", marginBottom: "1rem" }}
+              >
+                Filmer som går den {selectedDate.toLocaleDateString()}
+              </h5>
+              <MovieGrid movies={moviesForDate} onNavigate={onNavigate} />
+            </>
           ) : (
             <div className="text-center mt-4 mb-5">
               <p style={{ fontStyle: "italic", color: "#666" }}>
@@ -355,16 +402,19 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             </div>
           )
         ) : (
-          <MovieGrid movies={filteredMovies} onNavigate={onNavigate} />
+          <>
+            <h5
+              className="homepage-heading text-center mt-5"
+            >
+              Alla filmer
+            </h5>
+            <MovieGrid movies={filteredMovies} onNavigate={onNavigate} />
+          </>
         )}
       </Container>
 
       {/* ------------------ DESKTOPVY ------------------ */}
-      <Container
-        fluid
-        className="d-none d-md-block"
-        style={{ width: "100%", paddingLeft: 0, paddingRight: 0 }}
-      >
+      <Container fluid className="d-none d-md-block" style={{ width: "100%", paddingLeft: 0, paddingRight: 0 }}>
         <Row>
           {/* SIDOFILTER */}
           <Col md={4} lg={3} className="sidebar p-1 mt-2 position-sticky">
@@ -375,7 +425,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 placement={window.innerWidth < 500 ? "bottom" : "right"}
               />
             </h5>
-
             <Form.Group className="homepage-form mb-3">
               <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
                 <option value="all">Alla</option>
@@ -459,42 +508,3 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     </>
   );
 }
-
-// ------------------ MovieGrid-komponent ------------------
-interface MovieGridProps {
-  movies: (Movie & { times?: string[] })[];
-  onNavigate: (route: Route, movieId?: number) => void;
-}
-
-const MovieGrid = ({ movies, onNavigate }: MovieGridProps) => (
-  <Row xs={1} sm={2} md={3} lg={4} className="homepage-movie-grid g-3 mb-5">
-    {movies.map((movie) => (
-      <Col key={movie.id}>
-        <Card className="homepage-movie-card h-100 d-flex flex-column">
-          <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
-          <div className="movie-title-wrapper text-center mt-2 mb-2">
-            {movie.movie_title}
-          </div>
-          <Card.Body className="text-center mt-auto">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="me-2 homepage-btn homepage-btn-secondary"
-              onClick={() => onNavigate("biljett", movie.id)}
-            >
-              Biljett
-            </Button>
-            <Button
-              variant="dark"
-              size="sm"
-              className="homepage-btn homepage-btn-dark"
-              onClick={() => onNavigate("movie-detail", movie.id)}
-            >
-              Info
-            </Button>
-          </Card.Body>
-        </Card>
-      </Col>
-    ))}
-  </Row>
-);
