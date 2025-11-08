@@ -258,18 +258,22 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
                     onBlur={() => handleBlur("passwordVerification")}
                     isInvalid={
                       focused.passwordVerification &&
-                      !!errors.passwordVerification
+                      !!errors.passwordVerification &&
+                      (formData.password !== "" ||
+                        formData.passwordVerification !== "")
                     }
                     isValid={
                       focused.passwordVerification &&
                       !errors.passwordVerification &&
-                      formData.passwordVerification === formData.password
+                      formData.passwordVerification === formData.password &&
+                      formData.password !== "" &&
+                      formData.passwordVerification !== ""
                     }
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-2" controlId="name">
-                  <Form.Label>Namn</Form.Label>
+                  <Form.Label>Förnamn</Form.Label>
                   <Form.Control
                     type="text"
                     value={formData.name}
