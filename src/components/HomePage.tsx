@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // ⭐ Lägg till useNavigate
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import {
   Container,
@@ -23,6 +24,10 @@ import carousel2Img from "../assets/banners/ironMan2013.jpg";
 import carousel3Img from "../assets/banners/venom2018.jpg";
 import type { Route } from "./types";
 import { InfoCircle } from "react-bootstrap-icons";
+
+// ⭐ Lägg till dessa imports för routes
+import { routePath, buildPath } from "../routes";
+import type { RouteKey } from "../routes";
 
 interface Movie {
   id: number;
@@ -61,7 +66,10 @@ interface AgeTooltipProps {
   placement?: "top" | "bottom" | "left" | "right";
 }
 
-const AgeTooltip = ({ offset = [85, 0], placement = "bottom" }: AgeTooltipProps) => (
+const AgeTooltip = ({
+  offset = [85, 0],
+  placement = "bottom",
+}: AgeTooltipProps) => (
   <OverlayTrigger
     placement={placement}
     popperConfig={{
@@ -109,12 +117,19 @@ const AgeTooltip = ({ offset = [85, 0], placement = "bottom" }: AgeTooltipProps)
             color: "rgba(255,255,255,0.85)",
           }}
         >
-          <strong>Observera:</strong> Åldersgränsen anger vad som är tillåtet, inte vad som rekommenderas. När en film har en åldersgräns där yngre barn får se den i vuxens sällskap, är det den vuxne som ansvarar för att bedöma om filmen passar barnet utifrån mognad och känslighet.
+          <strong>Observera:</strong> Åldersgränsen anger vad som är tillåtet,
+          inte vad som rekommenderas. När en film har en åldersgräns där yngre
+          barn får se den i vuxens sällskap, är det den vuxne som ansvarar för
+          att bedöma om filmen passar barnet utifrån mognad och känslighet.
         </div>
       </Tooltip>
     }
   >
-    <InfoCircle size={18} color="white" style={{ cursor: "pointer", opacity: 0.8 }} />
+    <InfoCircle
+      size={18}
+      color="white"
+      style={{ cursor: "pointer", opacity: 0.8 }}
+    />
   </OverlayTrigger>
 );
 
@@ -166,6 +181,26 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const [search, setSearch] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [moviesForDate, setMoviesForDate] = useState<Movie[]>([]);
+
+  const navigate = useNavigate(); // ⭐ useNavigate är nu korrekt importerad
+
+  // ⭐ Uppdaterad handleNavigate funktion
+  const handleNavigate = (name: RouteKey, movieId?: number) => {
+    if (name === "biljett" && movieId) {
+      // Navigera till booking med movieId i state (URLen ändras INTE)
+      navigate(routePath.biljett, { state: { preselectedMovieId: movieId } });
+    } else if (name === "movie-detail" && movieId) {
+      // Befintlig logik för movie-detail
+      const target = buildPath("movie-detail", { id: movieId });
+      try {
+        localStorage.setItem("selectedMovieId", String(movieId));
+      } catch {}
+      navigate(target);
+    } else {
+      // Standard navigation
+      navigate(routePath[name] ?? routePath.home);
+    }
+  };
 
   // Hämta filmer
   useEffect(() => {
@@ -358,7 +393,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
 
         {/* Visa alla filmer-knapp */}
         {selectedDate && (
-          <div className="text-center" style={{ marginTop: 12, marginBottom: 28 }}>
+          <div
+            className="text-center"
+            style={{ marginTop: 12, marginBottom: 28 }}
+          >
             <Button
               variant="light"
               size="sm"
@@ -393,7 +431,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               >
                 Filmer som går den {selectedDate.toLocaleDateString()}
               </h5>
-              <MovieGrid movies={moviesForDate} onNavigate={onNavigate} />
+              {/* ⭐ Använd handleNavigate här för mobila vyn */}
+              <MovieGrid movies={moviesForDate} onNavigate={handleNavigate} />
             </>
           ) : (
             <div className="text-center mt-4 mb-5">
@@ -410,13 +449,18 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             >
               Alla filmer
             </h5>
-            <MovieGrid movies={filteredMovies} onNavigate={onNavigate} />
+            {/* ⭐ Använd handleNavigate här för mobila vyn */}
+            <MovieGrid movies={filteredMovies} onNavigate={handleNavigate} />
           </>
         )}
       </Container>
 
       {/* ------------------ DESKTOPVY ------------------ */}
-      <Container fluid className="d-none d-md-block" style={{ width: "100%", paddingLeft: 0, paddingRight: 0 }}>
+      <Container
+        fluid
+        className="d-none d-md-block"
+        style={{ width: "100%", paddingLeft: 0, paddingRight: 0 }}
+      >
         <Row>
           {/* SIDOFILTER */}
           <Col md={4} lg={3} className="sidebar p-1 mt-2 position-sticky">
@@ -505,9 +549,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 ? `Filmer som går den ${selectedDate.toLocaleDateString()}`
                 : "Alla filmer"}
             </h5>
+            {/* ⭐ Använd handleNavigate här för desktop vyn också */}
             <MovieGrid
               movies={selectedDate ? moviesForDate : filteredMovies}
-              onNavigate={onNavigate}
+              onNavigate={handleNavigate}
             />
           </Col>
         </Row>
