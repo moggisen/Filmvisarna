@@ -506,6 +506,27 @@ export default function Booking({
     hasManualSelection,
   } = useSeatManagement(selectedScreeningId, layoutRows, needed);
 
+  // Synka visning när filmen byts (för att omrendera salongslayout)
+  useEffect(() => {
+    if (movieId == null || screeningsForMovie.length === 0) return;
+
+    const validIds = new Set(screeningsForMovie.map((s) => s.value));
+
+    if (!selectedScreeningId || !validIds.has(selectedScreeningId)) {
+      const firstId = screeningsForMovie[0]?.value ?? null;
+      setSelectedScreeningId(firstId);
+      // Rensa tidigare manuella platser från föregående visning
+      clearSelected();
+    }
+  }, [movieId, screeningsForMovie, selectedScreeningId, clearSelected]);
+
+  // Rensa platser när visningen faktiskt byts
+  useEffect(() => {
+    if (selectedScreeningId != null) {
+      clearSelected();
+    }
+  }, [selectedScreeningId, clearSelected]);
+
   // Viewport fitting
   const viewportRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
