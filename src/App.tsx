@@ -267,12 +267,13 @@ export default function App() {
           <Route path={routePath.confirm} element={<ConfirmWrapper />} />
 
           {/* LOGIN */}
-          {/* NYTT: tillåt bara om man INTE redan är inloggad. 
+          {/* NYTT: tillåt bara om man INTE redan är inloggad ELLER om en bokning pågår. 
           Gäster (isGuest) får gå till login för att uppgradera. */}
           <Route
             path={routePath.login}
             element={
-              authState.isAuthenticated ? (
+              authState.isAuthenticated &&
+              sessionStorage.getItem("shouldRestoreBooking") !== "true" ? (
                 <Navigate to="/profile" replace />
               ) : (
                 <AuthPage
@@ -285,11 +286,12 @@ export default function App() {
           />
 
           {/* SIGNUP*/}
-          {/* NYTT: tillåt bara om man INTE redan är inloggad. */}
+          {/* NYTT: tillåt bara om man INTE redan är inloggad ELLER om en bokning pågår. */}
           <Route
             path={routePath.signup}
             element={
-              authState.isAuthenticated ? (
+              authState.isAuthenticated &&
+              sessionStorage.getItem("shouldRestoreBooking") !== "true" ? (
                 <Navigate to="/profile" replace />
               ) : (
                 <AuthPage
