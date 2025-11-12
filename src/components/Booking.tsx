@@ -443,6 +443,17 @@ export default function Booking({
     [allScreenings, movieId]
   );
 
+  // Hämta preselected movie från navigation state
+  useEffect(() => {
+    const state = location.state as { preselectedMovieId?: number } | null;
+    if (state?.preselectedMovieId && !hasRestoredSession) {
+      setMovieId(state.preselectedMovieId);
+      setHasRestoredSession(true);
+      // Rensa state så det inte påverkar vid refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, hasRestoredSession]);
+
   // Auto-välj första film och screening ENDAST om inget är valt OCH data är laddad
   useEffect(() => {
     // Vänta tills movieId inte är satt, OCH det finns filmer, OCH vi inte har någon session att återställa

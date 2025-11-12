@@ -209,6 +209,7 @@ export default function App() {
       navigate(target);
       return;
     }
+
     navigate(routePath[name] ?? routePath.home);
   };
 
