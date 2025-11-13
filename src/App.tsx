@@ -16,6 +16,7 @@ import ConfirmationPage from "./components/ConfirmationPage";
 import AuthPage from "./components/AuthPage";
 import ProfilePage from "./components/ProfilePage";
 import MovieDetail from "./components/MovieDetail";
+import CookieConsent from "./components/CookieConsent";
 
 import { routePath, buildPath } from "./routes";
 import type { RouteKey } from "./routes";
@@ -238,6 +239,9 @@ export default function App() {
         isGuest={authState.isGuest}
         onLogout={handleLogout}
       />
+      {/* Cookie-modal, visas endast om användaren inte redan gjort ett val */}
+      <CookieConsent />
+
       <main className="container py-4">
         <Routes>
           {/* START */}
