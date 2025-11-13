@@ -375,16 +375,27 @@ export default function Booking({
     loading: loadingScreenings,
     error: screeningsError,
   } = useApiData<Screening[]>("/screenings", []);
+
   const {
     data: movies,
     loading: loadingMovies,
     error: movieError,
   } = useApiData<Movie[]>("/movies", [], normalizeMovies);
+
   const {
     data: ticketTypes,
     loading: loadingTicketTypes,
     error: ticketTypesError,
   } = useApiData<TicketType[]>("/ticketTypes", []);
+
+  // Visa bara kommande visningar (1 min "buffert")
+  const isFuture = (iso: string) =>
+    new Date(iso).getTime() > Date.now() + 60 * 1000;
+
+  const futureScreenings = useMemo(
+    () => allScreenings.filter((s) => isFuture(s.screening_time)),
+    [allScreenings]
+  );
 
   // Debug: Logga API responses
   useEffect(() => {
@@ -414,14 +425,15 @@ export default function Booking({
   // Beräknade värden
   const needed = tickets.adult + tickets.child + tickets.senior;
   const bookableMovies = useMemo(
-    () => movies.filter((m) => allScreenings.some((s) => s.movie_id === m.id)),
-    [movies, allScreenings]
+    () =>
+      movies.filter((m) => futureScreenings.some((s) => s.movie_id === m.id)),
+    [movies, futureScreenings]
   );
 
   const screeningsForMovie = useMemo(
     () =>
       movieId
-        ? allScreenings
+        ? futureScreenings
             .filter((s) => s.movie_id === movieId)
             .sort(
               (a, b) =>
@@ -440,7 +452,7 @@ export default function Booking({
               raw: s,
             }))
         : [],
-    [allScreenings, movieId]
+    [futureScreenings, movieId]
   );
 
   // Hämta preselected movie från navigation state
@@ -595,7 +607,7 @@ export default function Booking({
     tickets.child * prices.child +
     tickets.senior * prices.senior;
 
-  // Viktig funktion för att hitta ticketType_id
+  // Funktion för att hitta ticketType_id
   const getTicketTypeId = (
     kind: "adult" | "child" | "senior"
   ): number | null => {
@@ -834,6 +846,31 @@ export default function Booking({
     };
   }, []);
 
+  // Om valt screeningId är i det förflutna (efter t.ex. session restore), byt till första framtida
+  useEffect(() => {
+    if (!selectedScreeningId) return;
+    const curr = allScreenings.find((s) => s.id === selectedScreeningId);
+    if (!curr) return;
+
+    // Om nuvarande visning är dåtid, välj nästkommande framtida visning för samma film, annars låt vara
+    if (!isFuture(curr.screening_time)) {
+      const nextForSameMovie = futureScreenings
+        .filter((s) => s.movie_id === curr.movie_id)
+        .sort(
+          (a, b) =>
+            new Date(a.screening_time).getTime() -
+            new Date(b.screening_time).getTime()
+        )[0];
+
+      if (nextForSameMovie) {
+        setSelectedScreeningId(nextForSameMovie.id);
+      } else {
+        // Töm screening om det inte finns några kommande visningar för samma film
+        setSelectedScreeningId(null);
+      }
+    }
+  }, [selectedScreeningId, allScreenings, futureScreenings]);
+
   // Booking functions
   const finalizeBooking = async (email?: string) => {
     if (!selectedScreeningId) {
@@ -924,9 +961,9 @@ export default function Booking({
     const isGuestBooking = data?.is_guest ?? false;
 
     // 8. Bygg BookingSummary-objektet vi skickar vidare till onConfirm()
-    const chosenScreening = allScreenings.find(
-      (s) => s.id === selectedScreeningId
-    );
+    const chosenScreening =
+      futureScreenings.find((s) => s.id === selectedScreeningId) ||
+      allScreenings.find((s) => s.id === selectedScreeningId);
     const showtimeISO = chosenScreening?.screening_time ?? "";
 
     const booking: BookingSummary = {
