@@ -16,6 +16,7 @@ import ConfirmationPage from "./components/ConfirmationPage";
 import AuthPage from "./components/AuthPage";
 import ProfilePage from "./components/ProfilePage";
 import MovieDetail from "./components/MovieDetail";
+import CookieConsent from "./components/CookieConsent";
 
 import { routePath, buildPath } from "./routes";
 import type { RouteKey } from "./routes";
@@ -143,13 +144,27 @@ export default function App() {
           if (shouldRestoreBooking === "true" && returnTo) {
             console.log("Navigating back to booking:", returnTo);
             navigate(returnTo, { replace: true });
+            return;
+          }
+
+          // NYTT: återgå till guarded route (t.ex. /profile) efter login
+          const fromGuardPath =
+            (location.state as any)?.from?.pathname ??
+            (location.state as any)?.from?.location?.pathname;
+          if (fromGuardPath) {
+            console.log(
+              "Auth success - returning to guarded route:",
+              fromGuardPath
+            );
+            navigate(fromGuardPath, { replace: true });
+            return;
+          }
+
+          const fromNavigation = location.state?.fromNavigation;
+          if (fromNavigation) {
+            navigate("/profile", { replace: true });
           } else {
-            const fromNavigation = location.state?.fromNavigation;
-            if (fromNavigation) {
-              navigate("/profile", { replace: true });
-            } else {
-              navigate(routePath.home, { replace: true });
-            }
+            navigate(routePath.home, { replace: true });
           }
         }
       } catch (err) {
@@ -209,6 +224,7 @@ export default function App() {
       navigate(target);
       return;
     }
+
     navigate(routePath[name] ?? routePath.home);
   };
 
@@ -223,6 +239,9 @@ export default function App() {
         isGuest={authState.isGuest}
         onLogout={handleLogout}
       />
+      {/* Cookie-modal, visas endast om användaren inte redan gjort ett val */}
+      <CookieConsent />
+
       <main className="container py-4">
         <Routes>
           {/* START */}
@@ -251,37 +270,62 @@ export default function App() {
           {/* CONFIRM (via query booking_id & conf) */}
           <Route path={routePath.confirm} element={<ConfirmWrapper />} />
 
-          {/* LOGIN / SIGNUP */}
+          {/* LOGIN */}
+          {/* NYTT: tillåt bara om man INTE redan är inloggad ELLER om en bokning pågår. 
+          Gäster (isGuest) får gå till login för att uppgradera. */}
           <Route
             path={routePath.login}
             element={
-              <AuthPage
-                mode="login"
-                onSuccess={handleAuthSuccess}
-                onBack={() => navigate("/")}
-              />
+              authState.isAuthenticated &&
+              sessionStorage.getItem("shouldRestoreBooking") !== "true" ? (
+                <Navigate to="/profile" replace />
+              ) : (
+                <AuthPage
+                  mode="login"
+                  onSuccess={handleAuthSuccess}
+                  onBack={() => navigate("/")}
+                />
+              )
             }
           />
+
+          {/* SIGNUP*/}
+          {/* NYTT: tillåt bara om man INTE redan är inloggad ELLER om en bokning pågår. */}
           <Route
             path={routePath.signup}
             element={
-              <AuthPage
-                mode="signup"
-                onSuccess={handleAuthSuccess}
-                onBack={() => navigate("/")}
-              />
+              authState.isAuthenticated &&
+              sessionStorage.getItem("shouldRestoreBooking") !== "true" ? (
+                <Navigate to="/profile" replace />
+              ) : (
+                <AuthPage
+                  mode="signup"
+                  onSuccess={handleAuthSuccess}
+                  onBack={() => navigate("/")}
+                />
+              )
             }
           />
 
           {/* PROFIL */}
+          {/* NYTT: guarded route, om man försöker nå /profile via URL som icke-inloggad så tas man till login
+          och efter inloggning så återgår man till Mina Sidor som då är tillgänglig */}
           <Route
             path={routePath.profile}
             element={
-              <ProfilePage
-                bookings={bookings}
-                onBack={() => navigate(routePath.home)}
-                onCancel={cancelBooking}
-              />
+              isAuthed ? (
+                <ProfilePage
+                  bookings={bookings}
+                  onBack={() => navigate(routePath.home)}
+                  onCancel={cancelBooking}
+                />
+              ) : (
+                <Navigate
+                  to={routePath.login}
+                  replace
+                  state={{ from: location }}
+                />
+              )
             }
           />
 

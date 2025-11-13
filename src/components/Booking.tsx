@@ -97,11 +97,23 @@ const normalizeMovies = (raw: any): Movie[] => {
 const useSeatManagement = (
   screeningId: number | null,
   layoutRows: LayoutRow[],
-  needed: number
+  needed: number,
+  sessionId: string
 ) => {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [occupied, setOccupied] = useState<Set<number>>(new Set());
+  const [held, setHeld] = useState<Map<number, string>>(new Map());
   const [hasManualSelection, setHasManualSelection] = useState(false);
+  const [heldByOthers, setHeldByOthers] = useState<Set<number>>(new Set());
+
+    // uppdatera heldByOthers när held eller sessionId ändras
+  useEffect(() => {
+    const s = new Set<number>();
+    held.forEach((sessId, seatId) => {
+      if (sessId !== sessionId) s.add(seatId);
+    });
+    setHeldByOthers(s);
+  }, [held, sessionId]);
 
   const seatStruct = useMemo(() => {
     const indexByRow: number[][] = [];
@@ -121,112 +133,222 @@ const useSeatManagement = (
     return { indexByRow, seatMeta, takenSet };
   }, [layoutRows]);
 
-  // Beräkna bästa platsordning (mitten först)
   const bestSeatOrder = useCallback(
-    (exclude?: Set<number>) => {
-      const rowCenter = Math.floor(seatStruct.indexByRow.length / 2);
-      const weightRow = 2.0;
-      const scored: { no: number; dist: number }[] = [];
+  (exclude?: Set<number>) => {
+    const rowCenter = Math.floor(seatStruct.indexByRow.length / 2);
+    const weightRow = 2.0;
+    const scored: { no: number; dist: number }[] = [];
 
-      seatStruct.seatMeta.forEach(({ ri, ci }, no) => {
-        if (occupied.has(no)) return;
-        if (exclude?.has(no)) return;
-        const cols = seatStruct.indexByRow[ri].length;
-        const centerCol = Math.ceil(cols / 2);
-        const dr = ri - rowCenter;
-        const dc = ci - centerCol;
-        const dist = weightRow * dr * dr + dc * dc;
-        scored.push({ no, dist });
-      });
+    seatStruct.seatMeta.forEach(({ ri, ci }, no) => {
+      // hoppa över platser som är bokade ELLER hålls av någon annan
+      if (occupied.has(no) || heldByOthers.has(no)) return;
+      if (exclude?.has(no)) return;
 
-      scored.sort((a, b) => a.dist - b.dist);
-      return scored.map((s) => s.no);
-    },
-    [occupied, seatStruct.indexByRow, seatStruct.seatMeta]
-  );
+      const cols = seatStruct.indexByRow[ri].length;
+      const centerCol = Math.ceil(cols / 2);
+      const dr = ri - rowCenter;
+      const dc = ci - centerCol;
+      const dist = weightRow * dr * dr + dc * dc;
+      scored.push({ no, dist });
+    });
 
-  // Hitta sammanhängande block av platser
-  const findBestContiguousBlock = useCallback(
-    (size: number, exclude?: Set<number>) => {
-      const rowCenter = Math.floor(seatStruct.indexByRow.length / 2);
-      const rowsOrdered = [...seatStruct.indexByRow.keys()].sort(
-        (a, b) => Math.abs(a - rowCenter) - Math.abs(b - rowCenter)
-      );
+    scored.sort((a, b) => a.dist - b.dist);
+    return scored.map((s) => s.no);
+  },
+  [occupied, heldByOthers, seatStruct.indexByRow, seatStruct.seatMeta]
+);
 
-      for (const ri of rowsOrdered) {
-        const rowNos = seatStruct.indexByRow[ri];
-        const cols = rowNos.length;
-        const center = Math.ceil(cols / 2);
-        const starts: { s: number; bias: number }[] = [];
+const findBestContiguousBlock = useCallback(
+  (size: number, exclude?: Set<number>) => {
+    const rowCenter = Math.floor(seatStruct.indexByRow.length / 2);
+    const rowsOrdered = [...seatStruct.indexByRow.keys()].sort(
+      (a, b) => Math.abs(a - rowCenter) - Math.abs(b - rowCenter)
+    );
 
-        for (let s = 0; s <= cols - size; s++) {
-          const mid = s + (size - 1) / 2 + 1;
-          starts.push({ s, bias: Math.abs(mid - center) });
-        }
+    for (const ri of rowsOrdered) {
+      const rowNos = seatStruct.indexByRow[ri];
+      const cols = rowNos.length;
+      const center = Math.ceil(cols / 2);
+      const starts: { s: number; bias: number }[] = [];
 
-        starts.sort((a, b) => a.bias - b.bias);
-
-        for (const { s } of starts) {
-          const segment = rowNos.slice(s, s + size);
-          const ok = segment.every(
-            (no) => !occupied.has(no) && !exclude?.has(no)
-          );
-          if (ok) return segment;
-        }
+      for (let s = 0; s <= cols - size; s++) {
+        const mid = s + (size - 1) / 2 + 1;
+        starts.push({ s, bias: Math.abs(mid - center) });
       }
-      return [] as number[];
-    },
-    [occupied, seatStruct.indexByRow]
-  );
 
-  // SSE för realtidsuppdatering (ny backend: /api/bookings/stream)
+      starts.sort((a, b) => a.bias - b.bias);
+
+      for (const { s } of starts) {
+        const segment = rowNos.slice(s, s + size);
+        const ok = segment.every(
+          (no) =>
+            !occupied.has(no) &&
+            !heldByOthers.has(no) &&   // 👈 NY
+            !exclude?.has(no)
+        );
+        if (ok) return segment;
+      }
+    }
+    return [] as number[];
+  },
+  [occupied, heldByOthers, seatStruct.indexByRow]
+);
+
+const gotSnapshotRef = useRef(false);
+
 useEffect(() => {
   if (!screeningId) return;
 
-  // Snabbt seed från layouten så UI inte blinkar i väntan på init-event
+  // Seed: permanenta bokningar från layout
   setOccupied(new Set(seatStruct.takenSet));
 
-  const url = new URL(`${API_PREFIX}/bookings/stream`, window.location.origin);
-  url.searchParams.set("screeningId", String(screeningId));
+  // Vi nollställer “held” lokalt när screening byts,
+  // och markerar att vi ännu INTE har tagit emot snapshot.
+  setHeld(new Map());
+  gotSnapshotRef.current = false;
 
-  const es = new EventSource(url.toString(), { withCredentials: true });
+  const es = new EventSource(
+    `${API_PREFIX}/bookings/stream?screeningId=${screeningId}`
+  );
 
-  // 1) Init: backend skickar aktuellt upptagna säten för visningen
-  const onInit = (e: MessageEvent) => {
-    const msg = JSON.parse(e.data) as {
-      screeningId: number;
-      occupied: { seat_id: number }[];
-    };
-    setOccupied(new Set(msg.occupied.map((s) => s.seat_id)));
+  // ⭕️ Viktigt: detta snapshot ska bara användas EN gång per anslutning.
+  const onSnapshot = (e: MessageEvent) => {
+    // Har vi redan lagt in snapshot? Då IGNORERAR vi detta (förhindrar blink).
+    if (gotSnapshotRef.current) return;
+
+    const arr = JSON.parse(e.data) as Array<{
+      seatId: number | string;
+      sessionId: string;
+      expiresAt: number;
+    }>;
+
+    const map = new Map<number, string>();
+    for (const h of arr) {
+      map.set(Number(h.seatId), String(h.sessionId));
+    }
+
+    setHeld(map);
+    gotSnapshotRef.current = true; // ✅ lås: snapshot är “konsumerat”
   };
 
-  // 2) Live: INSERT/DELETE på bookingsXseats → uppdatera occupied
-  const onChanged = (e: MessageEvent) => {
-    const ev = JSON.parse(e.data) as {
-      id: number;
-      op: "INSERT" | "UPDATE" | "DELETE";
-      screeningId: number;
-      seatId: number;
-    };
-    setOccupied((prev) => {
-      const next = new Set(prev);
-      if (ev.op === "INSERT") next.add(ev.seatId);
-      else if (ev.op === "DELETE") next.delete(ev.seatId);
-      // UPDATE påverkar normalt inte upptagen/ledig-status → ignorera
-      return next;
-    });
+  const onSeatHeld = (e: MessageEvent) => {
+  const ev = JSON.parse(e.data) as {
+    seatId: number | string;
+    sessionId: string;
+    expiresAt: number;
+  };
+  setHeld((prev) => {
+    const next = new Map(prev);
+    next.set(Number(ev.seatId), String(ev.sessionId));
+    return next;
+  });
+};
+
+const onSeatReleased = (e: MessageEvent) => {
+  const ev = JSON.parse(e.data) as { seatId: number | string; reason?: string };
+  setHeld((prev) => {
+    const next = new Map(prev);
+    next.delete(Number(ev.seatId));
+    return next;
+  });
+};
+
+const onSeatBooked = (e: MessageEvent) => {
+  const ev = JSON.parse(e.data) as {
+    seatIds?: Array<number | string>;
+    seatId?: number | string;
   };
 
-  es.addEventListener("init", onInit);
-  es.addEventListener("booking_changed", onChanged);
+  const ids: Array<number | string> = Array.isArray(ev.seatIds)
+    ? ev.seatIds
+    : ev.seatId !== undefined
+    ? [ev.seatId]
+    : [];
+
+  if (ids.length === 0) return;
+
+  setOccupied(prev => {
+    const next = new Set(prev);
+    ids.forEach((id: number | string) => next.add(Number(id)));
+    return next;
+  });
+
+  setHeld(prev => {
+    const next = new Map(prev);
+    ids.forEach((id: number | string) => next.delete(Number(id)));
+    return next;
+  });
+
+  setSelected(prev => {
+    const next = new Set(prev);
+    ids.forEach((id: number | string) => next.delete(Number(id)));
+    return next;
+  });
+};
+
+  es.addEventListener('snapshot', onSnapshot);
+  es.addEventListener('seat:held', onSeatHeld);
+  es.addEventListener('seat:released', onSeatReleased);
+  es.addEventListener('seat:booked', onSeatBooked);
 
   es.onerror = () => {
-    // EventSource försöker återansluta automatiskt
-    // valfritt: visa “Återansluter…” i UI
+    // EventSource försöker reconnecta själv – inget att göra här.
   };
 
-  return () => es.close();
+  return () => {
+    es.removeEventListener('snapshot', onSnapshot as any);
+    es.removeEventListener('seat:held', onSeatHeld as any);
+    es.removeEventListener('seat:released', onSeatReleased as any);
+    es.removeEventListener('seat:booked', onSeatBooked as any);
+    es.close();
+  };
 }, [screeningId, seatStruct.takenSet]);
+
+const markAsBooked = useCallback((ids: number[]) => {
+  if (!ids || ids.length === 0) return;
+
+  setOccupied(prev => {
+    const next = new Set(prev);
+    ids.forEach(id => next.add(Number(id)));
+    return next;
+  });
+
+  setHeld(prev => {
+    const next = new Map(prev);
+    ids.forEach(id => next.delete(Number(id)));
+    return next;
+  });
+
+  setSelected(prev => {
+    const next = new Set(prev);
+    ids.forEach(id => next.delete(Number(id)));
+    return next;
+  });
+}, []);
+
+
+// Förläng mina holds periodiskt så de inte hinner gå ut under flödet
+useEffect(() => {
+  if (!screeningId) return;
+
+  const interval = setInterval(() => {
+    if (selected.size === 0) return;
+    selected.forEach((seatId) => {
+      // Skicka extend bara för platser som faktiskt är mina
+      const holder = held.get(seatId);
+      if (holder && holder === sessionId) {
+        fetch(`${API_PREFIX}/screenings/${screeningId}/seats/${seatId}/hold`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ action: 'extend', sessionId }),
+        }).catch(() => {});
+      }
+    });
+  }, 60_000); // 60 s – matcha TTL/2 typ
+
+  return () => clearInterval(interval);
+}, [screeningId, selected, held, sessionId]);
 
 
   // Auto-select bästa platser när behov ändras - FIXED: Respektera manuella val
@@ -252,56 +374,71 @@ useEffect(() => {
     });
   }, [needed, findBestContiguousBlock, bestSeatOrder, hasManualSelection]);
 
-  // Auto-justera när antal biljetter ändras - FIXED: Respektera manuella val
   useEffect(() => {
-    if (hasManualSelection) return; //  STOPP om användaren gjort manuella val
+  if (hasManualSelection) return;
+  // ✅ Kör bara auto-select om vi INTE redan har val
+  if (selected.size > 0) return;
+
+  setSelected(() => {
+    const next = new Set<number>();
+    if (needed <= 0) return next;
+
+    const block = findBestContiguousBlock(needed);
+    if (block.length === needed) {
+      block.forEach((n) => next.add(n));
+    } else {
+      for (const n of bestSeatOrder()) {
+        if (next.size >= needed) break;
+        next.add(n);
+      }
+    }
+    return next;
+  });
+}, [
+  needed,
+  findBestContiguousBlock,
+  bestSeatOrder,
+  hasManualSelection,
+  selected.size,
+]);
+
+const toggleSeat = useCallback(
+  (seatId: number) => {
+    if (!screeningId) return;
+    if (occupied.has(seatId)) return;                    // redan bokad
+    if (held.has(seatId) && held.get(seatId) !== sessionId) return; // hålls av annan
+
+    setHasManualSelection(true);
 
     setSelected((prev) => {
-      const curr = new Set(prev);
-      const diff = needed - curr.size;
+      const next = new Set(prev);
+      const wasSelected = next.has(seatId);
 
-      if (diff > 0) {
-        const exclude = new Set<number>(curr);
-        const block = findBestContiguousBlock(diff, exclude);
-        if (block.length === diff) {
-          block.forEach((n) => curr.add(n));
-        } else {
-          for (const n of bestSeatOrder(exclude)) {
-            if (curr.size >= needed) break;
-            curr.add(n);
-          }
-        }
-      } else if (diff < 0) {
-        const arr = Array.from(curr);
-        const toRemove = arr.slice(needed);
-        toRemove.forEach((n) => curr.delete(n));
+      if (wasSelected) {
+        next.delete(seatId);
+        // 🔹 optimistisk release
+        fetch(`${API_PREFIX}/screenings/${screeningId}/seats/${seatId}/hold`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ action: "release", sessionId }),
+        }).catch(() => {});
+      } else if (needed === 0 || next.size < needed) {
+        next.add(seatId);
+        // 🔹 optimistisk hold
+        fetch(`${API_PREFIX}/screenings/${screeningId}/seats/${seatId}/hold`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ action: "hold", sessionId }),
+        }).catch(() => {});
       }
-
-      return curr;
+      return next;
     });
-  }, [needed, bestSeatOrder, findBestContiguousBlock, hasManualSelection]);
+  },
+  [occupied, held, needed, screeningId, sessionId]
+);
 
-  const toggleSeat = useCallback(
-    (seatId: number) => {
-      if (occupied.has(seatId)) return;
-      setSelected((prev) => {
-        const next = new Set(prev);
-        if (next.has(seatId)) {
-          next.delete(seatId);
-        } else if (next.size < needed) {
-          next.add(seatId);
-        }
-        return next;
-      });
-      setHasManualSelection(true); //  Sätt flaggan vid manuellt val
-    },
-    [occupied, needed]
-  );
-
-  const clearSelected = useCallback(() => {
-    setSelected(new Set());
-    setHasManualSelection(false); // Återställ flaggan när alla val rensas
-  }, []);
 
   // Uppdaterad setSelected som också hanterar manuella val
   const setSelectedWithManual = useCallback(
@@ -323,16 +460,25 @@ useEffect(() => {
     },
     []
   );
+  const clearSelected = useCallback(() => {
+  setSelected(new Set());
+  setHasManualSelection(false);
+}, []);
+
 
   return {
-    selected,
-    occupied,
-    seatStruct,
-    toggleSeat,
-    clearSelected,
-    setSelected: setSelectedWithManual, //  Använd den uppdaterade versionen
-    hasManualSelection,
-  };
+  selected,
+  occupied,
+  held,
+  seatStruct,
+  toggleSeat,
+  clearSelected,
+  setSelected: setSelectedWithManual,
+  hasManualSelection,
+  markAsBooked,        // 👈 lägg till
+};
+
+
 };
 
 export default function Booking({
@@ -373,16 +519,27 @@ export default function Booking({
     loading: loadingScreenings,
     error: screeningsError,
   } = useApiData<Screening[]>("/screenings", []);
+
   const {
     data: movies,
     loading: loadingMovies,
     error: movieError,
   } = useApiData<Movie[]>("/movies", [], normalizeMovies);
+
   const {
     data: ticketTypes,
     loading: loadingTicketTypes,
     error: ticketTypesError,
   } = useApiData<TicketType[]>("/ticketTypes", []);
+
+  // Visa bara kommande visningar (1 min "buffert")
+  const isFuture = (iso: string) =>
+    new Date(iso).getTime() > Date.now() + 60 * 1000;
+
+  const futureScreenings = useMemo(
+    () => allScreenings.filter((s) => isFuture(s.screening_time)),
+    [allScreenings]
+  );
 
   // Debug: Logga API responses
   useEffect(() => {
@@ -412,14 +569,15 @@ export default function Booking({
   // Beräknade värden
   const needed = tickets.adult + tickets.child + tickets.senior;
   const bookableMovies = useMemo(
-    () => movies.filter((m) => allScreenings.some((s) => s.movie_id === m.id)),
-    [movies, allScreenings]
+    () =>
+      movies.filter((m) => futureScreenings.some((s) => s.movie_id === m.id)),
+    [movies, futureScreenings]
   );
 
   const screeningsForMovie = useMemo(
     () =>
       movieId
-        ? allScreenings
+        ? futureScreenings
             .filter((s) => s.movie_id === movieId)
             .sort(
               (a, b) =>
@@ -438,8 +596,19 @@ export default function Booking({
               raw: s,
             }))
         : [],
-    [allScreenings, movieId]
+    [futureScreenings, movieId]
   );
+
+  // Hämta preselected movie från navigation state
+  useEffect(() => {
+    const state = location.state as { preselectedMovieId?: number } | null;
+    if (state?.preselectedMovieId && !hasRestoredSession) {
+      setMovieId(state.preselectedMovieId);
+      setHasRestoredSession(true);
+      // Rensa state så det inte påverkar vid refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, hasRestoredSession]);
 
   // Auto-välj första film och screening ENDAST om inget är valt OCH data är laddad
   useEffect(() => {
@@ -483,15 +652,159 @@ export default function Booking({
   }, [selectedScreeningId]);
 
   // Seat management - FIXED: setSelected är nu tillgänglig
-  const {
+    const {
     selected,
     occupied,
+    held,
     seatStruct,
     toggleSeat,
     clearSelected,
     setSelected,
     hasManualSelection,
-  } = useSeatManagement(selectedScreeningId, layoutRows, needed);
+    markAsBooked,
+  } = useSeatManagement(selectedScreeningId, layoutRows, needed, sessionId);
+
+  // --- release helpers (Booking-scope) ---
+const releaseSeat = (scrId: number, seatId: number) =>
+  fetch(`${API_PREFIX}/screenings/${scrId}/seats/${seatId}/hold`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ action: 'release', sessionId }),
+  }).catch(() => {});
+
+const releaseAllSelected = useCallback(() => {
+  if (!selectedScreeningId || selected.size === 0) return;
+  selected.forEach((seatId) => {
+    if (held.get(seatId) === sessionId) {
+      releaseSeat(selectedScreeningId, seatId);
+    }
+  });
+}, [selectedScreeningId, selected, held, sessionId]);
+
+useEffect(() => {
+  const onUnload = () => releaseAllSelected();
+  window.addEventListener('beforeunload', onUnload);
+  return () => window.removeEventListener('beforeunload', onUnload);
+}, [releaseAllSelected]);
+
+
+// Egen variant för UI som även släpper på servern
+const clearSelectedAndRelease = useCallback(() => {
+  releaseAllSelected();
+  setSelected(new Set());
+  // vi vill också avsluta “manuellt-val”-läge
+  // den flaggan sätts inne i hooken via setSelectedWithManual,
+  // men att nollställa selected räcker för att auto-select ska kunna köra igen
+}, [releaseAllSelected, setSelected]);
+
+// Om needed minskar och vi har fler val än tillåtet → släpp de sämst rankade först
+useEffect(() => {
+  if (!selectedScreeningId) return;
+
+  // ✅ Viktigt: rensa inte ner till 0 när inga biljetter är valda
+  if (needed === 0) return;
+
+  if (selected.size <= needed) return;
+
+  // Rang: radindex (ri) väger tyngre än kolumn (ci) – stabil och deterministisk
+  const rank = (seatId: number) => {
+    const meta = seatStruct.seatMeta.get(seatId);
+    if (!meta) return Number.MAX_SAFE_INTEGER;
+    return meta.ri * 1000 + meta.ci;
+  };
+
+  const current = Array.from(selected).sort((a, b) => rank(a) - rank(b));
+  const keepCount = Math.max(0, needed);
+  const keep = new Set(current.slice(0, keepCount));
+  const drop = current.slice(keepCount);
+
+  // Släpp överskott hos servern om de är mina
+  drop.forEach((seatId) => {
+    if (held.get(seatId) === sessionId) {
+      releaseSeat(selectedScreeningId, seatId);
+    }
+  });
+
+  setSelected(keep);
+}, [needed, selected, selectedScreeningId, seatStruct.seatMeta, held, sessionId, setSelected]);
+
+// ✅ Debouncad sync: klumpar ihop lokala val → server-holds
+useEffect(() => {
+  if (!selectedScreeningId) return;
+
+  let timer: number | undefined;
+
+  const run = () => {
+    // vilka säten håller JAG just nu (enligt SSE)?
+    const mine = new Set<number>();
+    held.forEach((sessId, seatId) => {
+      if (sessId === sessionId) mine.add(seatId);
+    });
+
+    // diff
+    const toHold: number[] = [];
+    selected.forEach((seatId) => {
+      if (!mine.has(seatId)) toHold.push(seatId);
+    });
+
+    const toRelease: number[] = [];
+    mine.forEach((seatId) => {
+      if (!selected.has(seatId)) toRelease.push(seatId);
+    });
+
+    if (toHold.length === 0 && toRelease.length === 0) return;
+
+    // batcha ut, men idempotent (backend ska tåla dubletter)
+    toHold.forEach((seatId) => {
+      fetch(`${API_PREFIX}/screenings/${selectedScreeningId}/seats/${seatId}/hold`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'hold', sessionId }),
+      }).catch(() => {});
+    });
+
+    toRelease.forEach((seatId) => {
+      fetch(`${API_PREFIX}/screenings/${selectedScreeningId}/seats/${seatId}/hold`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'release', sessionId }),
+      }).catch(() => {});
+    });
+  };
+
+  // debounce ~180ms så snabb klicksekvens + auto-logik klumpas
+  timer = window.setTimeout(run, 180);
+
+  return () => {
+    if (timer) window.clearTimeout(timer);
+  };
+}, [selected, held, selectedScreeningId, sessionId]);
+
+
+
+  // Synka visning när filmen byts (för att omrendera salongslayout)
+  useEffect(() => {
+    if (movieId == null || screeningsForMovie.length === 0) return;
+
+    const validIds = new Set(screeningsForMovie.map((s) => s.value));
+
+    if (!selectedScreeningId || !validIds.has(selectedScreeningId)) {
+      const firstId = screeningsForMovie[0]?.value ?? null;
+      setSelectedScreeningId(firstId);
+      // Rensa tidigare manuella platser från föregående visning
+      clearSelected();
+    }
+  }, [movieId, screeningsForMovie, selectedScreeningId, clearSelected]);
+
+  // Rensa platser när visningen faktiskt byts
+  useEffect(() => {
+    if (selectedScreeningId != null) {
+      clearSelected();
+    }
+  }, [selectedScreeningId, clearSelected]);
 
   // Viewport fitting
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -503,7 +816,6 @@ export default function Booking({
     if (!vp || !stage) return;
 
     const contentW = stage.scrollWidth;
-    const contentH = stage.scrollHeight;
     const availW = vp.clientWidth;
     const scale = Math.min(availW / contentW, 1);
     const offsetX = Math.max((availW - contentW * scale) / 2, 0);
@@ -561,7 +873,7 @@ export default function Booking({
     tickets.child * prices.child +
     tickets.senior * prices.senior;
 
-  // Viktig funktion för att hitta ticketType_id
+  // Funktion för att hitta ticketType_id
   const getTicketTypeId = (
     kind: "adult" | "child" | "senior"
   ): number | null => {
@@ -800,6 +1112,31 @@ export default function Booking({
     };
   }, []);
 
+  // Om valt screeningId är i det förflutna (efter t.ex. session restore), byt till första framtida
+  useEffect(() => {
+    if (!selectedScreeningId) return;
+    const curr = allScreenings.find((s) => s.id === selectedScreeningId);
+    if (!curr) return;
+
+    // Om nuvarande visning är dåtid, välj nästkommande framtida visning för samma film, annars låt vara
+    if (!isFuture(curr.screening_time)) {
+      const nextForSameMovie = futureScreenings
+        .filter((s) => s.movie_id === curr.movie_id)
+        .sort(
+          (a, b) =>
+            new Date(a.screening_time).getTime() -
+            new Date(b.screening_time).getTime()
+        )[0];
+
+      if (nextForSameMovie) {
+        setSelectedScreeningId(nextForSameMovie.id);
+      } else {
+        // Töm screening om det inte finns några kommande visningar för samma film
+        setSelectedScreeningId(null);
+      }
+    }
+  }, [selectedScreeningId, allScreenings, futureScreenings]);
+
   // Booking functions
   const finalizeBooking = async (email?: string) => {
     if (!selectedScreeningId) {
@@ -890,9 +1227,9 @@ export default function Booking({
     const isGuestBooking = data?.is_guest ?? false;
 
     // 8. Bygg BookingSummary-objektet vi skickar vidare till onConfirm()
-    const chosenScreening = allScreenings.find(
-      (s) => s.id === selectedScreeningId
-    );
+    const chosenScreening =
+      futureScreenings.find((s) => s.id === selectedScreeningId) ||
+      allScreenings.find((s) => s.id === selectedScreeningId);
     const showtimeISO = chosenScreening?.screening_time ?? "";
 
     const booking: BookingSummary = {
@@ -915,6 +1252,8 @@ export default function Booking({
       isGuestBooking: isGuestBooking,
       guestEmail: email,
     };
+    // ✅ Optimistisk UI-uppdatering: mina val är nu bokade
+    markAsBooked(Array.from(selected));
 
     // 9. Trigga bekräftelsesidan + ev. stäng modalen
     onConfirm(booking);
@@ -985,10 +1324,11 @@ export default function Booking({
     [saveBookingSession, location, sessionId, onNavigate]
   );
 
-  const handleCancel = () => {
+    const handleCancel = () => {
     setTickets({ adult: 0, child: 0, senior: 0 });
-    clearSelected();
+    clearSelectedAndRelease();
   };
+
 
   return (
     <>
@@ -1000,91 +1340,95 @@ export default function Booking({
               <div className="card-header">Välj föreställning</div>
               <div className="card-body">
                 <section className="auditoriums">
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Film</label>
-                  {loadingMovies ? (
-                    <div className="form-control-plaintext">Laddar filmer…</div>
-                  ) : movieError ? (
-                    <div className="text-danger small">{movieError}</div>
-                  ) : (
-                    <select
-                      className="form-select"
-                      value={movieId ?? ""}
-                      onChange={(e) =>
-                        setMovieId(Number(e.target.value) || null)
-                      }
-                    >
-                      {bookableMovies.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.title}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Datum & tid</label>
-                  {loadingScreenings ? (
-                    <div className="form-control-plaintext">
-                      Laddar visningar…
-                    </div>
-                  ) : screeningsError ? (
-                    <div className="text-danger small">
-                      Kunde inte ladda visningar
-                    </div>
-                  ) : (
-                    <select
-                      className="form-select"
-                      value={selectedScreeningId ?? ""}
-                      onChange={(e) =>
-                        setSelectedScreeningId(Number(e.target.value) || null)
-                      }
-                    >
-                      {screeningsForMovie.length === 0 ? (
-                        <option value="">Inga visningar för vald film</option>
-                      ) : (
-                        screeningsForMovie.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Film</label>
+                    {loadingMovies ? (
+                      <div className="form-control-plaintext">
+                        Laddar filmer…
+                      </div>
+                    ) : movieError ? (
+                      <div className="text-danger small">{movieError}</div>
+                    ) : (
+                      <select
+                        className="form-select"
+                        value={movieId ?? ""}
+                        onChange={(e) =>
+                          setMovieId(Number(e.target.value) || null)
+                        }
+                      >
+                        {bookableMovies.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.title}
                           </option>
-                        ))
-                      )}
-                    </select>
-                  )}
-                </div>
+                        ))}
+                      </select>
+                    )}
+                  </div>
 
-                <label className="form-label fw-semibold">Salong</label>
-                <div className="form-control-plaintext hidden-text">
-                  {auditoriumName || "–"}
-                </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">
+                      Datum & tid
+                    </label>
+                    {loadingScreenings ? (
+                      <div className="form-control-plaintext">
+                        Laddar visningar…
+                      </div>
+                    ) : screeningsError ? (
+                      <div className="text-danger small">
+                        Kunde inte ladda visningar
+                      </div>
+                    ) : (
+                      <select
+                        className="form-select"
+                        value={selectedScreeningId ?? ""}
+                        onChange={(e) =>
+                          setSelectedScreeningId(Number(e.target.value) || null)
+                        }
+                      >
+                        {screeningsForMovie.length === 0 ? (
+                          <option value="">Inga visningar för vald film</option>
+                        ) : (
+                          screeningsForMovie.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    )}
+                  </div>
+
+                  <label className="form-label fw-semibold">Salong</label>
+                  <div className="form-control-plaintext hidden-text">
+                    {auditoriumName || "–"}
+                  </div>
                 </section>
                 <section className="tickets">
-                <h6 className="mb-3 fw-bold">Antal biljetter</h6>
-                <TicketRow
-                  label="Vuxen"
-                  price={prices.adult}
-                  value={tickets.adult}
-                  onChange={(v) =>
-                    setTickets((t) => ({ ...t, adult: Math.max(0, v) }))
-                  }
-                />
-                <TicketRow
-                  label="Barn"
-                  price={prices.child}
-                  value={tickets.child}
-                  onChange={(v) =>
-                    setTickets((t) => ({ ...t, child: Math.max(0, v) }))
-                  }
-                />
-                <TicketRow
-                  label="Pensionär"
-                  price={prices.senior}
-                  value={tickets.senior}
-                  onChange={(v) =>
-                    setTickets((t) => ({ ...t, senior: Math.max(0, v) }))
-                  }
-                />
+                  <h6 className="mb-3 fw-bold">Antal biljetter</h6>
+                  <TicketRow
+                    label="Vuxen"
+                    price={prices.adult}
+                    value={tickets.adult}
+                    onChange={(v) =>
+                      setTickets((t) => ({ ...t, adult: Math.max(0, v) }))
+                    }
+                  />
+                  <TicketRow
+                    label="Barn"
+                    price={prices.child}
+                    value={tickets.child}
+                    onChange={(v) =>
+                      setTickets((t) => ({ ...t, child: Math.max(0, v) }))
+                    }
+                  />
+                  <TicketRow
+                    label="Pensionär"
+                    price={prices.senior}
+                    value={tickets.senior}
+                    onChange={(v) =>
+                      setTickets((t) => ({ ...t, senior: Math.max(0, v) }))
+                    }
+                  />
                 </section>
               </div>
             </div>
@@ -1101,12 +1445,16 @@ export default function Booking({
               <div className="card-body">
                 {/* MOBIL: dropdown för platser */}
                 <SeatPickerMobile
-                  totalSeats={seatStruct.indexByRow.flat().length}
+                  rows={seatStruct.indexByRow}
                   occupied={occupied}
+                  held={held}
                   selected={selected}
                   needed={needed}
                   onToggle={toggleSeat}
+                  getSeatLabel={getSeatLabel}
+                  sessionId={sessionId}
                 />
+
                 {/* DESKTOP: vanlig seat-grid (döljs på mobil) */}
                 <div className="seat-viewport" ref={viewportRef}>
                   <div className="seat-stage" ref={stageRef}>
@@ -1118,6 +1466,9 @@ export default function Booking({
                             {rowNos.map((no) => {
                               const isTaken = occupied.has(no);
                               const isActive = selected.has(no);
+                              const heldByOther =
+                                held.has(no) && held.get(no) !== sessionId;
+
                               return (
                                 <button
                                   key={no}
@@ -1125,21 +1476,26 @@ export default function Booking({
                                   className={`seat ${
                                     isTaken
                                       ? "seat-taken"
+                                      : heldByOther
+                                      ? "seat-held"
                                       : isActive
                                       ? "seat-active"
                                       : ""
                                   }`}
                                   aria-pressed={isActive}
                                   disabled={
-                                    isTaken ||
-                                    (!isActive && selected.size >= needed)
+                                  isTaken ||
+                                  heldByOther ||
+                                  (!isActive && !(needed === 0 || selected.size < needed))
                                   }
+
                                   onClick={() => toggleSeat(no)}
                                 >
                                   {getSeatLabel(no)}
                                 </button>
                               );
                             })}
+
                           </div>
                         </div>
                       ))}
@@ -1351,75 +1707,155 @@ function TicketRow({
 }
 
 function SeatPickerMobile({
-  totalSeats,
+  rows,
   occupied,
+  held,
   selected,
   needed,
   onToggle,
+  getSeatLabel,
+  sessionId,
 }: {
-  totalSeats: number;
+  rows: number[][];
   occupied: Set<number>;
+  held: Map<number, string>;
   selected: Set<number>;
   needed: number;
-  onToggle: (no: number) => void;
+  onToggle: (seatId: number) => void;
+  getSeatLabel: (seatId: number) => string;
+  sessionId: string;
 }) {
-  const canAddMore = selected.size < needed;
 
-  // Skapa en lista med alla platser från alla rader
-  const allSeats = useMemo(() => {
-    const seats: number[] = [];
-    for (let i = 1; i <= totalSeats; i++) {
-      seats.push(i);
-    }
-    return seats;
-  }, [totalSeats]);
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  const canAddMore = needed === 0 || selected.size < needed;
+
+
+  // Sorterar efter radbokstav + siffra (A1, A2, A10) istället för sträng-fel
+  const sortBySeatLabel = (a: number, b: number) => {
+    const la = getSeatLabel(a);
+    const lb = getSeatLabel(b);
+
+    const rowA = la.charAt(0);
+    const rowB = lb.charAt(0);
+
+    const numA = parseInt(la.slice(1), 10) || 0;
+    const numB = parseInt(lb.slice(1), 10) || 0;
+
+    if (rowA < rowB) return -1;
+    if (rowA > rowB) return 1;
+    return numA - numB;
+  };
+
+  // Text i "stängd" läge
+  const summaryLabel =
+    selected.size > 0
+      ? `Platser: ${[...selected]
+          .sort(sortBySeatLabel)
+          .map((id) => getSeatLabel(id))
+          .join(", ")}`
+      : needed > 0
+      ? "Öppna och välj platser"
+      : "Välj antal biljetter först";
+
+  // 🔹 Klick utanför → stäng
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (!wrapperRef.current) return;
+      const target = e.target as Node;
+      if (!wrapperRef.current.contains(target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [open]);
 
   return (
-    <div className="seat-picker-mobile d-lg-none">
+    <div className="seat-picker-mobile d-lg-none" ref={wrapperRef}>
       <label className="form-label fw-semibold">
         Välj platser{" "}
         {needed > 0 ? `(behöver ${needed})` : `(välj antal biljetter först)`}
       </label>
 
-      {/* En enkel "dropdown" med checkboxar */}
-      <details className="spm-dropdown">
-        <summary className="btn form-select w-100 d-flex justify-content-between align-items-center">
-          {selected.size
-            ? `Platser: ${Array.from(selected)
-                .sort((a, b) => a - b)
-                .join(", ")}`
-            : "Öppna och bocka i platser"}
-          <span className="ms-2">▾</span>
-        </summary>
+      {/* Klickbar "select" som öppnar/stänger panelen */}
+      <button
+        type="button"
+        className="spm-summary form-select d-flex justify-content-between align-items-center"
+        onClick={() => {
+          if (needed > 0) setOpen((o) => !o);
+        }}
+        disabled={needed === 0}
+      >
+        <span>{summaryLabel}</span>
+        <span className="ms-2">{open ? "▴" : "▾"}</span>
+      </button>
 
+      {open && (
         <div className="spm-panel mt-2">
-          {allSeats.map((seatId) => {
-            const taken = occupied.has(seatId);
-            const checked = selected.has(seatId);
-            // tillåt bocka UR alltid; blockera nya val om max är nått eller inga biljetter valda
-            const disabled = taken || (!checked && !canAddMore) || needed === 0;
+          {rows.map((rowSeatIds, rowIndex) => {
+            if (!rowSeatIds.length) return null;
+
+            const rowLetter = String.fromCharCode("A".charCodeAt(0) + rowIndex);
+
+            const sortedSeats = [...rowSeatIds].sort(sortBySeatLabel);
 
             return (
-              <label
-                key={seatId}
-                className="form-check d-flex align-items-center gap-2 spm-item"
-              >
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  checked={checked}
-                  disabled={disabled}
-                  onChange={() => onToggle(seatId)}
-                />
-                <span>
-                  Plats {seatId}
-                  {taken ? " (upptagen)" : ""}
-                </span>
-              </label>
+              <div key={rowIndex} className="spm-row">
+                <div className="spm-row-label">Rad {rowLetter}</div>
+                <div className="spm-row-seats">
+                                    {sortedSeats.map((seatId) => {
+                    const label = getSeatLabel(seatId);
+                    const taken = occupied.has(seatId);
+                    const checked = selected.has(seatId);
+                    const heldByOther =
+                      held.has(seatId) && held.get(seatId) !== sessionId;
+
+                    const disabled =
+                      taken ||
+                      heldByOther ||
+                      (!checked && !canAddMore);
+
+
+                    const stateClass = taken
+                      ? "spm-seat-taken"
+                      : heldByOther
+                      ? "spm-seat-held"
+                      : checked
+                      ? "spm-seat-selected"
+                      : "spm-seat-free";
+
+                    return (
+                      <button
+                        key={seatId}
+                        type="button"
+                        className={`spm-seat-pill ${stateClass}`}
+                        onClick={() => {
+                          if (!disabled) onToggle(seatId);
+                        }}
+                        disabled={disabled}
+                        aria-pressed={checked}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+
+                </div>
+              </div>
             );
           })}
         </div>
-      </details>
+      )}
     </div>
   );
 }

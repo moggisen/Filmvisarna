@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams} from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../styles/detail.scss";
-import Accordion from "react-bootstrap/Accordion";
-import Button from "react-bootstrap/Button";
+import Alert from "react-bootstrap/Alert";
+import Spinner from "react-bootstrap/Spinner";
+import Ratio from "react-bootstrap/Ratio";
+import Figure from "react-bootstrap/Figure";
 import Card from "react-bootstrap/Card";
+import Accordion from "react-bootstrap/Accordion";
+import ListGroup from "react-bootstrap/ListGroup";
 
 
 //types for movie data
@@ -31,7 +35,6 @@ interface Screening {
   auditorium_id: number;
 }
 
-
 interface Review {
   text: string;
   author: string;
@@ -44,7 +47,7 @@ interface MovieDetailProps {
   movieId?: number;
 }
 
-//ake api path start with /api
+//make api path start with /api
 const apiUrl = (path: string) =>
   path.startsWith("/") ? `/api${path}` : `/api/${path}`;
 
@@ -81,10 +84,30 @@ const posterPath = (val?: string): string => {
   }
 };
 
+//format helpers
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("sv-SE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+const fmtTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString("sv-SE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
 //main component
 export default function MovieDetail({ onBook }: MovieDetailProps) {
+
   //find movie id
   const { id: idParam } = useParams<{ id: string }>();
+  const [screenings, setScreenings] = useState<Screening[]>([]);
+  const [movie, setMovie] = useState<Movie | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound ] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const resolvedId = useMemo<number | null>(() => {
     const n = idParam ? Number(idParam) : NaN;
     if (Number.isFinite(n) && n > 0) return n;
@@ -96,17 +119,9 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
     return null;
   }, [idParam]);
 
-  //main states
-  const [loading, setLoading] = useState(true);
-  const [ notFound ] = useState(false);
-  const [screenings, setScreenings] = useState<Screening[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [movie, setMovie] = useState<Movie | null>(null);
-
   //fetch movie data
   useEffect(() => {
     if (resolvedId === null) return;
-
     const ac = new AbortController();
     let cancelled = false;
 
@@ -156,32 +171,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
     return () => ac.abort();
   }, [resolvedId]);
 
-  const thisMovieScreenings = useMemo(() => {
-    if (!movie) return [];
-    const now = Date.now();
-    return screenings
-      .filter((s) => s.movie_id === movie.id)
-      .filter((s) => new Date(s.screening_time).getTime() > now)
-      .sort(
-        (a, b) =>
-          new Date(a.screening_time).getTime() -
-          new Date(b.screening_time).getTime()
-      );
-  }, [screenings, movie]);
-
-  const fmtDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("sv-SE", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-
-  const fmtTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString("sv-SE", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
+  //early states
   if (resolvedId === null)
     return (
       <div className="alert alert-warning m-5">
@@ -192,22 +182,22 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
   if (loading)
     return (
       <div className="text-center py-5">
-        <div className="spinner-border text-primary" role="status"></div>
+        <Spinner animation="border" role="status" className="text-primary" />
       </div>
     );
 
   if (notFound)
     return (
-      <div className="alert alert-info m-5">
+      <Alert variant="info" className="m-5">
         Filmen med id <code>{resolvedId}</code> kunde inte hittas.
-      </div>
+      </Alert>
     );
 
   if (error)
     return (
-      <div className="alert alert-danger m-5">
+      <Alert variant="danger" className="m-5">
         <strong>Ett fel uppstod:</strong> {error}
-      </div>
+      </Alert>
     );
 
   const m = movie as Movie;
@@ -218,6 +208,22 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
    const reviews: Review[] = [m.review1, m.review2].filter(
     (r): r is Review => Boolean(r && r.text)
   );
+
+  const upcoming = screenings
+    .filter((s) => s.movie_id === m.id)
+    .filter((s) => new Date(s.screening_time).getTime() > Date.now())
+    .sort(
+      (a, b) =>
+        new Date(a.screening_time).getTime() -
+        new Date(b.screening_time).getTime()
+    );
+
+ function handleBook(s: Screening ): void {
+  localStorage.setItem("selectedScreeningId", String(s.id));
+  localStorage.setItem("selectedScreeningTime", s.screening_time);
+  localStorage.setItem("selectedAuditoriumId", String(s.auditorium_id));
+  onBook();
+}
 
   return (
     <div className="movie-detail-theme min-vh-100 d-flex flex-column">
@@ -231,17 +237,25 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
               <span>{m.movie_playtime || "-"}</span>
             </p>
 
-            <section className="movie-card mb-3">
-              <div className="card-body movie-body-text p-4">
-                {m.movie_desc || "Ingen beskrivning."}
-              </div>
-            </section>
+            {/* description card */}
+          <Card
+            className="movie-card border-0 shadow-0"
+              style={{
+                backgroundColor: 'var(--movie-secondary)',
+                color: 'var(--movie-text)',
+                boxShadow: 'none',
+                border: 0,
+                
+               }}>
+           <Card.Body className="p-4" style={{ backgroundColor: 'inherit' }}>
+              {m.movie_desc || "Ingen beskrivning."}
+           </Card.Body>
+          </Card>
 
-            {/*Accordion */}
-            <Accordion defaultActiveKey="info">
+            {/* accordion */}
+            <Accordion defaultActiveKey="info" className="movie-accordion">
+              {/* info */}
               <Accordion.Item eventKey="info">
-
-                {/*more info*/}
                 <Accordion.Header>Mer info</Accordion.Header>
                 <Accordion.Body>
                   <p>
@@ -291,56 +305,33 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                 </Accordion.Body>
               </Accordion.Item>
 
-              {/*book ticket*/}
+              {/* screenings & booking */}
               <Accordion.Item eventKey="bookings">
                 <Accordion.Header>Föreställningar & bokning</Accordion.Header>
                 <Accordion.Body>
-                  {thisMovieScreenings.length === 0 ? (
+                  {upcoming.length === 0 ? (
                     <p className="mb-0 text-muted">
                       Inga kommande visningar för den här filmen.
                     </p>
                   ) : (
-                    <div className="d-flex flex-column gap-2">
-                      {thisMovieScreenings.map((s) => (
-                        <div
-                          key={s.id}
-                          className="d-flex align-items-center justify-content-between border-bottom pb-1"
-                        >
-                          <span>
-                            {fmtDate(s.screening_time)} •{" "}
-                            {fmtTime(s.screening_time)} • Salong{" "}
-                            {s.auditorium_id}
-                          </span>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => {
-                              console.log(
-                                "Klickade på Boka för screening:",
-                                s.id,
-                                "film:",
-                                m.id
-                              );
-                              localStorage.setItem(
-                                "selectedScreeningId",
-                                String(s.id)
-                              );
-                              localStorage.setItem(
-                                "selectedScreeningTime",
-                                s.screening_time
-                              );
-                              localStorage.setItem(
-                                "selectedAuditoriumId",
-                                String(s.auditorium_id)
-                              );
-                              onBook();
-                            }}
-                          >
-                            Boka
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                   <ListGroup variant="flush" className="mt-1">
+                   {upcoming.map((s) => (
+                 <ListGroup.Item
+                 as="button"
+                 type="button"
+                   key={s.id}
+                     action
+                        onClick={() => handleBook(s)}
+                    aria-label={`Boka ${m.movie_title} ${fmtDate(s.screening_time)} ${fmtTime(s.screening_time)} i salong ${s.auditorium_id}`}
+                       className="d-flex justify-content-between align-items-center w-100 text-start rounded-2 py-2 "
+                       >
+                        <span>
+                      {fmtDate(s.screening_time)} • {fmtTime(s.screening_time)} • Salong {s.auditorium_id}
+                    </span>
+                 </ListGroup.Item>
+                  ))}
+                 </ListGroup>
+
                   )}
                 </Accordion.Body>
               </Accordion.Item>
@@ -350,8 +341,8 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
           {/*poster*/}
           <aside className="col-lg-5 order-1 order-lg-2 d-grid gap-3">
             {poster ? (
-              <figure className="movie-poster d-none d-lg-flex justify-content-center">
-                <img
+              <Figure className="movie-poster d-none d-lg-flex justify-content-center">
+                <Figure.Image
                   src={poster}
                   alt="Film poster"
                   className="img-fluid rounded-2"
@@ -360,28 +351,28 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                       "/assets/posters/placeholder.jpg")
                   }
                 />
-              </figure>
+              </Figure>
             ) : (
-              <div className="alert alert-secondary d-none d-lg-block">
+              <Alert variant="secondary" className="d-none d-lg-block">
                 Ingen bild tillgänglig.
-              </div>
+              </Alert>
             )}
 
             {/*trailer*/}
             <section className="movie-trailer-wrapper">
               {!trailerId ? (
-                <div className="alert alert-secondary mb-0">
+                <Alert variant="secondary" className="mb-0">
                   Ingen trailer tillgänglig.
-                </div>
+                </Alert>
               ) : (
-                <div className="movie-trailer-iframe ratio ratio-16x9">
+                <Ratio aspectRatio="16x9" className="movie-trailer-iframe">
                   <iframe
                     src={`https://www.youtube-nocookie.com/embed/${trailerId}?modestbranding=1&rel=0&showinfo=0&controls=1`}
                     title={`${m.movie_title} – trailer`}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
-                </div>
+                </Ratio>
               )}
             </section>
           </aside>
