@@ -10,7 +10,6 @@ import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
 import ListGroup from "react-bootstrap/ListGroup";
 
-
 //types for movie data
 interface Movie {
   id: number;
@@ -99,7 +98,6 @@ const fmtTime = (iso: string) =>
 
 //main component
 export default function MovieDetail({ onBook }: MovieDetailProps) {
-
   //find movie id
   const { id: idParam } = useParams<{ id: string }>();
   const [screenings, setScreenings] = useState<Screening[]>([]);
@@ -205,7 +203,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
   const trailerId = toYouTubeId(m.movie_trailer);
   const cast = csvToList(m.movie_cast);
 
-   const reviews: Review[] = [m.review1, m.review2].filter(
+  const reviews: Review[] = [m.review1, m.review2].filter(
     (r): r is Review => Boolean(r && r.text)
   );
 
@@ -218,12 +216,16 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
         new Date(b.screening_time).getTime()
     );
 
- function handleBook(s: Screening ): void {
-  localStorage.setItem("selectedScreeningId", String(s.id));
-  localStorage.setItem("selectedScreeningTime", s.screening_time);
-  localStorage.setItem("selectedAuditoriumId", String(s.auditorium_id));
-  onBook();
-}
+  function handleBook(s: Screening): void {
+    localStorage.setItem("selectedScreeningId", String(s.id));
+    localStorage.setItem("selectedScreeningTime", s.screening_time);
+    localStorage.setItem("selectedAuditoriumId", String(s.auditorium_id));
+    onBook();
+  }
+
+  //origin for youtube
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
 
   return (
     <div className="movie-detail-theme min-vh-100 d-flex flex-column">
@@ -238,19 +240,19 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
             </p>
 
             {/* description card */}
-          <Card
-            className="movie-card border-0 shadow-0"
+            <Card
+              className="movie-card border-0 shadow-0"
               style={{
-                backgroundColor: 'var(--movie-secondary)',
-                color: 'var(--movie-text)',
-                boxShadow: 'none',
+                backgroundColor: "var(--movie-secondary)",
+                color: "var(--movie-text)",
+                boxShadow: "none",
                 border: 0,
-                
-               }}>
-           <Card.Body className="p-4" style={{ backgroundColor: 'inherit' }}>
-              {m.movie_desc || "Ingen beskrivning."}
-           </Card.Body>
-          </Card>
+              }}
+            >
+              <Card.Body className="p-4" style={{ backgroundColor: "inherit" }}>
+                {m.movie_desc || "Ingen beskrivning."}
+              </Card.Body>
+            </Card>
 
             {/* accordion */}
             <Accordion defaultActiveKey="info" className="movie-accordion">
@@ -314,24 +316,29 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                       Inga kommande visningar för den här filmen.
                     </p>
                   ) : (
-                   <ListGroup variant="flush" className="mt-1">
-                   {upcoming.map((s) => (
-                 <ListGroup.Item
-                 as="button"
-                 type="button"
-                   key={s.id}
-                     action
-                        onClick={() => handleBook(s)}
-                    aria-label={`Boka ${m.movie_title} ${fmtDate(s.screening_time)} ${fmtTime(s.screening_time)} i salong ${s.auditorium_id}`}
-                       className="d-flex justify-content-between align-items-center w-100 text-start rounded-2 py-2 "
-                       >
-                        <span>
-                      {fmtDate(s.screening_time)} • {fmtTime(s.screening_time)} • Salong {s.auditorium_id}
-                    </span>
-                 </ListGroup.Item>
-                  ))}
-                 </ListGroup>
-
+                    <ListGroup variant="flush" className="mt-1 gap-1">
+                      {upcoming.map((s) => (
+                        <ListGroup.Item
+                          as="button"
+                          type="button"
+                          key={s.id}
+                          action
+                          onClick={() => handleBook(s)}
+                          aria-label={`Boka ${m.movie_title} ${fmtDate(
+                            s.screening_time
+                          )} ${fmtTime(
+                            s.screening_time
+                          )} i salong ${s.auditorium_id}`}
+                          className="d-flex justify-content-between align-items-center w-100 text-start rounded-2 py-2 "
+                        >
+                          <span>
+                            {fmtDate(s.screening_time)} •{" "}
+                            {fmtTime(s.screening_time)} • Salong{" "}
+                            {s.auditorium_id}
+                          </span>
+                        </ListGroup.Item>
+                      ))}
+                    </ListGroup>
                   )}
                 </Accordion.Body>
               </Accordion.Item>
@@ -366,11 +373,14 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                 </Alert>
               ) : (
                 <Ratio aspectRatio="16x9" className="movie-trailer-iframe">
+
                   <iframe
-                    src={`https://www.youtube-nocookie.com/embed/${trailerId}?modestbranding=1&rel=0&showinfo=0&controls=1`}
+                    src={`https://www.youtube-nocookie.com/embed/${trailerId}?modestbranding=1&rel=0&controls=1&origin=${origin}`}
                     title={`${m.movie_title} – trailer`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    style={{ border: 0, width: "100%", height: "100%" }}
                   />
                 </Ratio>
               )}
