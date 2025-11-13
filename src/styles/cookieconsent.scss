@@ -1,13 +1,12 @@
-/* Gör modalen lite bredare på desktop, och fullbredd på små skärmar */
+
 .cookie-modal .modal-dialog {
-  max-width: 560px; /* typ "md" känsla */
+  max-width: 560px;
 }
 
 .cookie-modal .form-check-input:checked {
     background-color: #e02424;
 }
 
-/* (valfritt) gör radion lite större = lättare att se/trycka på */
 .cookie-modal .form-check-input[type="radio"] {
   transform: scale(1.15);
   margin-right: 0.25rem;
@@ -15,12 +14,11 @@
 
 @media (min-width: 992px) {
   .cookie-modal .modal-dialog {
-    max-width: 720px; /* lite större på desktop */
+    max-width: 720px;
   }
 }
 
 @media (max-width: 576px) {
-  /* mobil: använd i praktiken fullbredd & höjd-känsla */
   .cookie-modal .modal-dialog {
     margin: 0.5rem;
   }
