@@ -75,6 +75,25 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
   const [loading, setLoading] = useState(true);
   const [toCancel, setToCancel] = useState<UserBooking | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [showBackButton, setShowBackButton] = useState(false);
+
+  // Only shows the "← Tillbaka"-button on the bottom if there is enough content that the user has to scroll
+  useEffect(() => {
+    const checkScroll = () => {
+      const scrolledFromTop = window.scrollY;
+      const viewportHeight = window.innerHeight;
+
+      // adjusting how much you need to be able to scroll before the button at the bottom displays
+      const scrollThreshold = viewportHeight * 0.2; // 1 = 1 viewport height
+
+      setShowBackButton(scrolledFromTop > scrollThreshold);
+    };
+
+    window.addEventListener("scroll", checkScroll);
+    checkScroll();
+
+    return () => window.removeEventListener("scroll", checkScroll);
+  }, []);
 
   useEffect(() => {
     async function fetchUserBookings() {
@@ -187,10 +206,10 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
       <Button
         variant="primary"
         size="sm"
-        className="mb-3 d-block mx-auto text-info border-dark py-2 px-5"
+        className="auth-btn auth-btn-back d-block mx-auto"
         onClick={onBack}
       >
-        Tillbaka
+        ← Tillbaka
       </Button>
 
       {/* Kommande visningar */}
@@ -328,14 +347,16 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
         </ListGroup>
       </Card>
 
-      <Button
-        variant="primary"
-        size="sm"
-        className="mb-3 d-block mx-auto text-info border-dark py-2 px-5"
-        onClick={onBack}
-      >
-        Tillbaka
-      </Button>
+      {showBackButton && (
+        <Button
+          variant="primary"
+          size="sm"
+          className="auth-btn auth-btn-back d-block mx-auto"
+          onClick={onBack}
+        >
+          ← Tillbaka
+        </Button>
+      )}
 
       {/* Avbokningsmodal */}
       <Modal show={!!toCancel} onHide={() => setToCancel(null)} centered>

@@ -13,7 +13,6 @@ import BottomNav from "./components/BottomNav";
 import HomePage from "./components/HomePage";
 import Booking from "./components/Booking";
 import ConfirmationPage from "./components/ConfirmationPage";
-import AuthPage from "./components/AuthPage";
 import ProfilePage from "./components/ProfilePage";
 import MovieDetail from "./components/MovieDetail";
 import CookieConsent from "./components/CookieConsent";
@@ -21,6 +20,8 @@ import CookieConsent from "./components/CookieConsent";
 import { routePath, buildPath } from "./routes";
 import type { RouteKey } from "./routes";
 import type { BookingSummary } from "./components/types";
+import Signup from "./components/Signup";
+import Login from "./components/Login";
 
 // --- Types för auth-state ---
 interface AuthState {
@@ -280,8 +281,7 @@ export default function App() {
               sessionStorage.getItem("shouldRestoreBooking") !== "true" ? (
                 <Navigate to="/profile" replace />
               ) : (
-                <AuthPage
-                  mode="login"
+                <Login
                   onSuccess={handleAuthSuccess}
                   onBack={() => navigate("/")}
                 />
@@ -298,8 +298,7 @@ export default function App() {
               sessionStorage.getItem("shouldRestoreBooking") !== "true" ? (
                 <Navigate to="/profile" replace />
               ) : (
-                <AuthPage
-                  mode="signup"
+                <Signup
                   onSuccess={handleAuthSuccess}
                   onBack={() => navigate("/")}
                 />

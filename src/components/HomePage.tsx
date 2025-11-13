@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 import {
   Container,
@@ -272,8 +273,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         </Row>
 
         {/* ÅLDERSGRÄNS + INFO*/}
-       
-    <h5 className="homepage-heading d-flex align-items-center gap-2">
+
+        <h5 className="homepage-heading d-flex align-items-center gap-2">
           Åldersgräns
           <AgeTooltip />
         </h5>
@@ -393,7 +394,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           <Col md={4} lg={3} className="sidebar p-1 mt-2 position-sticky">
             <h5 className="homepage-heading d-flex align-items-center gap-2">
               Åldersgräns
-              <AgeTooltip/>
+              <AgeTooltip />
             </h5>
             <Form.Group className="homepage-form mb-3">
               <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
