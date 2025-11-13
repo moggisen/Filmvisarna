@@ -405,6 +405,7 @@ useEffect(() => {
 const toggleSeat = useCallback(
   (seatId: number) => {
     if (!screeningId) return;
+    if (needed === 0) return;         // ⬅️ NY RAD: inga biljetter → ingen seat
     if (occupied.has(seatId)) return;                    // redan bokad
     if (held.has(seatId) && held.get(seatId) !== sessionId) return; // hålls av annan
 
@@ -423,10 +424,10 @@ const toggleSeat = useCallback(
           credentials: "include",
           body: JSON.stringify({ action: "release", sessionId }),
         }).catch(() => {});
-      } else if (needed === 0 || next.size < needed) {
-        next.add(seatId);
-        // 🔹 optimistisk hold
-        fetch(`${API_PREFIX}/screenings/${screeningId}/seats/${seatId}/hold`, {
+        } else if (next.size < needed) {
+          next.add(seatId);
+          // 🔹 optimistisk hold
+          fetch(`${API_PREFIX}/screenings/${screeningId}/seats/${seatId}/hold`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -697,6 +698,15 @@ const clearSelectedAndRelease = useCallback(() => {
   // den flaggan sätts inne i hooken via setSelectedWithManual,
   // men att nollställa selected räcker för att auto-select ska kunna köra igen
 }, [releaseAllSelected, setSelected]);
+
+useEffect(() => {
+  // När man väljer 0 biljetter vill vi:
+  // - släppa alla holds på servern
+  // - tömma alla valda platser i UI
+  if (needed === 0 && selected.size > 0) {
+    clearSelectedAndRelease();
+  }
+}, [needed, selected, clearSelectedAndRelease]);
 
 // Om needed minskar och vi har fler val än tillåtet → släpp de sämst rankade först
 useEffect(() => {
@@ -1484,6 +1494,7 @@ useEffect(() => {
                                   }`}
                                   aria-pressed={isActive}
                                   disabled={
+                                  needed === 0 ||                // ⬅️ NYTT: inga biljetter = helt avstängd
                                   isTaken ||
                                   heldByOther ||
                                   (!isActive && !(needed === 0 || selected.size < needed))
@@ -1728,8 +1739,7 @@ function SeatPickerMobile({
 
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-
-  const canAddMore = needed === 0 || selected.size < needed;
+  const canAddMore = selected.size < needed;
 
 
   // Sorterar efter radbokstav + siffra (A1, A2, A10) istället för sträng-fel
@@ -1821,6 +1831,7 @@ function SeatPickerMobile({
                       held.has(seatId) && held.get(seatId) !== sessionId;
 
                     const disabled =
+                      needed === 0 ||              // ⬅️ NYTT
                       taken ||
                       heldByOther ||
                       (!checked && !canAddMore);
