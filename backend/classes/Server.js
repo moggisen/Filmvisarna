@@ -1,6 +1,9 @@
 import path from 'path';
 import express from 'express';
 import PathFinder from '../helpers/PathFinder.js';
+import SseRoute from './sseRoute.js';
+import { startEventsPoller } from '../helpers/eventsPoller.js';
+
 const settings = PathFinder.requireJson('../settings.json');
 
 // check dbType from settings
@@ -14,16 +17,16 @@ if (!isSQLite && !isMySQL && !isMongoDB) {
 
 // import the correct version of the rest API
 const RestApi =
-  (await import(isSQL ? './RestAPiSQL.js' : './RestApiMongoDB.js')).default; 
+  (await import(isSQL ? './RestApiSQL.js' : './RestApiMongoDB.js')).default; 
 
 // 🔽 ADD: importera SSE-route + poller
-import SseRoute from './SseRoute.js';
-import { startEventsPoller } from '../helpers/eventsPoller.js';
+// import SseRoute from './sseRoute.js';
+// import { startEventsPoller } from '../helpers/eventsPoller.js';
 
 export default class Server {
 
   settings = settings;
-
+ 
   constructor() {
     this.startServer();
   }
@@ -37,13 +40,20 @@ export default class Server {
       //'with settings', this.settings
     ));
     // Add rest routes
-    new RestApi(this.app, this.settings);
+    // new RestApi(this.app, this.settings);
 
-    if (isMySQL) {
-    new SseRoute(this.app, this.settings);
-    startEventsPoller(400); // 300–800 ms är lagom
-    }
+    // if (isMySQL) {
+    // new SseRoute(this.app, this.settings);
+    // startEventsPoller(400); // 300–800 ms är lagom
+    // }
+
+    new SseRoute(this.app, { prefix: this.settings.restPrefix });
+    startEventsPoller(200);
+    console.log("[SSE] mounted /api/bookings/stream");
+
   
+    // Add rest routes efter SSE
+     new RestApi(this.app, this.settings);
     // Add static folder to serve
     this.addStaticFolder();
   }
