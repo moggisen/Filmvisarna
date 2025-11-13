@@ -3,7 +3,7 @@ const clientsByTopic = new Map(); // topic(screeningId) -> Set<res>
 const holdsByTopic = new Map();   // topic -> Map(seatId -> { sessionId, expiresAt, timer })
 let nextEventId = 1;
 
-const HOLD_TTL_MS = 120_000; // 2 min
+const HOLD_TTL_MS = 60_000; // 1 min 
 
 // --- internal utils ---
 function ensureTopic(topic) {
