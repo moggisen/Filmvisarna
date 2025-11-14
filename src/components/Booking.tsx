@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import type { BookingSummary } from "./types";
 import "../styles/booking.scss";
 
@@ -409,6 +409,7 @@ const useSeatManagement = (
   const toggleSeat = useCallback(
     (seatId: number) => {
       if (!screeningId) return;
+      if (needed === 0) return; // ⬅️ NY RAD: inga biljetter → ingen seat
       if (occupied.has(seatId)) return; // redan bokad
       if (held.has(seatId) && held.get(seatId) !== sessionId) return; // hålls av annan
 
@@ -430,7 +431,7 @@ const useSeatManagement = (
               body: JSON.stringify({ action: "release", sessionId }),
             }
           ).catch(() => {});
-        } else if (needed === 0 || next.size < needed) {
+        } else if (next.size < needed) {
           next.add(seatId);
           // 🔹 optimistisk hold
           fetch(
@@ -501,6 +502,9 @@ export default function Booking({
   const [sessionId] = useState(
     () => `booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   );
+
+  // SearchParams
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // State
   const [movieId, setMovieId] = useState<number | null>(null);
@@ -702,6 +706,15 @@ export default function Booking({
     // den flaggan sätts inne i hooken via setSelectedWithManual,
     // men att nollställa selected räcker för att auto-select ska kunna köra igen
   }, [releaseAllSelected, setSelected]);
+
+  useEffect(() => {
+    // När man väljer 0 biljetter vill vi:
+    // - släppa alla holds på servern
+    // - tömma alla valda platser i UI
+    if (needed === 0 && selected.size > 0) {
+      clearSelectedAndRelease();
+    }
+  }, [needed, selected, clearSelectedAndRelease]);
 
   // Om needed minskar och vi har fler val än tillåtet → släpp de sämst rankade först
   useEffect(() => {
@@ -945,13 +958,22 @@ export default function Booking({
   ]);
 
   // Förbättrad session återställning
-  // Förbättrad session återställning
   const restoreBookingSession = useCallback(() => {
     if (hasRestoredSession) return false;
 
     //  VIKTIGT: Vänta tills allScreenings har laddats
     if (allScreenings.length === 0) {
       return false;
+    }
+    // ✅ Kolla URL-parametrar FÖRST
+    const urlMovieId = searchParams.get("movie");
+    const urlScreeningId = searchParams.get("screening");
+
+    if (urlMovieId || urlScreeningId) {
+      if (urlMovieId) setMovieId(Number(urlMovieId));
+      if (urlScreeningId) setSelectedScreeningId(Number(urlScreeningId));
+      setHasRestoredSession(true);
+      return true;
     }
 
     const savedScreeningId = localStorage.getItem("selectedScreeningId");
@@ -1370,6 +1392,26 @@ export default function Booking({
       </div>
     );
   }
+  // SearchParams
+  useEffect(() => {
+    if (movieId || selectedScreeningId) {
+      const params = new URLSearchParams();
+      if (movieId) params.set("movie", movieId.toString());
+      if (selectedScreeningId)
+        params.set("screening", selectedScreeningId.toString());
+      setSearchParams(params, { replace: true });
+    }
+  }, [movieId, selectedScreeningId, setSearchParams]);
+
+  useEffect(() => {
+    const urlMovieId = searchParams.get("movie");
+    const urlScreeningId = searchParams.get("screening");
+    if (urlMovieId && !movieId) setMovieId(Number(urlMovieId));
+    if (urlScreeningId && !selectedScreeningId)
+      setSelectedScreeningId(Number(urlScreeningId));
+  }, []);
+
+  // ---------- SLUT SearchParams
 
   return (
     <>
@@ -1393,9 +1435,13 @@ export default function Booking({
                       <select
                         className="form-select"
                         value={movieId ?? ""}
-                        onChange={(e) =>
-                          setMovieId(Number(e.target.value) || null)
-                        }
+                        onChange={(e) => {
+                          const newMovieId = e.target.value
+                            ? Number(e.target.value)
+                            : null;
+                          setMovieId(newMovieId);
+                          setSelectedScreeningId(null); // Rensa screening när film ändras
+                        }}
                       >
                         {bookableMovies.map((m) => (
                           <option key={m.id} value={m.id}>
@@ -1422,9 +1468,12 @@ export default function Booking({
                       <select
                         className="form-select"
                         value={selectedScreeningId ?? ""}
-                        onChange={(e) =>
-                          setSelectedScreeningId(Number(e.target.value) || null)
-                        }
+                        onChange={(e) => {
+                          const newScreeningId = e.target.value
+                            ? Number(e.target.value)
+                            : null;
+                          setSelectedScreeningId(newScreeningId);
+                        }}
                       >
                         {screeningsForMovie.length === 0 ? (
                           <option value="">Inga visningar för vald film</option>
@@ -1525,6 +1574,7 @@ export default function Booking({
                                   }`}
                                   aria-pressed={isActive}
                                   disabled={
+                                    needed === 0 || // ⬅️ NYTT: inga biljetter = helt avstängd
                                     isTaken ||
                                     heldByOther ||
                                     (!isActive &&
@@ -1768,8 +1818,7 @@ function SeatPickerMobile({
 }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-
-  const canAddMore = needed === 0 || selected.size < needed;
+  const canAddMore = selected.size < needed;
 
   // Sorterar efter radbokstav + siffra (A1, A2, A10) istället för sträng-fel
   const sortBySeatLabel = (a: number, b: number) => {
@@ -1860,7 +1909,10 @@ function SeatPickerMobile({
                       held.has(seatId) && held.get(seatId) !== sessionId;
 
                     const disabled =
-                      taken || heldByOther || (!checked && !canAddMore);
+                      needed === 0 || // ⬅️ NYTT
+                      taken ||
+                      heldByOther ||
+                      (!checked && !canAddMore);
 
                     const stateClass = taken
                       ? "spm-seat-taken"

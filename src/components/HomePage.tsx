@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // ⭐ Lägg till useNavigate
-import { OverlayTrigger, Tooltip } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+
 import {
   Container,
   Row,
@@ -23,7 +23,7 @@ import carousel1Img from "../assets/banners/deadpool.jpg";
 import carousel2Img from "../assets/banners/ironMan2013.jpg";
 import carousel3Img from "../assets/banners/venom2018.jpg";
 import type { Route } from "./types";
-import { InfoCircle } from "react-bootstrap-icons";
+import AgeTooltip from "../components/ageTooltip";
 
 // ⭐ Lägg till dessa imports för routes
 import { routePath, buildPath } from "../routes";
@@ -59,79 +59,6 @@ interface Event {
 interface HomePageProps {
   onNavigate: (route: Route, movieId?: number) => void;
 }
-
-// ------------------ AgeTooltip-komponent ------------------
-interface AgeTooltipProps {
-  offset?: [number, number];
-  placement?: "top" | "bottom" | "left" | "right";
-}
-
-const AgeTooltip = ({
-  offset = [85, 0],
-  placement = "bottom",
-}: AgeTooltipProps) => (
-  <OverlayTrigger
-    placement={placement}
-    popperConfig={{
-      modifiers: [
-        {
-          name: "offset",
-          options: { offset },
-        },
-      ],
-    }}
-    overlay={
-      <Tooltip
-        id="age-tooltip"
-        style={{
-          maxWidth: "90vw",
-          width: "auto",
-          padding: "14px 16px",
-          borderRadius: "8px",
-          border: "1px solid white",
-          backgroundColor: "#000",
-          color: "white",
-          fontSize: "0.85rem",
-          lineHeight: "1.4",
-          boxShadow: "0 4px 15px rgba(0,0,0,0.6)",
-          textAlign: "left",
-        }}
-      >
-        <strong style={{ display: "block", marginBottom: "6px" }}>
-          Regler i Sverige:
-        </strong>
-        • Barn under 7 år får se filmer med 7-årsgräns i vuxet sällskap.
-        <br />
-        • Barn över 11 år får se filmer med 15-årsgräns i vuxet sällskap.
-        <hr
-          style={{
-            border: "none",
-            borderTop: "1px solid rgba(255,255,255,0.2)",
-            margin: "8px 0",
-          }}
-        />
-        <div
-          style={{
-            fontStyle: "italic",
-            fontSize: "0.8rem",
-            color: "rgba(255,255,255,0.85)",
-          }}
-        >
-          <strong>Observera:</strong> Åldersgränsen anger vad som är tillåtet,
-          inte vad som rekommenderas. När en film har en åldersgräns där yngre
-          barn får se den i vuxens sällskap, är det den vuxne som ansvarar för
-          att bedöma om filmen passar barnet utifrån mognad och känslighet.
-        </div>
-      </Tooltip>
-    }
-  >
-    <InfoCircle
-      size={18}
-      color="white"
-      style={{ cursor: "pointer", opacity: 0.8 }}
-    />
-  </OverlayTrigger>
-);
 
 // ------------------ MovieGrid-komponent ------------------
 interface MovieGridProps {
@@ -345,10 +272,11 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           ))}
         </Row>
 
-        {/* ÅLDERSGRÄNS + INFO */}
+        {/* ÅLDERSGRÄNS + INFO*/}
+
         <h5 className="homepage-heading d-flex align-items-center gap-2">
           Åldersgräns
-          <AgeTooltip offset={[85, 0]} placement="bottom" />
+          <AgeTooltip />
         </h5>
         <Form.Group className="homepage-form mb-3">
           <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
@@ -466,10 +394,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           <Col md={4} lg={3} className="sidebar p-1 mt-2 position-sticky">
             <h5 className="homepage-heading d-flex align-items-center gap-2">
               Åldersgräns
-              <AgeTooltip
-                offset={[75, 0]}
-                placement={window.innerWidth < 500 ? "bottom" : "right"}
-              />
+              <AgeTooltip />
             </h5>
             <Form.Group className="homepage-form mb-3">
               <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>

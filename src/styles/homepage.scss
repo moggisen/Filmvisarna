@@ -286,13 +286,13 @@
   border-right-color: #222 !important;
 }
 
-/* Lägg i din SCSS-fil */
+
 #age-tooltip {
-  max-width: 400px !important; /* bakgrund */
+  max-width: 400px !important; 
 }
 
 #age-tooltip .tooltip-inner {
-  max-width: 100% !important; /* gör inner-texten lika bred som bakgrunden */
+  max-width: 100% !important; 
   width: 100% !important;
   white-space: normal !important;
   text-align: left;
