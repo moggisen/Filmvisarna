@@ -140,7 +140,7 @@
       opacity: 0.9;
     }
 
-      &.seat-held {
+    &.seat-held {
       background: #ffe8a6;
       color: #6c4a00;
       border-color: #e5c04d;
@@ -148,17 +148,15 @@
       box-shadow: inset 0 0 0 2px rgba(229, 192, 77, 0.35);
     }
 
-      & .seat:disabled {
+    & .seat:disabled {
       cursor: not-allowed;
       opacity: 0.75;
       box-shadow: none;
     }
 
-      &.seat:disabled:hover {
+    &.seat:disabled:hover {
       transform: none;
     }
-
-
   }
 
   /* ==== Viewport/Stage ==== */
@@ -214,7 +212,6 @@
         border-color: #0dcaf0;
       }
     }
-
   }
 
   /* ==== Hint ==== */
@@ -248,6 +245,16 @@
     }
   }
   // Extra breakpoint som gör att whitespace under salongslayouten inte blir så stor vid små skärmbredder
+  @media (max-width: 767px) {
+    .seat-viewport {
+      height: 55vh;
+    }
+  }
+  @media (max-width: 577px) {
+    .seat-viewport {
+      height: 65vh;
+    }
+  }
   @media (max-width: 520px) {
     .seat-viewport {
       height: 65vh;
@@ -255,7 +262,7 @@
   }
   @media (max-width: 480px) {
     .seat-viewport {
-      height: 60vh;
+      height: 55vh;
     }
   }
 }
@@ -341,3 +348,58 @@
   text-decoration: none;
 }
 
+// Styling för färgkodsförklaring vid salongslayouten
+.seat-legend-wrapper {
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: center;
+  padding-top: 2rem;
+
+  .seat-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    align-items: center;
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+      line-height: 1;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 26px;
+      height: 26px;
+      border-radius: 0.35rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+    }
+
+    .swatch-free {
+      background: #ffffff;
+      border: none;
+    }
+    .swatch-taken {
+      background: #2d2d2d;
+      border: 1px dashed #444;
+    }
+    .swatch-active {
+      background: #dc3545;
+      border: none;
+    }
+    .swatch-held {
+      background: #ffe8a6;
+      border: 1px dashed #e5c04d;
+    }
+  }
+}
+
+@media (max-width: 575.98px) {
+  .seat-legend .swatch {
+    width: 22px;
+    height: 22px;
+  }
+}
