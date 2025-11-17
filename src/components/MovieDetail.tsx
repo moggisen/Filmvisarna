@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams} from "react-router-dom";
+import { useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../styles/detail.scss";
 import Alert from "react-bootstrap/Alert";
@@ -9,6 +9,7 @@ import Figure from "react-bootstrap/Figure";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
 import ListGroup from "react-bootstrap/ListGroup";
+import AgeTooltip from "./ageTooltip";
 
 //types for movie data
 interface Movie {
@@ -103,7 +104,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
   const [screenings, setScreenings] = useState<Screening[]>([]);
   const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
-  const [notFound ] = useState(false);
+  const [notFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const resolvedId = useMemo<number | null>(() => {
@@ -203,8 +204,8 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
   const trailerId = toYouTubeId(m.movie_trailer);
   const cast = csvToList(m.movie_cast);
 
-  const reviews: Review[] = [m.review1, m.review2].filter(
-    (r): r is Review => Boolean(r && r.text)
+  const reviews: Review[] = [m.review1, m.review2].filter((r): r is Review =>
+    Boolean(r && r.text)
   );
 
   const upcoming = screenings
@@ -224,8 +225,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
   }
 
   //origin for youtube
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
     <div className="movie-detail-theme min-vh-100 d-flex flex-column">
@@ -235,7 +235,9 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
         <section className="row g-4 align-items-start">
           <article className="col-lg-7 order-2 order-lg-1">
             <p className="small d-flex justify-content-between mb-3">
-              <span>{m.age_limit ?? "-"}+</span>
+              <span>
+                {m.age_limit ?? "-"}+ <AgeTooltip />
+              </span>
               <span>{m.movie_playtime || "-"}</span>
             </p>
 
@@ -326,9 +328,9 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                           onClick={() => handleBook(s)}
                           aria-label={`Boka ${m.movie_title} ${fmtDate(
                             s.screening_time
-                          )} ${fmtTime(
-                            s.screening_time
-                          )} i salong ${s.auditorium_id}`}
+                          )} ${fmtTime(s.screening_time)} i salong ${
+                            s.auditorium_id
+                          }`}
                           className="d-flex justify-content-between align-items-center w-100 text-start rounded-2 py-2 "
                         >
                           <span>
@@ -373,7 +375,6 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                 </Alert>
               ) : (
                 <Ratio aspectRatio="16x9" className="movie-trailer-iframe">
-
                   <iframe
                     src={`https://www.youtube-nocookie.com/embed/${trailerId}?modestbranding=1&rel=0&controls=1&origin=${origin}`}
                     title={`${m.movie_title} – trailer`}
