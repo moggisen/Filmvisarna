@@ -1,6 +1,4 @@
 // sendBookingEmail.js
-// Uppdaterad för att vara en ES Module (fungerar med import/export)
-
 import sendEmail from "./sendEmail.js"; // Import av default-exporten
 
 /**
