@@ -162,7 +162,6 @@ export default function Signup({ onSuccess, onBack }: SignupProps) {
           )}
 
           <Form onSubmit={handleSubmit} className="auth-form">
-            {/* E-post */}
             <Form.Group className="mb-2" controlId="email">
               <Form.Label>E-post</Form.Label>
               <Form.Control
@@ -184,7 +183,6 @@ export default function Signup({ onSuccess, onBack }: SignupProps) {
               )}
             </Form.Group>
 
-            {/* Lösenord */}
             <Form.Group className="mb-2" controlId="pwd">
               <Form.Label>Lösenord</Form.Label>
               <Form.Control
@@ -211,7 +209,6 @@ export default function Signup({ onSuccess, onBack }: SignupProps) {
               )}
             </Form.Group>
 
-            {/* Verifiera lösenord */}
             <Form.Group className="mb-2" controlId="pwd2">
               <Form.Label>Verifiera lösenord</Form.Label>
               <Form.Control
@@ -241,7 +238,6 @@ export default function Signup({ onSuccess, onBack }: SignupProps) {
               )}
             </Form.Group>
 
-            {/* Namn */}
             <Form.Group className="mb-2" controlId="name">
               <Form.Label>Förnamn</Form.Label>
               <Form.Control
@@ -251,7 +247,6 @@ export default function Signup({ onSuccess, onBack }: SignupProps) {
               />
             </Form.Group>
 
-            {/* Telefonnummer */}
             <Form.Group className="mb-2" controlId="number">
               <Form.Label>Telefonnummer</Form.Label>
               <Form.Control

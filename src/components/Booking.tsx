@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import type { BookingSummary } from "./types";
 import "../styles/booking.scss";
+import AgeTooltip from "./ageTooltip";
 
 interface BookingProps {
   onConfirm: (booking: BookingSummary) => void;
@@ -1494,7 +1495,8 @@ export default function Booking({
                   </div>
                 </section>
                 <section className="tickets">
-                  <h6 className="mb-3 fw-bold">Antal biljetter</h6>
+                  <h6 className="mb-3 fw-bold">Antal biljetter</h6>{" "}
+                  <AgeTooltip />
                   <TicketRow
                     label="Vuxen"
                     price={prices.adult}
