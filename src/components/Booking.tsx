@@ -1609,7 +1609,7 @@ export default function Booking({
 
                 <div className="mt-3 d-flex gap-2 justify-content-end">
                   <button
-                    className="btn btn-dark btn-cancel"
+                    className="btn btn-primary btn-cancel"
                     onClick={handleCancel}
                   >
                     Avbryt
