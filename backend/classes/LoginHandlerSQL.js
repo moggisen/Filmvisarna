@@ -38,12 +38,12 @@ export default class LoginHandler {
     );
   }
 
-  // Post route -> Used to LOGIN
+  // Post route -> Used to login
   addPostRoute() {
     // Creating a limiter for the attempts to login, after set max-attempts user gets locked out for set amount of time
     const loginLimiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 50, // max X login attempts  <--------- ÄNDRA DETTA ----------------------------------------------------------------------------------
+      max: 5, // max X login attempts
       message: {
         error: "För många inloggningsförsök, försök igen om 15 minuter",
       },
@@ -58,16 +58,11 @@ export default class LoginHandler {
         return;
       }
 
-      // If it is a guest-session, allow users to log in
-      if (req.session.user && req.session.user.is_guest) {
-        console.log("Overwriting guest session with real login");
-      }
-
       // get the user from the db
       const result = await this.db.query(
         req.method,
         req.url,
-        /*sql*/ `
+        `
         SELECT * FROM ${this.userTableName}
         WHERE ${this.userNameField} = :${this.userNameField}
       `,
@@ -97,8 +92,8 @@ export default class LoginHandler {
         });
         return;
       }
-      // the user has successfully logged in, store in req.session.user
-      // (but without password) and send user data as resposne
+      // if the user has successfully logged in, store in req.session.user
+      // and send user data as resposne, but without password
       delete foundDbUser[passwordFieldlName];
       req.session.user = foundDbUser;
       this.restApi.sendJsonResponse(res, foundDbUser);
@@ -106,7 +101,7 @@ export default class LoginHandler {
   }
 
   // Get route -> used to check if we have a logged in user
-  // (return the user property of our session)
+  // return the user property of our session
   addGetRoute() {
     this.app.get(this.prefix + "login", (req, res) =>
       this.restApi.sendJsonResponse(
@@ -116,8 +111,8 @@ export default class LoginHandler {
     );
   }
 
-  // Delete route -> used to LOGOUT
-  // (delete the user property of our session)
+  // Delete route -> used to logout
+  // delete the user property of our session
   addDeleteRoute() {
     this.app.delete(this.prefix + "login", (req, res) =>
       this.restApi.sendJsonResponse(
