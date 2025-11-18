@@ -5,6 +5,7 @@ import Acl from "./Acl.js";
 import catchExpressJsonErrors from "../helpers/catchExpressJsonErrors.js";
 import PasswordChecker from "../helpers/PasswordChecker.js";
 import { body, query, validationResult } from "express-validator";
+import { sendBookingEmail } from "./sendBookingEmail.js";
 import { holdSeat, releaseSeat, broadcast, clearHolds } from "../helpers/sseRegistry.js";
 
 // import the correct version of the DBQueryMaker
@@ -157,6 +158,13 @@ export default class RestApi {
   stripRoleField(table, body) {
     table.toLowerCase() === this.settings.userTableName.toLowerCase() &&
       delete body[this.settings.userRoleField];
+  }
+
+  // ✅ NY METOD: Konverterar radindex (1, 2, 3...) till bokstav (A, B, C...)
+  getRowLetter(rowIndex) {
+    // 65 är ASCII-koden för 'A'
+    if (rowIndex < 1 || rowIndex > 26) return rowIndex.toString();
+    return String.fromCharCode(64 + rowIndex);
   }
 
   // Bookings / Mina sidor -----------------------------------------------
@@ -844,6 +852,64 @@ addSeatHoldRoute() {
             }
           );
           console.log("Seat insert result:", seatResult);
+        }
+        // 8. Hämta detaljer för mejlet
+        const movieDetails = await this.db.query(
+          "GET",
+          req.url,
+          `SELECT m.movie_title, a.auditorium_name
+           FROM screenings s
+           JOIN movies m ON s.movie_id = m.id
+           JOIN auditoriums a ON s.auditorium_id = a.id
+           WHERE s.id = :screening_id`,
+          { screening_id }
+        );
+        const { movie_title, auditorium_name } = movieDetails[0];
+
+        const seatDetails = await this.db.query(
+          "GET",
+          req.url,
+          `SELECT s.row_index, s.seat_number, tt.ticketType_name
+           FROM bookingsXseats bxs
+           JOIN seats s ON bxs.seat_id = s.id
+           JOIN ticketTypes tt ON bxs.ticketType_id = tt.id
+           WHERE bxs.booking_id = :booking_id
+           ORDER BY s.row_index, s.seat_number`,
+          { booking_id }
+        );
+
+        // ✅ ÄNDRAD LOGIK: Skapa kompakt format (E4, G5, etc.) utan biljettyp
+        const formattedSeats = seatDetails
+          .map((s) => {
+            const rowLetter = this.getRowLetter(s.row_index); // Använd nya metoden
+            return `${rowLetter}${s.seat_number}`;
+          })
+          .join(", "); // Separera med kommatecken, inte semikolon
+
+        const recipientEmail = guest_email || req.session.user.user_email;
+        // Notera: formattedScreeningTime flyttas upp och definieras här för att undvika 'not defined'-fel
+        const formattedScreeningTime = new Date(
+          screeningTimeRaw
+        ).toLocaleString("sv-SE", { dateStyle: "medium", timeStyle: "short" });
+
+        // 9. Skicka mejl
+        if (recipientEmail) {
+          try {
+            // Notera: du måste ha importerat sendBookingEmail i toppen
+            await sendBookingEmail({
+              to: recipientEmail,
+              confirmation: confirmation,
+              movieTitle: movie_title,
+              auditoriumName: auditorium_name,
+              seatList: formattedSeats, // Använder det nya, kompakta formatet
+              screeningTime: formattedScreeningTime,
+              totalPrice: totalPrice,
+            });
+            console.log(`Bekräftelsemejl skickat till: ${recipientEmail}`);
+          } catch (emailError) {
+            console.error("Kunde INTE skicka bekräftelsemejl:", emailError);
+            // Fortsätt svara 201 trots mejlfel
+          }
         }
 
         if (isGuestBooking) {
