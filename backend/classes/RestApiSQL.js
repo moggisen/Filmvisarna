@@ -6,6 +6,7 @@ import catchExpressJsonErrors from "../helpers/catchExpressJsonErrors.js";
 import PasswordChecker from "../helpers/PasswordChecker.js";
 import { body, query, validationResult } from "express-validator";
 import { sendBookingEmail } from "./sendBookingEmail.js";
+import { holdSeat, releaseSeat, broadcast, clearHolds } from "../helpers/sseRegistry.js";
 
 // import the correct version of the DBQueryMaker
 const DBQueryMaker = (
@@ -31,6 +32,7 @@ export default class RestApi {
     new LoginHandler(this);
     // add post, get, put and delete routes
     this.addBookingRoute();
+    this.addSeatHoldRoute();
     this.addRegisterRoute();
     this.addUserBookingsRoute();
     this.addUserBookingDeleteRoute();
@@ -41,13 +43,16 @@ export default class RestApi {
     this.addPutRoutes(); // U
     this.addDeleteRoutes(); // D
 
-    app.get("/api/ticketTypes", async (req, res) => {
+    app.get(this.prefix + "ticketTypes", async (req, res) => {
       try {
-        const [rows] = await this.db.query(
-          "SELECT * FROM ticketTypes ORDER BY id"
-        );
-        res.json(rows);
-      } catch (error) {
+        const rows = await this.db.query(
+       "GET",
+       req.url,
+        "SELECT * FROM ticketTypes ORDER BY id",
+        {}
+      );
+      res.json(rows);
+    } catch (error) {
         console.error("Error fetching ticket types:", error);
         res.status(500).json({ error: "Kunde inte hämta biljettyper" });
       }
@@ -129,36 +134,10 @@ export default class RestApi {
         res.status(500).json({ error: "Kunde inte hämta layout" });
       }
     });
-
-    // Viktigt: undvik krock med "POST /api/:table" genom att använda en djupare path
-    this.app.post(this.prefix + "bookings/create", async (req, res) => {
-      const { screeningId, seats } = req.body || {};
-      if (!screeningId || !Array.isArray(seats) || seats.length === 0) {
-        return res.status(400).json({ error: "Bad request" });
-      }
-
-      const result = await this.seatsHub.tryBook(screeningId, seats);
-      if (!result.ok) {
-        return res.status(409).json({ error: "conflict", taken: result.taken });
-      }
-
-      // TODO: här kan du spara i DB; backa vid fel:
-      // try { await this.db.query(...); return res.status(201).json({ ok: true }); }
-      // catch(e) { await this.seatsHub.release(screeningId, seats); return res.status(500).json({ error:"persist_failed" }); }
-
-      return res.status(201).json({ ok: true }); // demo utan persist
-    });
-
-    // (valfritt) avbokning/test
-    this.app.post(this.prefix + "screenings/:id/release", async (req, res) => {
-      const seats = (req.body && req.body.seats) || [];
-      await this.seatsHub.release(req.params.id, seats);
-      res.json({ ok: true });
-    });
-
     // catch calls to undefined routes
     this.addCatchAllRoute();
   }
+
 
   // send data as a json response
   // after running it through the acl system for filtering
@@ -583,6 +562,75 @@ export default class RestApi {
     });
   }
 
+  // 🔹 Route för att hålla/släppa stolar (in-memory via sseRegistry)
+addSeatHoldRoute() {
+  this.app.post(
+    this.prefix + "screenings/:screeningId/seats/:seatId/hold",
+    async (req, res) => {
+      const screeningId = Number(req.params.screeningId);
+      const seatId = Number(req.params.seatId);
+      const { action, sessionId } = req.body || {};
+
+      if (
+        !screeningId ||
+        !seatId ||
+        !["hold", "release", "extend"].includes(action) ||
+        !sessionId
+      ) {
+        return res.status(400).json({ error: "Ogiltigt anrop" });
+      }
+
+      try {
+        // Blockera om permanent bokad
+        const booked = await this.db.query(
+          "POST",
+          req.url,
+          `SELECT seat_id
+           FROM bookingsXseats
+           WHERE screening_id = :screening_id
+             AND seat_id = :seat_id
+           LIMIT 1`,
+          { screening_id: screeningId, seat_id: seatId }
+        );
+        if (booked.length > 0) {
+          return res.status(409).json({ error: "Denna plats är redan bokad." });
+        }
+
+        if (action === "hold") {
+          const result = holdSeat(screeningId, seatId, sessionId); // ska returnera { ok, expiresAt }
+          if (!result?.ok) {
+            return res.status(409).json({
+              error: "Platsen är tillfälligt upptagen av en annan användare.",
+            });
+          }
+          return res.json({ ok: true, action: "hold", expiresAt: result.expiresAt });
+        }
+
+        if (action === "extend") {
+          const result = holdSeat(screeningId, seatId, sessionId, { extend: true });
+          if (!result?.ok) {
+            return res.status(409).json({
+              error: "Hold saknas eller innehas av annan användare.",
+            });
+          }
+          return res.json({ ok: true, action: "extend", expiresAt: result.expiresAt });
+        }
+
+        if (action === "release") {
+          releaseSeat(screeningId, seatId, sessionId);
+          return res.json({ ok: true, action: "release" });
+        }
+      } catch (err) {
+        console.error("Fel i seat-hold-route:", err);
+        return res.status(500).json({ error: "Kunde inte uppdatera sätes-hold." });
+      }
+    }
+  );
+}
+
+
+
+
   // I din RestApiSQL.js
   addBookingRoute() {
     this.app.post(this.prefix + "makeBooking", async (req, res) => {
@@ -872,6 +920,15 @@ export default class RestApi {
           console.log("Guest session cleared after booking:", guestSessionData);
         }
 
+        // Sänd live-uppdatering till alla + städa holds för dessa platser
+        const seatIdsJustBooked = seats.map(s => Number(s.seat_id));
+
+        // 1) Broadcast "seat:booked" – din frontend lyssnar redan på detta
+        broadcast(Number(screening_id), 'seat:booked', { seatIds: seatIdsJustBooked });
+
+        // 2) Ta bort ev. holds för snapshot (utan att spamma 'seat:released')
+        clearHolds(Number(screening_id), seatIdsJustBooked);
+
         res.status(201).json({
           message: guest_email ? "Gästbokning skapad!" : "Bokning skapad!",
           booking_id: booking_id,
@@ -953,7 +1010,7 @@ export default class RestApi {
     });
 
     // get a post by id in a table
-    this.app.get(this.prefix + ":table/:id", async (req, res) => {
+      this.app.get(this.prefix + ":table/:id", async (req, res) => {
       const { table, id } = req.params;
       const result = await this.db.query(
         req.method,

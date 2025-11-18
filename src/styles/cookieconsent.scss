@@ -1,0 +1,28 @@
+
+.cookie-modal .modal-dialog {
+  max-width: 560px;
+}
+
+.cookie-modal .form-check-input:checked {
+    background-color: #e02424;
+}
+
+.cookie-modal .form-check-input[type="radio"] {
+  transform: scale(1.15);
+  margin-right: 0.25rem;
+}
+
+@media (min-width: 992px) {
+  .cookie-modal .modal-dialog {
+    max-width: 720px;
+  }
+}
+
+@media (max-width: 576px) {
+  .cookie-modal .modal-dialog {
+    margin: 0.5rem;
+  }
+  .cookie-modal .modal-content {
+    border-radius: 0.5rem;
+  }
+}

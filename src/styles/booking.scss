@@ -21,7 +21,7 @@
 
     .card-header {
       background-color: #113255; // $secondary
-      color:#fff;
+      color: #fff;
       border-bottom: 1px solid #eee;
       font-weight: 600;
       font-family: "Inter", sans-serif;
@@ -30,9 +30,7 @@
 
     .card-body {
       background-color: #113255;
-      color:#fff;
-
-
+      color: #fff;
     }
     .auditoriums {
       padding-top: 30px;
@@ -42,12 +40,12 @@
     }
 
     .form-select {
-        background-color: #0d253f;
-        color:#fff;
+      background-color: #0d253f;
+      color: #fff;
     }
   }
-  .hidden-text{
-    color:#f7f4f4af;
+  .hidden-text {
+    color: #f7f4f4af;
   }
 
   /* ==== Knappar ==== */
@@ -67,22 +65,21 @@
   }
   /* ==== Duken/Screen ==== */
   .screenbar {
-  height: 60px;
-  //   // background: #666;
-  background: linear-gradient(to bottom, #fff 0%, #eaeaea 100%);
-  transform: perspective(600px) rotateX(-25deg); /* lutning */
-  transform-origin: center bottom;
-  box-shadow: 0 0 40px rgba(255,255,255,0.6);
-  margin: 0 auto 30px;
-  width: 600px;
-  font-size: 30px;
-  color: #2d2d2d;
-  display: flex;
-  justify-content: center;
-  align-items: center;     
-  font-family: "Roboto", sans-serif;
+    height: 60px;
+    //   // background: #666;
+    background: linear-gradient(to bottom, #fff 0%, #eaeaea 100%);
+    transform: perspective(600px) rotateX(-25deg); /* lutning */
+    transform-origin: center bottom;
+    box-shadow: 0 0 40px rgba(255, 255, 255, 0.6);
+    margin: 0 auto 30px;
+    width: 600px;
+    font-size: 30px;
+    color: #2d2d2d;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: "Roboto", sans-serif;
   }
-
 
   /* ==== Seat grid ==== */
   .seat-grid {
@@ -142,6 +139,24 @@
       cursor: not-allowed;
       opacity: 0.9;
     }
+
+    &.seat-held {
+      background: #ffe8a6;
+      color: #6c4a00;
+      border-color: #e5c04d;
+      cursor: not-allowed;
+      box-shadow: inset 0 0 0 2px rgba(229, 192, 77, 0.35);
+    }
+
+    & .seat:disabled {
+      cursor: not-allowed;
+      opacity: 0.75;
+      box-shadow: none;
+    }
+
+    &.seat:disabled:hover {
+      transform: none;
+    }
   }
 
   /* ==== Viewport/Stage ==== */
@@ -181,7 +196,7 @@
       background: #113255;
       border: 1px solid #0dcaf0;
       border-radius: 8px;
-      padding: 1rem;
+      padding: 2rem;
       max-height: 200px;
       overflow-y: auto;
     }
@@ -191,6 +206,8 @@
       padding: 0.5rem 0;
 
       .form-check-input {
+        height: 2.5rem;
+        width: 2.5rem;
         background-color: #0d253f;
         border-color: #0dcaf0;
       }
@@ -207,10 +224,6 @@
   @media (max-width: 576px) {
     /* du kan överstyra css-variabler här om du vill */
     --seat-size: 40px;
-
-    .seat-viewport {
-      height: 35vh;
-    }
 
     .screenbar {
       height: 48px;
@@ -231,8 +244,162 @@
       margin-bottom: 0.75rem;
     }
   }
+  // Extra breakpoint som gör att whitespace under salongslayouten inte blir så stor vid små skärmbredder
+  @media (max-width: 767px) {
+    .seat-viewport {
+      height: 55vh;
+    }
+  }
+  @media (max-width: 577px) {
+    .seat-viewport {
+      height: 65vh;
+    }
+  }
+  @media (max-width: 520px) {
+    .seat-viewport {
+      height: 65vh;
+    }
+  }
+  @media (max-width: 480px) {
+    .seat-viewport {
+      height: 55vh;
+    }
+  }
 }
-.btn-choose{
+.btn-choose {
   background-color: #0d253f;
   color: #ebebeb;
+}
+
+.spm-summary {
+  cursor: pointer;
+  text-align: left;
+}
+
+.spm-panel {
+  background: #0d253f;
+  border-radius: 12px;
+  padding: 1rem;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #ebebeb;
+}
+
+.spm-row {
+  margin-bottom: 0.8rem;
+}
+
+.spm-row-label {
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #ebebeb;
+  margin-bottom: 0.5rem;
+}
+
+.spm-row-seats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+.spm-seat-pill {
+  min-width: 60px;
+  padding: 0.6rem;
+  border-radius: 0.45rem;
+  background: #ffffff;
+  font-size: 1.2rem;
+  line-height: 1.5;
+  text-align: center;
+  color: #666666;
+  cursor: pointer;
+  border: none;
+}
+
+.spm-seat-pill:hover:not(:disabled) {
+  border-color: #0d6efd;
+}
+
+.spm-seat-selected {
+  background: #dc3545;
+  color: #ffffff;
+}
+
+.spm-seat-taken {
+  background: #2d2d2d;
+  color: #cfcfcf;
+  text-decoration: line-through;
+  cursor: not-allowed;
+  border-color: #444;
+  border-style: dashed;
+}
+
+.spm-seat-pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spm-seat-held {
+  background: #ffe8a6;
+  color: #6c4a00;
+  cursor: not-allowed;
+  border: 1px dashed #e5c04d;
+  text-decoration: none;
+}
+
+// Styling för färgkodsförklaring vid salongslayouten
+.seat-legend-wrapper {
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: center;
+  padding-top: 2rem;
+
+  .seat-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    align-items: center;
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+      line-height: 1;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 26px;
+      height: 26px;
+      border-radius: 0.35rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+    }
+
+    .swatch-free {
+      background: #ffffff;
+      border: none;
+    }
+    .swatch-taken {
+      background: #2d2d2d;
+      border: 1px dashed #444;
+    }
+    .swatch-active {
+      background: #dc3545;
+      border: none;
+    }
+    .swatch-held {
+      background: #ffe8a6;
+      border: 1px dashed #e5c04d;
+    }
+  }
+}
+
+@media (max-width: 575.98px) {
+  .seat-legend .swatch {
+    width: 22px;
+    height: 22px;
+  }
 }

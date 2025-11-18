@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 import {
   Container,
@@ -23,6 +24,10 @@ import carousel2Img from "../assets/banners/ironMan2013.jpg";
 import carousel3Img from "../assets/banners/venom2018.jpg";
 import type { Route } from "./types";
 import AgeTooltip from "../components/ageTooltip";
+
+// ⭐ Lägg till dessa imports för routes
+import { routePath, buildPath } from "../routes";
+import type { RouteKey } from "../routes";
 
 interface Movie {
   id: number;
@@ -103,6 +108,26 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const [search, setSearch] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [moviesForDate, setMoviesForDate] = useState<Movie[]>([]);
+
+  const navigate = useNavigate(); // ⭐ useNavigate är nu korrekt importerad
+
+  // ⭐ Uppdaterad handleNavigate funktion
+  const handleNavigate = (name: RouteKey, movieId?: number) => {
+    if (name === "biljett" && movieId) {
+      // Navigera till booking med movieId i state (URLen ändras INTE)
+      navigate(routePath.biljett, { state: { preselectedMovieId: movieId } });
+    } else if (name === "movie-detail" && movieId) {
+      // Befintlig logik för movie-detail
+      const target = buildPath("movie-detail", { id: movieId });
+      try {
+        localStorage.setItem("selectedMovieId", String(movieId));
+      } catch {}
+      navigate(target);
+    } else {
+      // Standard navigation
+      navigate(routePath[name] ?? routePath.home);
+    }
+  };
 
   // Hämta filmer
   useEffect(() => {
@@ -248,8 +273,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         </Row>
 
         {/* ÅLDERSGRÄNS + INFO*/}
-       
-    <h5 className="homepage-heading d-flex align-items-center gap-2">
+
+        <h5 className="homepage-heading d-flex align-items-center gap-2">
           Åldersgräns
           <AgeTooltip />
         </h5>
@@ -334,7 +359,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               >
                 Filmer som går den {selectedDate.toLocaleDateString()}
               </h5>
-              <MovieGrid movies={moviesForDate} onNavigate={onNavigate} />
+              {/* ⭐ Använd handleNavigate här för mobila vyn */}
+              <MovieGrid movies={moviesForDate} onNavigate={handleNavigate} />
             </>
           ) : (
             <div className="text-center mt-4 mb-5">
@@ -351,7 +377,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             >
               Alla filmer
             </h5>
-            <MovieGrid movies={filteredMovies} onNavigate={onNavigate} />
+            {/* ⭐ Använd handleNavigate här för mobila vyn */}
+            <MovieGrid movies={filteredMovies} onNavigate={handleNavigate} />
           </>
         )}
       </Container>
@@ -367,7 +394,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           <Col md={4} lg={3} className="sidebar p-1 mt-2 position-sticky">
             <h5 className="homepage-heading d-flex align-items-center gap-2">
               Åldersgräns
-              <AgeTooltip/>
+              <AgeTooltip />
             </h5>
             <Form.Group className="homepage-form mb-3">
               <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
@@ -447,9 +474,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 ? `Filmer som går den ${selectedDate.toLocaleDateString()}`
                 : "Alla filmer"}
             </h5>
+            {/* ⭐ Använd handleNavigate här för desktop vyn också */}
             <MovieGrid
               movies={selectedDate ? moviesForDate : filteredMovies}
-              onNavigate={onNavigate}
+              onNavigate={handleNavigate}
             />
           </Col>
         </Row>

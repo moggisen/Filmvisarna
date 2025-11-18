@@ -2,8 +2,8 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5001/api/screenings";
 
-const startDate = new Date("2025-11-01");
-const endDate = new Date("2025-11-14");
+const startDate = new Date("2025-11-11");
+const endDate = new Date("2025-11-25");
 
 const times = ["12:00:00", "16:00:00", "20:00:00"];
 const auditoriums = [1, 2];
@@ -45,13 +45,10 @@ async function createScreenings() {
         try {
           await axios.post(API_URL, screening);
           console.log(
-            `✅ ${screeningTime} | Film ${movie} | Salong ${auditorium}`
+            `${screeningTime} | Film ${movie} | Salong ${auditorium}`
           );
         } catch (err) {
-          console.error(
-            "❌ Fel vid skapande:",
-            err.response?.data || err.message
-          );
+          console.error("Fel vid skapande:", err.response?.data || err.message);
         }
       }
     }
