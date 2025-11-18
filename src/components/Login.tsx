@@ -33,7 +33,7 @@ export default function Login({ onSuccess, onBack }: LoginProps) {
         break;
 
       case "password":
-        // Enklare validering för login - bara kolla att det inte är tomt
+        // Simple login validation, check if password is empty
         if (!formData.password) {
           setErrors((prev) => ({
             ...prev,
