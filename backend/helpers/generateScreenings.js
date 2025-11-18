@@ -2,8 +2,8 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5001/api/screenings";
 
-const startDate = new Date("2025-11-11");
-const endDate = new Date("2025-11-25");
+const startDate = new Date("2025-11-26");
+const endDate = new Date("2025-12-31");
 
 const times = ["12:00:00", "16:00:00", "20:00:00"];
 const auditoriums = [1, 2];
