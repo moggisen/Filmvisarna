@@ -450,26 +450,29 @@ const useSeatManagement = (
     [occupied, held, needed, screeningId, sessionId]
   );
 
-  // Uppdaterad setSelected som också hanterar manuella val
   const setSelectedWithManual = useCallback(
-    (newSelected: Set<number> | ((prev: Set<number>) => Set<number>)) => {
-      setSelected((prev) => {
-        const result =
-          typeof newSelected === "function" ? newSelected(prev) : newSelected;
+  (newSelected: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+    setSelected((prev) => {
+      const result =
+        typeof newSelected === "function" ? newSelected(prev) : newSelected;
 
-        // Om vi sätter platser manuellt (t.ex. från session restore), markera som manuella val
-        if (
-          result.size > 0 &&
-          Array.from(result).some((seatId) => !prev.has(seatId))
-        ) {
-          setHasManualSelection(true);
-        }
+      if (
+        result.size > 0 &&
+        Array.from(result).some((seatId) => !prev.has(seatId))
+      ) {
+        // ➜ Vi har fått nya platser (manuell förändring) → stäng av autoväljaren
+        setHasManualSelection(true);
+      } else if (result.size === 0) {
+        // ➜ Alla platser är borttagna → slå PÅ autoväljaren igen
+        setHasManualSelection(false);
+      }
 
-        return result;
-      });
-    },
-    []
-  );
+      return result;
+    });
+  },
+  []
+);
+
   const clearSelected = useCallback(() => {
     setSelected(new Set());
     setHasManualSelection(false);
