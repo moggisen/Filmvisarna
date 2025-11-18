@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Card, ListGroup, Button, Spinner } from "react-bootstrap";
+import {
+  Alert,
+  Card,
+  ListGroup,
+  Button,
+  Spinner,
+  Row,
+  Col,
+} from "react-bootstrap";
+import { usePDF } from 'react-to-pdf'; // <-- LADES TILL
 import "../styles/ConfirmationAndProfile.scss";
+
+// --- Hjälpfunktioner ---
 
 function formatPrice(n: number) {
   return new Intl.NumberFormat("sv-SE", {
@@ -8,6 +19,7 @@ function formatPrice(n: number) {
     currency: "SEK",
   }).format(n);
 }
+
 function formatDateTimeISO(isoLike: string) {
   const d = new Date(isoLike);
   const date = d.toLocaleDateString("sv-SE");
@@ -17,6 +29,20 @@ function formatDateTimeISO(isoLike: string) {
   });
   return `${date} ${time}`;
 }
+
+// helper: gör om row_index (1,2,3...) till A,B,C...
+function rowIndexToLetter(rowIndex: number): string {
+  const baseCharCode = "A".charCodeAt(0);
+  return String.fromCharCode(baseCharCode + (rowIndex - 1));
+}
+
+function getAuditoriumName(id: number | undefined): string {
+  if (id === 1) return "Lilla Salongen";
+  if (id === 2) return "Stora Salongen";
+  return id ? `Salong ${id}` : "N/A";
+}
+
+// --- Data-typer (Oförändrade) ---
 
 type BookingRow = {
   id: number;
@@ -38,8 +64,8 @@ type MovieRow = {
 type SeatDetailedRow = {
   seat_id: number;
   ticketType_id: number;
-  row_index: number; // 1 = rad A, 2 = rad B, etc
-  seat_number: number; // stolnumret i den raden
+  row_index: number;
+  seat_number: number;
 };
 type TicketTypeRow = {
   id: number;
@@ -51,7 +77,15 @@ interface ConfirmationPageProps {
   onDone: () => void;
 }
 
+// --- Huvudkomponent ---
+
 export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
+  // PDF Hook: Initialiserar toPDF funktionen och targetRef
+  const { toPDF, targetRef } = usePDF({ 
+    filename: 'biljett_filmvisarna.pdf',
+    page: { scale: 1.2 } 
+  }); 
+
   // 1) Läs query params
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const bookingIdParam = params.get("booking_id");
@@ -68,6 +102,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   const [seats, setSeats] = useState<SeatDetailedRow[]>([]);
   const [ticketsTotal, setTicketsTotal] = useState<number | null>(null);
 
+  // Hämtar all bokningsdata (Logik från den första versionen)
   useEffect(() => {
     let isDead = false;
     async function run() {
@@ -86,7 +121,6 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
         const bJson: BookingRow | null = await bRes.json();
         if (!bJson) throw new Error("Bokningen finns inte.");
         if (confParam && bJson.booking_confirmation !== confParam) {
-          // inte blockerande / bra att veta
           console.warn("booking_confirmation i URL och DB matchar inte.");
         }
         if (isDead) return;
@@ -148,11 +182,11 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
               );
             }
 
-            // Bygg i formatet “2 vuxen, 1 barn” (namn från DB; fallback till id)
+            // Bygg i formatet “2 vuxen, 1 barn”
             const parts: string[] = [];
             for (const [ttId, count] of counts) {
               const rawName = nameMap.get(ttId) ?? `Typ ${ttId}`;
-              const niceName = rawName.trim().toLowerCase(); // “Vuxen” blir “vuxen”
+              const niceName = rawName.trim().toLowerCase();
               parts.push(`${count} ${niceName}`);
             }
             const breakdown = parts.sort().join(", ");
@@ -177,12 +211,11 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
     };
   }, [bookingIdParam, confParam]);
 
-  // UI
+  // --- UI Rendrering ---
   if (loading) {
     return (
       <div
         className="mobile-shell confirm-page d-flex justify-content-center align-items-center"
-        style={{ minHeight: 240 }}
       >
         <Spinner animation="border" role="status" />
         <span className="ms-2">Laddar bokningsbekräftelse…</span>
@@ -209,25 +242,19 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   }
 
   if (!booking || !screening || !movie) {
-    return null; // borde ej hända pga felhantering ovan
-  }
-
-  // helper: gör om row_index (1,2,3...) till A,B,C...
-  function rowIndexToLetter(rowIndex: number): string {
-    // row_index = 1 -> 'A', 2 -> 'B', osv
-    const baseCharCode = "A".charCodeAt(0);
-    return String.fromCharCode(baseCharCode + (rowIndex - 1));
+    return null;
   }
 
   // Presentationsdata
-  const bookingCode = (booking.booking_confirmation?.slice(0, 6) || "------").toUpperCase();
+  const bookingCode = (
+    booking.booking_confirmation?.slice(0, 6) || "------"
+  ).toUpperCase();
   const showtimeLabel = formatDateTimeISO(screening.screening_time);
 
   // Bygg "A7, A8, B12 ..."
   const seatList = seats
-    .slice() // kopia så vi kan sortera utan att mutera state
+    .slice()
     .sort((a, b) => {
-      // sortera först på row_index, sen på seat_number
       if (a.row_index !== b.row_index) {
         return a.row_index - b.row_index;
       }
@@ -238,51 +265,127 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
 
   return (
     <div className="mobile-shell confirm-page">
-      <Alert data-bs-theme="dark" variant="success" className="mb-3">
-        <Alert.Heading className="h5">Bokning bekräftad!</Alert.Heading>
-        <p className="text-center mb-0">
-          Ditt boknings-ID är <strong>{bookingCode}</strong>.
-        </p>
-      </Alert>
-
-      <Card className="bg-secondary mb-3">
-        <Card.Header as="h6">Din bokning</Card.Header>
-        <ListGroup variant="flush" className="bg-secondary">
-          <ListGroup.Item className="bg-secondary border-primary d-flex justify-content-between">
-            <span>Film</span> <span>{movie.movie_title}</span>
-          </ListGroup.Item>
-          <ListGroup.Item className="bg-secondary border-primary d-flex justify-content-between">
-            <span>Föreställning</span> <span>{showtimeLabel}</span>
-          </ListGroup.Item>
-          <ListGroup.Item className="bg-secondary border-primary d-flex justify-content-between">
-            <span>Biljetter</span>{" "}
-            <span>
-              {ticketBreakdown ||
-                `${seats.length} biljett${seats.length === 1 ? "" : "er"}`}
-            </span>
-          </ListGroup.Item>
-          <ListGroup.Item className="bg-secondary border-primary d-flex justify-content-between">
-            <span>Platser</span> <span>{seatList || "–"}</span>
-          </ListGroup.Item>
-          <ListGroup.Item className="bg-secondary border-primary d-flex justify-content-between">
-            <span>Pris</span>{" "}
-            <strong>
-              {ticketsTotal != null ? formatPrice(ticketsTotal) : "–"}
-            </strong>
-          </ListGroup.Item>
-        </ListGroup>
-      </Card>
-
-      <div className="text-center">
-        <Button
-          variant="primary"
-          size="sm"
-          className="border-dark text-info py-2 px-3"
-          onClick={onDone}
-        >
-          Till startsidan
-        </Button>
+      {/* 1. BLÅ Toppremsa (Använder Bootstrap Primary) */}
+      <div className="top-alert bg-primary text-white">
+        Bokning bekräftad!
       </div>
+
+      {/* 2. Biljettens Huvuddel (Card) - Använder targetRef för PDF-generering */}
+      <Card className="mb-0" ref={targetRef}> 
+        {/* Filmdetaljer (Enkel kolumn) */}
+        <Card.Header as="h6">
+          <Row>
+            <Col xs={12}>
+              {/* Film titel: STOR och CENTRERAD */}
+              <h5
+                className="mb-4 text-uppercase text-center border-bottom"
+                style={{ fontSize: "1.8rem", fontWeight: "bold" }}
+              >
+                {movie.movie_title}
+              </h5>
+
+              {/* Detaljer: Mindre typsnitt - Med ljusgrå linjer */}
+              <ListGroup variant="flush" style={{ fontSize: "0.9rem" }}>
+                {/* DATUM - py-1 */}
+                <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-light border-bottom">
+                  <span className="fw-bold text-uppercase">Datum</span>{" "}
+                  <span>{showtimeLabel.split(" ")[0]}</span>
+                </ListGroup.Item>
+
+                {/* TID - py-1 */}
+                <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-light border-bottom">
+                  <span className="fw-bold text-uppercase">Tid</span>{" "}
+                  <span>{showtimeLabel.split(" ")[1]}</span>
+                </ListGroup.Item>
+
+                {/* SALONG (med namnmappning) - py-1 */}
+                <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-light border-bottom">
+                  <span className="fw-bold text-uppercase">Salong</span>{" "}
+                  <span>{getAuditoriumName(screening.auditorium_id)}</span>
+                </ListGroup.Item>
+
+                {/* PLATSER (vilka stolar) - py-1 */}
+                <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-light border-bottom">
+                  <span className="fw-bold text-uppercase">Platser</span>{" "}
+                  <span>{seatList || "–"}</span>
+                </ListGroup.Item>
+
+                {/* BILJETTER (antal + typ) - py-1 */}
+                <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-light border-bottom">
+                  <span className="fw-bold text-uppercase">Biljetter</span>{" "}
+                  <span>{ticketBreakdown || `${seats.length} st`}</span>
+                </ListGroup.Item>
+
+                {/* PRIS (utan border-bottom) - py-1 */}
+                <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-0">
+                  <span className="fw-bold text-uppercase">
+                    Pris att betala
+                  </span>{" "}
+                  <strong>
+                    {ticketsTotal != null ? formatPrice(ticketsTotal) : "–"}
+                  </strong>
+                </ListGroup.Item>
+              </ListGroup>
+            </Col>
+          </Row>
+        </Card.Header>
+
+      
+        {/* 4. Bokningsnummer & Knappar - MINSKAR PADDING PÅ SEKTIONEN TILL p-3 */}
+        <div className="text-center p-3"> 
+          {/* Bokningsnummer-etikett - mb-0 */}
+          <p className="mb-0 text-uppercase">Boknings-ID:</p>
+
+          {/* Bokningsnummer-ruta - mb-1 */}
+          <div
+            className="d-inline-block p-2 px-4 mb-1"
+            style={{ backgroundColor: "#eeeeee", borderRadius: "5px" }}
+          >
+            <strong
+              className="text-danger"
+              style={{ fontSize: "1.5rem", letterSpacing: "2px" }}
+            >
+              {bookingCode}
+            </strong>
+          </div>
+
+          {/* Ny text: Visa upp i kassan - MINSKAD MARGINAL TILL mb-1 */}
+          <p className="small text-muted mb-1">
+            Visa upp ditt boknings-ID i kassan.
+          </p>
+
+          {/* Knappgrupp - APPLICERA hide-on-print för PDF:en */}
+          <div className="d-grid gap-2 mt-2 ">
+            
+            {/* Ladda ner PDF (Använder toPDF) */}
+            <Button
+              variant="secondary"
+              size="lg"
+              className="py-2 px-3"
+              onClick={toPDF} 
+            >
+              Ladda ner som PDF
+            </Button>
+
+            {/* Tillbaka till startsidan */}
+            <Button
+              variant="primary"
+              size="lg"
+              className="py-2 px-3"
+              onClick={onDone}
+            >
+              Tillbaka till startsidan
+            </Button>
+            
+          </div>
+
+          {/* Kontakttexten du lade till - Ligger under knapparna */}
+          <p className="small text-muted mt-2 mb-0"> 
+            Avbokning för medlemmar sker via Mina Sidor. För ickemedlemmar
+            kontakta oss på 000-12345 eller mejla filmvisarna38@gmail.com
+          </p>
+        </div>
+      </Card>
     </div>
   );
 }
