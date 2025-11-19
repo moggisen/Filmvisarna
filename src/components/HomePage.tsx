@@ -22,7 +22,6 @@ import guardianmarathonImg from "../assets/banners/guardianmarathon.png";
 import carousel1Img from "../assets/banners/deadpool.jpg";
 import carousel2Img from "../assets/banners/ironMan2013.jpg";
 import carousel3Img from "../assets/banners/venom2018.jpg";
-import type { Route } from "./types";
 import AgeTooltip from "../components/ageTooltip";
 
 // ⭐ Lägg till dessa imports för routes
@@ -52,18 +51,15 @@ interface Screening {
 interface Event {
   title: string;
   description: string;
+  type: string; // ⭐ Denna finns men används inte i dina events
   date: string;
   img: string;
-}
-
-interface HomePageProps {
-  onNavigate: (route: Route, movieId?: number) => void;
 }
 
 // ------------------ MovieGrid-komponent ------------------
 interface MovieGridProps {
   movies: (Movie & { times?: string[] })[];
-  onNavigate: (route: Route, movieId?: number) => void;
+  onNavigate: (route: RouteKey, movieId?: number) => void;
 }
 
 const MovieGrid = ({ movies, onNavigate }: MovieGridProps) => (
@@ -100,7 +96,8 @@ const MovieGrid = ({ movies, onNavigate }: MovieGridProps) => (
 );
 
 // ------------------ HomePage-komponent ------------------
-export default function HomePage({ onNavigate }: HomePageProps) {
+// ⭐ TA BORT: onNavigate från destructuring eftersom den inte används
+export default function HomePage() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [screenings, setScreenings] = useState<Screening[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +106,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [moviesForDate, setMoviesForDate] = useState<Movie[]>([]);
 
-  const navigate = useNavigate(); // ⭐ useNavigate är nu korrekt importerad
+  const navigate = useNavigate();
 
   // ⭐ Uppdaterad handleNavigate funktion
   const handleNavigate = (name: RouteKey, movieId?: number) => {
@@ -121,7 +118,9 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       const target = buildPath("movie-detail", { id: movieId });
       try {
         localStorage.setItem("selectedMovieId", String(movieId));
-      } catch {}
+      } catch {
+        return;
+      }
       navigate(target);
     } else {
       // Standard navigation
@@ -210,12 +209,14 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     {
       title: "Spider-Man Marathon",
       description: "Se alla Spider-Man filmer!",
+      type: "marathon", // ⭐ LÄGG TILL: type egenskap
       date: "2025-10-15",
       img: spidermarathonImg,
     },
     {
       title: "Guardians of the Galaxy Marathon",
       description: "Alla Guardians-filmer back-to-back.",
+      type: "marathon", // ⭐ LÄGG TILL: type egenskap
       date: "2025-10-20",
       img: guardianmarathonImg,
     },
@@ -301,16 +302,33 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         <h5 className="homepage-heading">Välj datum</h5>
         <Calendar
           value={selectedDate}
-          onChange={(value: Date | Date[]) => {
-            const newDate = Array.isArray(value) ? value[0] || null : value;
-            if (
-              selectedDate &&
-              newDate &&
-              selectedDate.toDateString() === newDate.toDateString()
-            ) {
+          // ⭐ FIX: Använd rätt typ för react-calendar onChange
+          onChange={(value) => {
+            // react-calendar kan skicka Date | Date[] | null
+            if (value === null) {
               setSelectedDate(null);
+            } else if (Array.isArray(value)) {
+              const newDate = value[0] || null;
+              if (
+                selectedDate &&
+                newDate &&
+                selectedDate.toDateString() === newDate.toDateString()
+              ) {
+                setSelectedDate(null);
+              } else {
+                setSelectedDate(newDate);
+              }
             } else {
-              setSelectedDate(newDate);
+              // value är en enskild Date
+              if (
+                selectedDate &&
+                value &&
+                selectedDate.toDateString() === value.toDateString()
+              ) {
+                setSelectedDate(null);
+              } else {
+                setSelectedDate(value);
+              }
             }
           }}
           className="homepage-calendar"
@@ -418,16 +436,31 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             <h5 className="homepage-heading">Välj datum</h5>
             <Calendar
               value={selectedDate}
-              onChange={(value: Date | Date[]) => {
-                const newDate = Array.isArray(value) ? value[0] || null : value;
-                if (
-                  selectedDate &&
-                  newDate &&
-                  selectedDate.toDateString() === newDate.toDateString()
-                ) {
+              // ⭐ FIX: Samma fix för desktop calendar
+              onChange={(value) => {
+                if (value === null) {
                   setSelectedDate(null);
+                } else if (Array.isArray(value)) {
+                  const newDate = value[0] || null;
+                  if (
+                    selectedDate &&
+                    newDate &&
+                    selectedDate.toDateString() === newDate.toDateString()
+                  ) {
+                    setSelectedDate(null);
+                  } else {
+                    setSelectedDate(newDate);
+                  }
                 } else {
-                  setSelectedDate(newDate);
+                  if (
+                    selectedDate &&
+                    value &&
+                    selectedDate.toDateString() === value.toDateString()
+                  ) {
+                    setSelectedDate(null);
+                  } else {
+                    setSelectedDate(value);
+                  }
                 }
               }}
               className="homepage-calendar"

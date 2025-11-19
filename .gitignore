@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 settings.json
+runner.cjs
 
 # Editor directories and files
 .vscode/*

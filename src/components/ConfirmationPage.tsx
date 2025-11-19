@@ -8,7 +8,7 @@ import {
   Row,
   Col,
 } from "react-bootstrap";
-import { usePDF } from "react-to-pdf"; // <-- LADES TILL
+import { usePDF } from "react-to-pdf";
 import "../styles/ConfirmationAndProfile.scss";
 
 // --- Hjälpfunktioner ---
@@ -83,7 +83,6 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   // PDF Hook: Initialiserar toPDF funktionen och targetRef
   const { toPDF, targetRef } = usePDF({
     filename: "biljett_filmvisarna.pdf",
-    page: { scale: 1.2 },
   });
 
   // 1) Läs query params
@@ -182,7 +181,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
               );
             }
 
-            // Bygg i formatet “2 vuxen, 1 barn”
+            // Bygg i formatet "2 vuxen, 1 barn"
             const parts: string[] = [];
             for (const [ttId, count] of counts) {
               const rawName = nameMap.get(ttId) ?? `Typ ${ttId}`;
@@ -210,6 +209,11 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
       isDead = true;
     };
   }, [bookingIdParam, confParam]);
+
+  // ⭐ FIX: Lägg till en wrapper-funktion för toPDF
+  const handleDownloadPDF = () => {
+    toPDF();
+  };
 
   // --- UI Rendrering ---
   if (loading) {
@@ -351,12 +355,12 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
 
           {/* Knappgrupp - APPLICERA hide-on-print för PDF:en */}
           <div className="d-grid gap-2 mt-2 ">
-            {/* Ladda ner PDF (Använder toPDF) */}
+            {/* Ladda ner PDF (Använder handleDownloadPDF wrapper) */}
             <Button
               variant="secondary"
               size="lg"
               className="py-2 px-3"
-              onClick={toPDF}
+              onClick={handleDownloadPDF} // ⭐ ÄNDRA: Använd wrapper-funktionen
             >
               Ladda ner som PDF
             </Button>

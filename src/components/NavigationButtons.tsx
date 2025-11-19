@@ -6,14 +6,14 @@ type RouteKey = keyof typeof routePath;
 
 interface NavigationButtonsProps {
   authed: boolean;
-  isGuest?: boolean; // ✅ Lägg till isGuest
+  isGuest?: boolean;
   onLogout: () => void;
   btnClass?: string;
 }
 
 export default function NavigationButtons({
   authed,
-  isGuest = false, // ✅ Lägg till med default value
+  isGuest = false,
   onLogout,
   btnClass = "",
 }: NavigationButtonsProps) {
@@ -23,20 +23,6 @@ export default function NavigationButtons({
     { key: "home", label: "Hem", klass: "home-btn" },
     { key: "biljett", label: "Biljett", klass: "biljett-btn" },
   ];
-
-  // ✅ Uppdaterad logik för auth-knappar som tar hänsyn till gäster
-  const authButtons = !authed
-    ? [
-        { key: "login" as RouteKey, label: "Logga in", klass: "login-btn" },
-        { key: "signup" as RouteKey, label: "Bli medlem", klass: "signup-btn" },
-      ]
-    : [
-        {
-          key: "profile" as RouteKey,
-          label: "Mina sidor",
-          klass: "profile-btn",
-        },
-      ];
 
   // ✅ Hantera klick på login/signup knappar från navigation
   const handleAuthNavigation = (route: "login" | "signup") => {
@@ -62,7 +48,7 @@ export default function NavigationButtons({
       ))}
 
       {/* ✅ Visa "Logga in" och "Bli medlem" för Oautentiserade användare och gäster */}
-      {(!authed || isGuest) && ( // ✅ Uppdaterad villkor - visa för både oautentiserade OCH gäster
+      {(!authed || isGuest) && (
         <>
           <Nav.Item>
             <button
@@ -88,29 +74,28 @@ export default function NavigationButtons({
       )}
 
       {/* ✅ Visa "Mina sidor" och "Logga ut" ENDAST för autentiserade användare som INTE är gäster */}
-      {authed &&
-        !isGuest && ( // ✅ Uppdaterad villkor
-          <>
-            <Nav.Item>
-              <NavLink
-                to={routePath.profile}
-                className="profile-btn nav-btn btn text-info btn-sm"
-                style={{ lineHeight: "5" }}
-              >
-                Mina sidor
-              </NavLink>
-            </Nav.Item>
-            <Nav.Item>
-              <button
-                className="logout-btn nav-btn btn btn-sm text-info"
-                onClick={onLogout}
-                type="button"
-              >
-                Logga ut
-              </button>
-            </Nav.Item>
-          </>
-        )}
+      {authed && !isGuest && (
+        <>
+          <Nav.Item>
+            <NavLink
+              to={routePath.profile}
+              className="profile-btn nav-btn btn text-info btn-sm"
+              style={{ lineHeight: "5" }}
+            >
+              Mina sidor
+            </NavLink>
+          </Nav.Item>
+          <Nav.Item>
+            <button
+              className="logout-btn nav-btn btn btn-sm text-info"
+              onClick={onLogout}
+              type="button"
+            >
+              Logga ut
+            </button>
+          </Nav.Item>
+        </>
+      )}
 
       {/* ✅ Alternativt: Visa "Avsluta session" för gäster om du vill */}
       {authed && isGuest && (

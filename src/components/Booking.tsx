@@ -493,7 +493,6 @@ export default function Booking({
   onConfirm,
   onNavigate,
   authed,
-  isGuest = false,
 }: BookingProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -537,11 +536,9 @@ export default function Booking({
     error: movieError,
   } = useApiData<Movie[]>("/movies", [], normalizeMovies);
 
-  const {
-    data: ticketTypes,
-    loading: loadingTicketTypes,
-    error: ticketTypesError,
-  } = useApiData<TicketType[]>("/ticketTypes", []);
+  const { data: ticketTypes, error: ticketTypesError } = useApiData<
+    TicketType[]
+  >("/ticketTypes", []);
 
   // Visa bara kommande visningar (1 min "buffert")
   const isFuture = (iso: string) =>
@@ -1026,7 +1023,6 @@ export default function Booking({
 
         setHasRestoredSession(true);
         return true;
-      } else {
       }
     }
 
@@ -1106,7 +1102,6 @@ export default function Booking({
     // Kolla om vi precis kom tillbaka från en auth flow
     const shouldRestore = sessionStorage.getItem("shouldRestoreBooking");
     const savedSessionId = sessionStorage.getItem("bookingSessionId");
-    const isAuthNavigation = sessionStorage.getItem("isAuthNavigation");
 
     if (shouldRestore === "true" && savedSessionId === sessionId) {
       console.log("Auth flow completed - restoring booking session");

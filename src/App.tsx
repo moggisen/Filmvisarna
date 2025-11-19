@@ -17,8 +17,8 @@ import ProfilePage from "./components/ProfilePage";
 import MovieDetail from "./components/MovieDetail";
 import CookieConsent from "./components/CookieConsent";
 
-import { routePath, buildPath } from "./routes";
-import type { RouteKey } from "./routes";
+// ⭐ TA BORT: buildPath och RouteKey eftersom de inte används
+import { routePath } from "./routes";
 import type { BookingSummary } from "./components/types";
 import Signup from "./components/Signup";
 import Login from "./components/Login";
@@ -210,25 +210,6 @@ export default function App() {
     setBookings((prev) => prev.filter((b) => b.bookingId !== bookingId));
   };
 
-  const homeOnNavigate = (name: RouteKey, movieId?: number) => {
-    if (
-      name === "movie-detail" &&
-      typeof movieId === "number" &&
-      Number.isFinite(movieId) &&
-      movieId > 0
-    ) {
-      const target = buildPath("movie-detail", { id: movieId });
-      try {
-        localStorage.setItem("selectedMovieId", String(movieId));
-      } catch {}
-      console.log("Navigating to:", target, "movieId:", movieId);
-      navigate(target);
-      return;
-    }
-
-    navigate(routePath[name] ?? routePath.home);
-  };
-
   // Helper för bakåtkompatibilitet
   const isAuthed = authState.isAuthenticated;
 
@@ -246,10 +227,7 @@ export default function App() {
       <main className="container py-4">
         <Routes>
           {/* START */}
-          <Route
-            path={routePath.home}
-            element={<HomePage onNavigate={homeOnNavigate} />}
-          />
+          <Route path={routePath.home} element={<HomePage />} />
 
           {/* BOKNING */}
           <Route
