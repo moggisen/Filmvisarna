@@ -287,8 +287,10 @@
 }
 
 
-#age-tooltip {
+@media (min-width: 991.98px) {
+  #age-tooltip {
   max-width: 400px !important; 
+}
 }
 
 #age-tooltip .tooltip-inner {

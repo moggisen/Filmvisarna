@@ -8,8 +8,8 @@ interface AgeTooltipProps {
 }
 
 export default function AgeTooltip({
-  offsetMobile = [85, 0],
-  offsetDesktop = [75, 0],
+  offsetMobile = [35, 5],
+  offsetDesktop = [75, 10],
 }: AgeTooltipProps) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -32,7 +32,7 @@ export default function AgeTooltip({
         <Tooltip
           id="age-tooltip"
           style={{
-            maxWidth: "90vw",
+            maxWidth: "80vw",
             padding: "14px 16px",
             borderRadius: "8px",
             border: "1px solid white",

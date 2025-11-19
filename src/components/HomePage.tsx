@@ -67,7 +67,7 @@ interface MovieGridProps {
 }
 
 const MovieGrid = ({ movies, onNavigate }: MovieGridProps) => (
-  <Row xs={2} xl={4} className="homepage-movie-grid g-3 mb-5">
+  <Row xs={2} lg={3} xl={4} className="homepage-movie-grid g-3 mb-5">
     {movies.map((movie) => (
       <Col key={movie.id}>
         <Card className="homepage-movie-card h-100 d-flex flex-column">
