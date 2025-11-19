@@ -163,7 +163,7 @@
   .seat-viewport {
     position: relative;
     width: 100%;
-    height: 75vh;
+    height: 80vh;
     overflow: hidden;
     background: radial-gradient(circle at top center, #113e6d, #113255);
 
@@ -247,22 +247,22 @@
   // Extra breakpoint som gör att whitespace under salongslayouten inte blir så stor vid små skärmbredder
   @media (max-width: 767px) {
     .seat-viewport {
-      height: 55vh;
+      height: 60vh;
     }
   }
   @media (max-width: 577px) {
     .seat-viewport {
-      height: 65vh;
+      height: 75vh;
     }
   }
   @media (max-width: 520px) {
     .seat-viewport {
-      height: 65vh;
+      height: 70vh;
     }
   }
   @media (max-width: 480px) {
     .seat-viewport {
-      height: 55vh;
+      height: 60vh;
     }
   }
 }

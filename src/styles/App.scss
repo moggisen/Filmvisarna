@@ -50,6 +50,11 @@ $logo-font: "Bebas Neue", sans-serif;
 }
 
 // End Mixins --------------------------------------------------------
+html,
+body,
+#root {
+  min-height: 100vh;
+}
 
 :root {
   h1,

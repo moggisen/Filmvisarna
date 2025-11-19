@@ -16,6 +16,7 @@ import ConfirmationPage from "./components/ConfirmationPage";
 import ProfilePage from "./components/ProfilePage";
 import MovieDetail from "./components/MovieDetail";
 import CookieConsent from "./components/CookieConsent";
+import FooterMenu from "./components/FooterMenu";
 
 import { routePath, buildPath } from "./routes";
 import type { RouteKey } from "./routes";
@@ -343,6 +344,10 @@ export default function App() {
           />
         </Routes>
       </main>
+
+      {/* Footer-meny */}
+      <FooterMenu />
+
       {/* Skicka både isAuthenticated och isGuest till BottomNav */}
       <BottomNav
         authed={isAuthed}
