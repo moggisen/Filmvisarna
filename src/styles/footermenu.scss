@@ -1,0 +1,24 @@
+.footer-menu {
+  margin-top: auto;
+  position: sticky;
+  top: 100vh; /* “ankra” nederst i viewporten när sidan är kort */
+  z-index: 0; /* lägre än modaler/navs; justera vid behov */
+  .link-light-50 {
+    color: #ebebeb;
+  }
+  .link-light-50:hover {
+    color: #d52026;
+    text-decoration: underline;
+  }
+  .btn {
+    font-weight: 400;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .footer-menu {
+    /* Skapa luft längst ner så fotern inte hamnar bakom BottomNav */
+    margin-bottom: 8vh;
+  }
+}
