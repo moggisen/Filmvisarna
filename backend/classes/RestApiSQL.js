@@ -219,7 +219,6 @@ export default class RestApi {
           );
           booking.seats = seats;
         }
-        console.log("SQL hämtade bokningar:", bookings);
         this.sendJsonResponse(res, bookings);
       } catch (error) {
         console.error("Error fetching user bookings:", error);
@@ -655,8 +654,6 @@ export default class RestApi {
         let user_id;
 
         if (guest_email) {
-          console.log("Guest booking attempt with email:", guest_email);
-
           // Create or get guest user
           const guestResult = await this.db.query(
             "POST",
@@ -667,7 +664,6 @@ export default class RestApi {
 
           if (guestResult.length > 0) {
             user_id = guestResult[0].id;
-            console.log("Found existing guest user:", user_id);
           } else {
             // Create new guest user
             const newGuest = await this.db.query(
@@ -677,7 +673,6 @@ export default class RestApi {
               { guest_email }
             );
             user_id = newGuest.insertId;
-            console.log("Created new guest user:", user_id);
           }
 
           //Set session user for guest so authorization works
@@ -805,8 +800,6 @@ export default class RestApi {
         const crypto = await import("crypto");
         const confirmation = crypto.randomBytes(8).toString("hex");
 
-        console.log("Skapar bokning med user_id:", user_id);
-
         const bookingResult = await this.db.query(
           "POST",
           req.url,
@@ -814,7 +807,6 @@ export default class RestApi {
          VALUES (NOW(), :confirmation, :screening_id, :user_id)`,
           { confirmation, screening_id, user_id }
         );
-        console.log("Booking result:", bookingResult);
 
         let booking_id;
 
@@ -834,23 +826,12 @@ export default class RestApi {
           booking_id = lastBooking[0]?.id;
         }
 
-        console.log("Final booking_id:", booking_id);
-
         if (!booking_id) {
           throw new Error("Kunde inte hämta booking_id från insert-operation");
         }
 
         // --- Reserve seats ---
-        console.log("Skapar bookingsXseats med booking_id:", booking_id);
-
         for (const s of seats) {
-          console.log("Infogar seat:", {
-            screening_id,
-            seat_id: s.seat_id,
-            ticketType_id: s.ticketType_id,
-            booking_id,
-          });
-
           const seatResult = await this.db.query(
             "POST",
             req.url,
@@ -863,7 +844,6 @@ export default class RestApi {
               booking_id: booking_id,
             }
           );
-          console.log("Seat insert result:", seatResult);
         }
         // 8. Get details for email
         const movieDetails = await this.db.query(
@@ -916,7 +896,6 @@ export default class RestApi {
               screeningTime: formattedScreeningTime,
               totalPrice: totalPrice,
             });
-            console.log(`Bekräftelsemejl skickat till: ${recipientEmail}`);
           } catch (emailError) {
             console.error("Kunde INTE skicka bekräftelsemejl:", emailError);
           }
@@ -926,8 +905,6 @@ export default class RestApi {
           const guestSessionData = { ...req.session.user };
 
           delete req.session.user;
-
-          console.log("Guest session cleared after booking:", guestSessionData);
         }
 
         // Send live updates to everyone + clean up holds for seats
