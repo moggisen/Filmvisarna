@@ -1,7 +1,4 @@
-// moviedetail.scss
-// Endast styling som är specifik för MovieDetail.tsx
-
-// Färgvariabler specifika för filmdetaljer
+// Color variebles MovieDetail
 :root {
   --movie-primary: #071422;
   --movie-secondary: #0d2844;
@@ -13,29 +10,14 @@
   --movie-trailer-border: #ffd700;
 }
 
-// Huvudtema för filmdetaljsidan
+// Main theme
 .movie-detail-theme {
   background: var(--movie-primary);
   color: var(--movie-text);
   min-height: 100vh;
 }
 
-// Logga styling (endast för mobil)
-.movie-detail-logo {
-  font-family: "Bebas Neue", sans-serif;
-  font-weight: 700;
-  font-size: 1.75rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--movie-accent);
-
-  // Dölj på desktop
-  &.d-lg-none {
-    margin-bottom: 0.5rem;
-  }
-}
-
-// Titel styling
+// Title styling
 .movie-title {
   font-family: "Bebas Neue", sans-serif;
   font-weight: 400;
@@ -47,20 +29,7 @@
   margin-bottom: 1rem;
 }
 
-// Meta information (ålder, genre, speltid)
-.movie-meta {
-  color: var(--movie-text-muted);
-  font-family: "Inter", sans-serif;
-  font-size: 0.9rem;
-
-  .small {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-  }
-}
-
-// Kort/paneler för innehåll
+// Info card
 .movie-card {
   background: var(--movie-secondary);
   border: 1px solid var(--movie-secondary);
@@ -85,7 +54,7 @@
     background: var(--movie-secondary);
     border: 1px solid var(--movie-secondary);
 
-    .accordion-button {
+.accordion-button {
       background: var(--movie-secondary);
       color: var(--movie-text);
       font-family: "Inter", sans-serif;
@@ -102,49 +71,28 @@
         border-color: var(--movie-accent);
       }
     }
-
-    .accordion-body {
+ .accordion-body {
       font-family: "Roboto", sans-serif;
       font-weight: 300;
       line-height: 1.6;
       color: var(--movie-text);
     }
+   
   }
 }
-
-// Boka biljett knapp
-.movie-book-btn {
-  font-family: "Inter", sans-serif;
-  font-weight: 700;
-  background: var(--movie-accent);
-  color: white;
-  border: none;
-  border-radius: 999px;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  text-decoration: none;
-  display: inline-block;
-
-  &:hover {
-    background: var(--movie-accent-dark);
-    color: white;
-    text-decoration: none;
-  }
-}
-
 // Poster styling
 .movie-poster {
   border: 1px solid var(--movie-warning);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   border-radius: 0.5rem;
 
-  // Dölj poster på mobil
+  // Hide poster on mobile
   &.d-none.d-lg-flex {
     justify-content: center;
   }
 }
 
-// Trailer sektion
+// Trailer section
 .movie-trailer-wrapper {
   position: relative;
   background: #000;
@@ -154,98 +102,4 @@
   border: 1px solid var(--movie-trailer-border);
 }
 
-.movie-trailer-poster {
-  position: relative;
-  cursor: pointer;
 
-  img {
-    display: block;
-    width: 100%;
-    height: auto;
-    border-radius: 0.75rem;
-  }
-}
-
-.movie-play-icon {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 4rem;
-  color: white;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
-  pointer-events: none;
-}
-
-// YouTube iframe container
-.movie-trailer-iframe {
-  border-radius: 0.75rem;
-  overflow: hidden;
-}
-
-// Recensioner lista
-.movie-review-list {
-  list-style: none;
-  padding-left: 0;
-
-  li {
-    margin-bottom: 1rem;
-
-    h3 {
-      font-family: "Inter", sans-serif;
-      font-weight: 600;
-      font-size: 1rem;
-      margin-bottom: 0.25rem;
-    }
-
-    p {
-      margin-bottom: 0.25rem;
-      font-style: italic;
-    }
-
-    small {
-      color: var(--movie-text-muted);
-    }
-  }
-}
-
-// Responsiv design
-@media (max-width: 991.98px) {
-  .movie-detail-theme {
-    .row {
-      // Säkerställ korrekt ordning på mobil
-      .order-2.order-lg-1 {
-        order: 2;
-      }
-
-      .order-1.order-lg-2 {
-        order: 1;
-      }
-    }
-  }
-
-  .movie-meta .small {
-    flex-direction: column;
-    gap: 0.5rem;
-    text-align: center;
-  }
-
-  .movie-book-btn {
-    width: 100%;
-    text-align: center;
-  }
-}
-
-// Text styling hjälpklasser
-.movie-body-text {
-  font-family: "Roboto", sans-serif;
-  font-weight: 300;
-  line-height: 1.6;
-  color: var(--movie-text);
-}
-
-.movie-heading-text {
-  font-family: "Inter", sans-serif;
-  font-weight: 700;
-  color: var(--movie-text);
-}
