@@ -187,15 +187,31 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
 
   // Separate bookings in coming screenings and past screenings based on time of showing
   const now = new Date();
-  const upcomingBookings = userBookings.filter((booking) => {
-    const screeningDate = new Date(booking.screening_time);
-    return screeningDate > now;
-  });
+  const upcomingBookings = userBookings
+    .filter((booking) => {
+      const screeningDate = new Date(booking.screening_time);
+      return screeningDate > now;
+    })
+    .sort((a, b) => {
+      // Sortera efter screening_time, tidigast datum först
+      return (
+        new Date(a.screening_time).getTime() -
+        new Date(b.screening_time).getTime()
+      );
+    });
 
-  const pastBookings = userBookings.filter((booking) => {
-    const screeningDate = new Date(booking.screening_time);
-    return screeningDate <= now;
-  });
+  const pastBookings = userBookings
+    .filter((booking) => {
+      const screeningDate = new Date(booking.screening_time);
+      return screeningDate <= now;
+    })
+    .sort((a, b) => {
+      // Sortera efter screening_time, senaste datum först (för historik)
+      return (
+        new Date(b.screening_time).getTime() -
+        new Date(a.screening_time).getTime()
+      );
+    });
 
   if (loading) {
     return <div className="container py-4 text-white">Laddar...</div>;
