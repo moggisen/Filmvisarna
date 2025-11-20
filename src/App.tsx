@@ -17,6 +17,7 @@ import ProfilePage from "./components/ProfilePage";
 import MovieDetail from "./components/MovieDetail";
 import CookieConsent from "./components/CookieConsent";
 import FooterMenu from "./components/FooterMenu";
+import InfoPage from "./components/InfoPage";
 
 import { routePath, buildPath } from "./routes";
 import type { RouteKey } from "./routes";
@@ -334,6 +335,9 @@ export default function App() {
             path={routePath["movie-detail"]}
             element={<MovieDetail onBook={() => navigate(routePath.biljett)} />}
           />
+
+          {/* INFO PAGE */}
+          <Route path="/info" element={<InfoPage />} />
 
           {/* 404 */}
           <Route
