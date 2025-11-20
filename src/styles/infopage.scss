@@ -1,0 +1,15 @@
+$primary: #0d253f !default;
+$primary-light: lighten($primary, 15%); // 15% ljusare
+$primary-dark: #071422;
+$secondary: #113255 !default;
+$success: #28a745 !default;
+$info: #ebebeb !default;
+$warning: #ffd700 !default;
+$danger: #dc3545 !default;
+$light: #d52026 !default;
+$dark: #b81c21 !default;
+
+/* gör att scrollIntoView lämnar lite luft överst */
+.info-section {
+  scroll-margin-top: 80px; /* justera vid behov om du har sticky header/bottomnav */
+}
