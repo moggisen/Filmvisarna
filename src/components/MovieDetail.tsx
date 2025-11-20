@@ -11,7 +11,7 @@ import Accordion from "react-bootstrap/Accordion";
 import ListGroup from "react-bootstrap/ListGroup";
 import AgeTooltip from "./ageTooltip";
 
-//types for movie data
+// Types for movie data
 interface Movie {
   id: number;
   movie_title: string;
@@ -41,17 +41,17 @@ interface Review {
   rating: number;
 }
 
-//props for component
+// Props for component
 interface MovieDetailProps {
   onBook: () => void;
   movieId?: number;
 }
 
-//make api path start with /api
+// Make api path start with /api
 const apiUrl = (path: string) =>
   path.startsWith("/") ? `/api${path}` : `/api/${path}`;
 
-//get youtube id from link
+// Get youtube id from link
 const toYouTubeId = (val?: string): string => {
   if (!val) return "";
   const v = val.trim();
@@ -64,14 +64,14 @@ const toYouTubeId = (val?: string): string => {
   return m ? m[1] : "";
 };
 
-//split cast list into array
+// Split cast list into array
 const csvToList = (csv?: string): string[] =>
   (csv ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
 
-//build full poster path
+// Build full poster path
 const posterPath = (val?: string): string => {
   const p = (val ?? "").trim();
   if (!p) return "";
@@ -84,7 +84,7 @@ const posterPath = (val?: string): string => {
   }
 };
 
-//format helpers
+// Format helpers
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("sv-SE", {
     year: "numeric",
@@ -97,7 +97,7 @@ const fmtTime = (iso: string) =>
     minute: "2-digit",
   });
 
-//main component
+// Main component
 export default function MovieDetail({ onBook }: MovieDetailProps) {
   //find movie id
   const { id: idParam } = useParams<{ id: string }>();
@@ -118,7 +118,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
     return null;
   }, [idParam]);
 
-  //fetch movie data
+  // Fetch movie data
   useEffect(() => {
     if (resolvedId === null) return;
     const ac = new AbortController();
@@ -154,7 +154,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
     };
   }, [resolvedId]);
 
-  //fetch screenings
+  // Fetch screenings
   useEffect(() => {
     if (resolvedId === null) return;
     const ac = new AbortController();
@@ -170,7 +170,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
     return () => ac.abort();
   }, [resolvedId]);
 
-  //early states
+  // Early states
   if (resolvedId === null)
     return (
       <div className="alert alert-warning m-5">
@@ -224,7 +224,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
     onBook();
   }
 
-  //origin for youtube
+  // Origin for youtube
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
@@ -241,7 +241,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
               <span>{m.movie_playtime || "-"}</span>
             </p>
 
-            {/* description card */}
+            {/* Description card */}
             <Card
               className="movie-card border-0 shadow-0"
               style={{
@@ -256,9 +256,9 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
               </Card.Body>
             </Card>
 
-            {/* accordion */}
+            {/* Accordion */}
             <Accordion defaultActiveKey="info" className="movie-accordion">
-              {/* info */}
+              {/* Info */}
               <Accordion.Item eventKey="info">
                 <Accordion.Header>Mer info</Accordion.Header>
                 <Accordion.Body>
@@ -283,7 +283,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                 </Accordion.Body>
               </Accordion.Item>
 
-              {/* reviews */}
+              {/* Reviews */}
               <Accordion.Item eventKey="reviews">
                 <Accordion.Header>Recensioner</Accordion.Header>
                 <Accordion.Body>
@@ -309,7 +309,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                 </Accordion.Body>
               </Accordion.Item>
 
-              {/* screenings & booking */}
+              {/* Screenings & booking */}
               <Accordion.Item eventKey="bookings">
                 <Accordion.Header>Föreställningar & bokning</Accordion.Header>
                 <Accordion.Body>
@@ -347,7 +347,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
             </Accordion>
           </article>
 
-          {/*poster*/}
+          {/* Poster */}
           <aside className="col-lg-5 order-1 order-lg-2 d-grid gap-3">
             {poster ? (
               <Figure className="movie-poster d-none d-lg-flex justify-content-center">
@@ -367,7 +367,7 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
               </Alert>
             )}
 
-            {/*trailer*/}
+            {/* Trailer */}
             <section className="movie-trailer-wrapper">
               {!trailerId ? (
                 <Alert variant="secondary" className="mb-0">
