@@ -3,7 +3,6 @@ import LoginHandler from "./LoginHandlerSQL.js";
 import RestSearch from "./RestSearchSQL.js";
 import Acl from "./Acl.js";
 import catchExpressJsonErrors from "../helpers/catchExpressJsonErrors.js";
-import PasswordChecker from "../helpers/PasswordChecker.js";
 import { body, query, validationResult } from "express-validator";
 import { sendBookingEmail } from "./sendBookingEmail.js";
 import {
@@ -12,6 +11,7 @@ import {
   broadcast,
   clearHolds,
 } from "../helpers/sseRegistry.js";
+import { allowRoles } from "./middlewares/acl.js";
 
 // import the correct version of the DBQueryMaker
 const DBQueryMaker = (
@@ -21,12 +21,28 @@ const DBQueryMaker = (
 export default class RestApi {
   // Connect to the db through DBQueryMaker
   // and call methods that creates routes
+
   constructor(app, settings) {
     this.app = app;
     this.settings = settings;
     this.prefix = this.settings.restPrefix;
     this.prefix.endsWith("/") || (this.prefix += "/");
     this.db = new DBQueryMaker(settings);
+
+    app.use((req, res, next) => {
+      // Kolla om det är en API-begäran OCH kommer från webbläsaren
+      const isApiRequest = req.path.startsWith("/api");
+      const isFromBrowser =
+        req.get("Accept")?.includes("text/html") ||
+        req.get("Sec-Fetch-Mode") === "navigate" ||
+        req.get("Sec-Fetch-Dest") === "document";
+
+      if (isApiRequest && isFromBrowser) {
+        console.log(`Redirecting API direct access: ${req.method} ${req.path}`);
+        return res.redirect("/");
+      }
+      next();
+    });
     // use built in Express middleware to read the body
     app.use(express.json());
     // use middleware to capture malformed json errors
@@ -35,6 +51,7 @@ export default class RestApi {
     // PasswordChecker.addMiddleware(app, this.prefix, settings);
     // add login routes
     new LoginHandler(this);
+
     // add post, get, put and delete routes
     this.addBookingRoute();
     this.addSeatHoldRoute();
@@ -58,7 +75,6 @@ export default class RestApi {
         );
         res.json(rows);
       } catch (error) {
-        console.error("Error fetching ticket types:", error);
         res.status(500).json({ error: "Kunde inte hämta biljettyper" });
       }
     });
@@ -134,7 +150,6 @@ export default class RestApi {
           rows,
         });
       } catch (err) {
-        console.error("Fel i GET /screenings/:id/layout:", err);
         res.status(500).json({ error: "Kunde inte hämta layout" });
       }
     });
@@ -219,10 +234,8 @@ export default class RestApi {
           );
           booking.seats = seats;
         }
-        console.log("SQL hämtade bokningar:", bookings);
         this.sendJsonResponse(res, bookings);
       } catch (error) {
-        console.error("Error fetching user bookings:", error);
         this.sendJsonResponse(res, { error: "Kunde inte hämta bokningar" });
       }
     });
@@ -260,7 +273,6 @@ export default class RestApi {
 
         this.sendJsonResponse(res, { success: "Bokning raderad" });
       } catch (error) {
-        console.error("Error deleting booking:", error);
         this.sendJsonResponse(res, { error: "Kunde inte radera bokning" });
       }
     });
@@ -301,7 +313,6 @@ export default class RestApi {
 
           res.json(rows);
         } catch (err) {
-          console.error("Error fetching seat details for booking:", err);
           res.status(500).json({
             error: "Kunde inte hämta sätesinformation för bokningen.",
           });
@@ -494,7 +505,6 @@ export default class RestApi {
             is_guest,
           });
         } catch (error) {
-          console.error(error);
           res.status(500).json({ error: "Kunde inte skapa användare" });
         }
       }
@@ -556,7 +566,6 @@ export default class RestApi {
           is_guest: true,
         });
       } catch (error) {
-        console.error(error);
         res.status(500).json({ error: "Kunde inte skapa gästanvändare" });
       }
     });
@@ -635,7 +644,6 @@ export default class RestApi {
             return res.json({ ok: true, action: "release" });
           }
         } catch (err) {
-          console.error("Fel i seat-hold-route:", err);
           return res
             .status(500)
             .json({ error: "Kunde inte uppdatera sätes-hold." });
@@ -655,8 +663,6 @@ export default class RestApi {
         let user_id;
 
         if (guest_email) {
-          console.log("Guest booking attempt with email:", guest_email);
-
           // Create or get guest user
           const guestResult = await this.db.query(
             "POST",
@@ -667,7 +673,6 @@ export default class RestApi {
 
           if (guestResult.length > 0) {
             user_id = guestResult[0].id;
-            console.log("Found existing guest user:", user_id);
           } else {
             // Create new guest user
             const newGuest = await this.db.query(
@@ -677,7 +682,6 @@ export default class RestApi {
               { guest_email }
             );
             user_id = newGuest.insertId;
-            console.log("Created new guest user:", user_id);
           }
 
           //Set session user for guest so authorization works
@@ -805,8 +809,6 @@ export default class RestApi {
         const crypto = await import("crypto");
         const confirmation = crypto.randomBytes(8).toString("hex");
 
-        console.log("Skapar bokning med user_id:", user_id);
-
         const bookingResult = await this.db.query(
           "POST",
           req.url,
@@ -814,7 +816,6 @@ export default class RestApi {
          VALUES (NOW(), :confirmation, :screening_id, :user_id)`,
           { confirmation, screening_id, user_id }
         );
-        console.log("Booking result:", bookingResult);
 
         let booking_id;
 
@@ -834,23 +835,12 @@ export default class RestApi {
           booking_id = lastBooking[0]?.id;
         }
 
-        console.log("Final booking_id:", booking_id);
-
         if (!booking_id) {
           throw new Error("Kunde inte hämta booking_id från insert-operation");
         }
 
         // --- Reserve seats ---
-        console.log("Skapar bookingsXseats med booking_id:", booking_id);
-
         for (const s of seats) {
-          console.log("Infogar seat:", {
-            screening_id,
-            seat_id: s.seat_id,
-            ticketType_id: s.ticketType_id,
-            booking_id,
-          });
-
           const seatResult = await this.db.query(
             "POST",
             req.url,
@@ -863,7 +853,6 @@ export default class RestApi {
               booking_id: booking_id,
             }
           );
-          console.log("Seat insert result:", seatResult);
         }
         // 8. Get details for email
         const movieDetails = await this.db.query(
@@ -916,18 +905,13 @@ export default class RestApi {
               screeningTime: formattedScreeningTime,
               totalPrice: totalPrice,
             });
-            console.log(`Bekräftelsemejl skickat till: ${recipientEmail}`);
-          } catch (emailError) {
-            console.error("Kunde INTE skicka bekräftelsemejl:", emailError);
-          }
+          } catch (emailError) {}
         }
 
         if (isGuestBooking) {
           const guestSessionData = { ...req.session.user };
 
           delete req.session.user;
-
-          console.log("Guest session cleared after booking:", guestSessionData);
         }
 
         // Send live updates to everyone + clean up holds for seats
@@ -952,8 +936,6 @@ export default class RestApi {
           is_guest: !!guest_email,
         });
       } catch (err) {
-        console.error("Booking error:", err);
-
         const status = err.status || 500;
         let errorMessage = err.message || "Internt serverfel.";
 

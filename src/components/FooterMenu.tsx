@@ -3,7 +3,7 @@ import { openCookieConsent } from "./CookieConsent";
 import "../styles/footermenu.scss";
 
 type FooterMenuProps = {
-  aboutRoute?: string; // default "/info"
+  aboutRoute?: string;
 };
 
 export default function FooterMenu({ aboutRoute = "/info" }: FooterMenuProps) {
@@ -17,16 +17,28 @@ export default function FooterMenu({ aboutRoute = "/info" }: FooterMenuProps) {
                         justify-content-center align-items-center
                         text-center small"
         >
-          <FooterLink to={aboutRoute} active={pathname === aboutRoute}>
+          <FooterLink
+            to={`${aboutRoute}#about`}
+            active={pathname === aboutRoute}
+          >
             Om oss
           </FooterLink>
-          <FooterLink to={aboutRoute} active={pathname === aboutRoute}>
+          <FooterLink
+            to={`${aboutRoute}#contact`}
+            active={pathname === aboutRoute}
+          >
             Kontakt
           </FooterLink>
-          <FooterLink to={aboutRoute} active={pathname === aboutRoute}>
+          <FooterLink
+            to={`${aboutRoute}#visit`}
+            active={pathname === aboutRoute}
+          >
             Hitta hit
           </FooterLink>
-          <FooterLink to={aboutRoute} active={pathname === aboutRoute}>
+          <FooterLink
+            to={`${aboutRoute}#kiosk`}
+            active={pathname === aboutRoute}
+          >
             Kiosk
           </FooterLink>
 
