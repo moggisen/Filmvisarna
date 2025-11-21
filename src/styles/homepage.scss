@@ -21,7 +21,9 @@
 // 🧱 Huvudcontainer
 // ==========================================================
 .homepage-container {
-  &.d-md-none { padding: 1rem; }
+  &.d-md-none {
+    padding: 1rem;
+  }
   &.d-none.d-md-block {
     .position-sticky {
       background: var(--home-secondary);
@@ -66,16 +68,16 @@
     flex-wrap: nowrap;
 
     .homepage-btn {
-      flex: 1;              
-      height: 40px;         
+      flex: 1;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      white-space: nowrap;  
+      white-space: nowrap;
       text-align: center;
     }
 
-    .card-title { 
+    .card-title {
       font-family: "Inter", sans-serif;
       font-weight: 600;
       font-size: 1rem;
@@ -85,7 +87,9 @@
 
   @media (min-width: 768px) {
     transition: transform 0.2s ease;
-    &:hover { transform: translateY(-2px); }
+    &:hover {
+      transform: translateY(-2px);
+    }
   }
 }
 
@@ -97,13 +101,18 @@
   color: var(--home-text);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   transition: transform 0.2s ease;
   height: 100%;
 
-  &:hover { transform: translateY(-5px); }
+  &:hover {
+    transform: translateY(-5px);
+  }
 
-  .card-img-top { height: 180px; object-fit: cover; }
+  .card-img-top {
+    height: 180px;
+    object-fit: cover;
+  }
 
   .card-title {
     font-family: "Bebas Neue", sans-serif;
@@ -135,7 +144,9 @@
 // ==========================================================
 // 🧭 Sidebar
 // ==========================================================
-.sidebar { background-color: var(--home-primary-dark) !important; }
+.sidebar {
+  background-color: var(--home-primary-dark) !important;
+}
 
 // ==========================================================
 // 📅 Kalender
@@ -158,29 +169,53 @@
         border-radius: 4px;
       }
     }
-    .react-calendar__navigation__label { font-size: 0.75rem; overflow: hidden; }
+    .react-calendar__navigation__label {
+      font-size: 0.75rem;
+      overflow: hidden;
+    }
   }
 
   .react-calendar__tile {
     background-color: #495057;
     color: var(--home-text);
-    &:hover { background-color: #6c757d; }
+    &:hover {
+      background-color: #6c757d;
+    }
   }
 
-  .react-calendar__tile--active { background-color: var(--home-warning) !important; color: #000 !important; }
-  .react-calendar__tile--now { background-color: #17a2b8; color: #fff; }
-  .react-calendar__month-view__days__day--neighboringMonth { color: #adb5bd; }
+  .react-calendar__tile--active {
+    background-color: var(--home-warning) !important;
+    color: #000 !important;
+  }
+  .react-calendar__tile--now {
+    background-color: #17a2b8;
+    color: #fff;
+  }
+  .react-calendar__month-view__days__day--neighboringMonth {
+    color: #adb5bd;
+  }
 
-  .react-calendar__month-view__weekdays { font-size: 0.7rem; height: 1.5rem; line-height: 1rem; }
-  .react-calendar__month-view__weekdays__weekday { padding: 0; }
+  .react-calendar__month-view__weekdays {
+    font-size: 0.7rem;
+    height: 1.5rem;
+    line-height: 1rem;
+  }
+  .react-calendar__month-view__weekdays__weekday {
+    padding: 0;
+  }
 }
 
 // ==========================================================
 // 🧾 Formulärelement
 // ==========================================================
 .homepage-form {
-  .form-label { color: var(--home-text); font-family: "Inter", sans-serif; font-weight: 600; }
-  .form-control, .form-select {
+  .form-label {
+    color: var(--home-text);
+    font-family: "Inter", sans-serif;
+    font-weight: 600;
+  }
+  .form-control,
+  .form-select {
     background-color: var(--home-primary);
     border-color: var(--home-text-muted);
     color: var(--home-text);
@@ -188,10 +223,12 @@
       background-color: var(--home-primary);
       border-color: var(--home-warning);
       color: var(--home-text);
-      box-shadow: 0 0 0 0.2rem rgba(255,215,0,0.25);
+      box-shadow: 0 0 0 0.2rem rgba(255, 215, 0, 0.25);
     }
   }
-  .form-control::placeholder { color: var(--home-text-muted); }
+  .form-control::placeholder {
+    color: var(--home-text-muted);
+  }
 }
 
 // ==========================================================
@@ -205,13 +242,19 @@
   &.homepage-btn-secondary {
     background-color: var(--home-accent);
     border-color: var(--home-accent);
-    &:hover { background-color: var(--home-accent-dark); border-color: var(--home-accent-dark); }
+    &:hover {
+      background-color: var(--home-accent-dark);
+      border-color: var(--home-accent-dark);
+    }
   }
 
   &.homepage-btn-dark {
     background-color: var(--home-primary);
     border-color: var(--home-text-muted);
-    &:hover { background-color: var(--home-secondary); border-color: var(--home-text); }
+    &:hover {
+      background-color: var(--home-secondary);
+      border-color: var(--home-text);
+    }
   }
 }
 
@@ -219,11 +262,25 @@
 // 🧩 Grid-layout
 // ==========================================================
 .homepage-movie-grid {
-  .col { margin-inline: auto; }
-  .row { --bs-gutter-x: 1rem; --bs-gutter-y: 1rem; }
+  .col {
+    margin-inline: auto;
+  }
+  .row {
+    --bs-gutter-x: 1rem;
+    --bs-gutter-y: 1rem;
+  }
 
-  &.homepage-mobile-grid { .col { flex: 0 0 calc(50% - 0.5rem); max-width: calc(50% - 0.5rem); } }
-  &.homepage-desktop-grid { .col { margin-bottom: 1rem; } }
+  &.homepage-mobile-grid {
+    .col {
+      flex: 0 0 calc(50% - 0.5rem);
+      max-width: calc(50% - 0.5rem);
+    }
+  }
+  &.homepage-desktop-grid {
+    .col {
+      margin-bottom: 1rem;
+    }
+  }
 }
 
 // ==========================================================
@@ -234,11 +291,17 @@
   background-color: var(--home-primary) !important;
   border: none !important;
   .card {
-    border: none; 
+    border: none;
     border-radius: 12px;
-    .card-img-top { height: 250px; object-fit: cover; }
+    .card-img-top {
+      height: 250px;
+      object-fit: cover;
+    }
     .card-body .card-title {
-      font-family: "Inter", sans-serif; font-weight: 700; color: var(--home-text); margin-bottom: 1rem;
+      font-family: "Inter", sans-serif;
+      font-weight: 700;
+      color: var(--home-text);
+      margin-bottom: 1rem;
     }
   }
 }
@@ -260,18 +323,22 @@
   min-height: 3rem;
   line-height: 1.2;
 
-  @media (max-width: 991px) { min-height: 2.75rem; }
-  @media (max-width: 767px) { min-height: 2.5rem; }
+  @media (max-width: 991px) {
+    min-height: 2.75rem;
+  }
+  @media (max-width: 767px) {
+    min-height: 2.5rem;
+  }
 }
 
 //  Centrera kalendern i mobilvy
 @media (max-width: 768px) {
   .homepage-calendar {
-    display:block;
+    display: block;
     justify-content: center;
     align-items: center;
-    margin: 0 auto; 
-    width: 90%;     
+    margin: 0 auto;
+    width: 90%;
   }
 }
 
@@ -287,12 +354,14 @@
 }
 
 
-#age-tooltip {
-  max-width: 400px !important; 
+@media (min-width: 500px) {
+  #age-tooltip {
+    max-width: 400px !important;
+  }
 }
 
 #age-tooltip .tooltip-inner {
-  max-width: 100% !important; 
+  max-width: 100% !important;
   width: 100% !important;
   white-space: normal !important;
   text-align: left;

@@ -50,18 +50,23 @@
 
   /* ==== Knappar ==== */
   .btn-confirm {
+    width: 110px;
     border-color: lighten(#0d253f, 15%); // $primary-light
     font-family: "Inter", sans-serif;
     font-weight: 700;
     font-size: 15px;
   }
 
-  .btn-cancel {
-    background-color: #b81c21; // $dark
-    border-color: #dc3545; // $danger
+  .btn-cancel { 
+    width: 110px;
+    border-color: #dc3545;
     font-family: "Inter", sans-serif;
     font-weight: 700;
     font-size: 15px;
+    
+  }
+  .btn-cancel:hover {
+    background-color: #dc3545;
   }
   /* ==== Duken/Screen ==== */
   .screenbar {
@@ -141,9 +146,9 @@
     }
 
     &.seat-held {
-      background: #ffe8a6;
+      background: #f7f474;
       color: #6c4a00;
-      border-color: #e5c04d;
+      border-color: #e4a725;
       cursor: not-allowed;
       box-shadow: inset 0 0 0 2px rgba(229, 192, 77, 0.35);
     }
@@ -163,7 +168,7 @@
   .seat-viewport {
     position: relative;
     width: 100%;
-    height: 75vh;
+    height: 80vh;
     overflow: hidden;
     background: radial-gradient(circle at top center, #113e6d, #113255);
 
@@ -247,22 +252,22 @@
   // Extra breakpoint som gör att whitespace under salongslayouten inte blir så stor vid små skärmbredder
   @media (max-width: 767px) {
     .seat-viewport {
-      height: 55vh;
+      height: 60vh;
     }
   }
   @media (max-width: 577px) {
     .seat-viewport {
-      height: 65vh;
+      height: 75vh;
     }
   }
   @media (max-width: 520px) {
     .seat-viewport {
-      height: 65vh;
+      height: 70vh;
     }
   }
   @media (max-width: 480px) {
     .seat-viewport {
-      height: 55vh;
+      height: 60vh;
     }
   }
 }
@@ -341,11 +346,11 @@
 }
 
 .spm-seat-held {
-  background: #ffe8a6;
+  background: #f7f474;
   color: #6c4a00;
+  border-color: #e4a725;
   cursor: not-allowed;
-  border: 1px dashed #e5c04d;
-  text-decoration: none;
+  box-shadow: inset 0 0 0 2px rgba(229, 192, 77, 0.35);
 }
 
 // Styling för färgkodsförklaring vid salongslayouten
@@ -391,8 +396,9 @@
       border: none;
     }
     .swatch-held {
-      background: #ffe8a6;
-      border: 1px dashed #e5c04d;
+      background: #f7f474;
+      border: 1px dashed #e4a725;
+
     }
   }
 }

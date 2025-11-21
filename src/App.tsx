@@ -23,6 +23,8 @@ import Login from "./components/Login";
 
 // Cookies
 import CookieConsent from "./components/CookieConsent";
+import FooterMenu from "./components/FooterMenu";
+import InfoPage from "./components/InfoPage";
 
 // Routing helpers
 import { routePath, buildPath } from "./routes";
@@ -341,6 +343,9 @@ export default function App() {
             element={<MovieDetail onBook={() => navigate(routePath.biljett)} />}
           />
 
+          {/* INFO PAGE */}
+          <Route path="/info" element={<InfoPage />} />
+
           {/* 404 */}
           <Route
             path="*"
@@ -350,7 +355,10 @@ export default function App() {
           />
         </Routes>
       </main>
-      {/* BOTTOM NAVIGATION */}
+
+      <FooterMenu />
+
+
       <BottomNav
         authed={isAuthed}
         isGuest={authState.isGuest}

@@ -5,9 +5,14 @@ import "../styles/cookieconsent.scss";
 type ConsentChoice = "necessary" | "stats";
 const LS_KEY = "cookieConsent"; // localStorage-nyckel
 
+// API att anropa från andra komponenter
+export function openCookieConsent() {
+  window.dispatchEvent(new CustomEvent("open-cookie-consent"));
+}
+
 export default function CookieConsent() {
   const [show, setShow] = useState(false);
-  const [choice, setChoice] = useState<ConsentChoice>("necessary");
+  const [choice, setChoice] = useState<ConsentChoice>("stats");
 
   // Visa modal om inget val finns sen tidigare
   useEffect(() => {
@@ -29,8 +34,19 @@ export default function CookieConsent() {
     setShow(false);
   };
 
-  // (Valfritt) gör det lättare att testa: håll ALT nedtryckt för att visa igen
-  window.addEventListener("keydown", e => { if(e.altKey) setShow(true) })
+  // TESTNING: tryck på ALT för att visa modalen igen
+  useEffect(() => {
+    const onOpen = () => setShow(true);
+
+    window.addEventListener("open-cookie-consent", onOpen as EventListener);
+
+    return () => {
+      window.removeEventListener(
+        "open-cookie-consent",
+        onOpen as EventListener
+      );
+    };
+  }, []);
 
   return (
     <Modal
@@ -42,13 +58,16 @@ export default function CookieConsent() {
       dialogClassName="cookie-modal"
     >
       <Modal.Header>
-        <Modal.Title>Cookies på Filmvisarna</Modal.Title>
+        <Modal.Title className="w-100 text-center mb-0">
+          Cookies på Filmvisarna
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <p className="mb-3 text-info">
-          Vi använder <strong>nödvändiga tekniska cookies</strong> för att sidan ska fungera
-          (för t.ex. inloggning och platsreservering vid bokning). Vi planerar också att använda cookies
-          för <strong>statistik</strong>, vilket kan komma att användas som underlag för marknadsföring.
+          Vi använder <strong>nödvändiga tekniska cookies</strong> för att sidan
+          ska fungera (för t.ex. inloggning och platsreservering vid bokning).
+          Vi planerar också att använda cookies för <strong>statistik</strong>,
+          vilket kan komma att användas som underlag för marknadsföring.
         </p>
 
         <div className="mb-3">
@@ -60,7 +79,8 @@ export default function CookieConsent() {
               <>
                 <strong>Endast nödvändiga</strong>
                 <div className="small text-info">
-                  Krävs för inloggning och grundfunktioner. Inga personliga uppgifter sparas för statistik.
+                  Krävs för inloggning och grundfunktioner. Inga personliga
+                  uppgifter sparas för statistik.
                 </div>
               </>
             }
@@ -76,8 +96,9 @@ export default function CookieConsent() {
               <>
                 <strong>Tillåt statistik</strong>
                 <div className="small text-info">
-                  Tillåt mätning av användning (för statistikanalys som kan bli underlag för
-                  marknadsföring). Inga personliga annonser hos oss.
+                  Tillåt mätning av användning (för statistikanalys som kan bli
+                  underlag för marknadsföring). Inga personliga annonser hos
+                  oss.
                 </div>
               </>
             }
@@ -90,10 +111,7 @@ export default function CookieConsent() {
           Ditt val sparas i din webbläsare så att du inte behöver välja igen.
         </p>
       </Modal.Body>
-      <Modal.Footer className="d-flex justify-content-between">
-        <Button variant="secondary" onClick={() => handleSave("necessary")}>
-          Endast nödvändiga
-        </Button>
+      <Modal.Footer className="d-flex justify-content-center">
         <Button
           variant="primary"
           onClick={() => handleSave(choice)}

@@ -8,7 +8,7 @@ import {
   Row,
   Col,
 } from "react-bootstrap";
-import { usePDF } from 'react-to-pdf'; // <-- LADES TILL
+import { usePDF } from "react-to-pdf"; // <-- LADES TILL
 import "../styles/ConfirmationAndProfile.scss";
 
 // --- Hjälpfunktioner ---
@@ -37,8 +37,8 @@ function rowIndexToLetter(rowIndex: number): string {
 }
 
 function getAuditoriumName(id: number | undefined): string {
-  if (id === 1) return "Lilla Salongen";
-  if (id === 2) return "Stora Salongen";
+  if (id === 2) return "Lilla Salongen";
+  if (id === 1) return "Stora Salongen";
   return id ? `Salong ${id}` : "N/A";
 }
 
@@ -81,10 +81,10 @@ interface ConfirmationPageProps {
 
 export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   // PDF Hook: Initialiserar toPDF funktionen och targetRef
-  const { toPDF, targetRef } = usePDF({ 
-    filename: 'biljett_filmvisarna.pdf',
-    page: { scale: 1.2 } 
-  }); 
+  const { toPDF, targetRef } = usePDF({
+    filename: "biljett_filmvisarna.pdf",
+    page: { scale: 1.2 },
+  });
 
   // 1) Läs query params
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
@@ -214,9 +214,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   // --- UI Rendrering ---
   if (loading) {
     return (
-      <div
-        className="mobile-shell confirm-page d-flex justify-content-center align-items-center"
-      >
+      <div className="mobile-shell confirm-page d-flex justify-content-center align-items-center">
         <Spinner animation="border" role="status" />
         <span className="ms-2">Laddar bokningsbekräftelse…</span>
       </div>
@@ -266,12 +264,10 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   return (
     <div className="mobile-shell confirm-page">
       {/* 1. BLÅ Toppremsa (Använder Bootstrap Primary) */}
-      <div className="top-alert bg-primary text-white">
-        Bokning bekräftad!
-      </div>
+      <div className="top-alert bg-primary text-white">Bokning bekräftad!</div>
 
       {/* 2. Biljettens Huvuddel (Card) - Använder targetRef för PDF-generering */}
-      <Card className="mb-0" ref={targetRef}> 
+      <Card className="mb-0" ref={targetRef}>
         {/* Filmdetaljer (Enkel kolumn) */}
         <Card.Header as="h6">
           <Row>
@@ -330,9 +326,8 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
           </Row>
         </Card.Header>
 
-      
         {/* 4. Bokningsnummer & Knappar - MINSKAR PADDING PÅ SEKTIONEN TILL p-3 */}
-        <div className="text-center p-3"> 
+        <div className="text-center p-3">
           {/* Bokningsnummer-etikett - mb-0 */}
           <p className="mb-0 text-uppercase">Boknings-ID:</p>
 
@@ -356,13 +351,12 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
 
           {/* Knappgrupp - APPLICERA hide-on-print för PDF:en */}
           <div className="d-grid gap-2 mt-2 ">
-            
             {/* Ladda ner PDF (Använder toPDF) */}
             <Button
               variant="secondary"
               size="lg"
               className="py-2 px-3"
-              onClick={toPDF} 
+              onClick={toPDF}
             >
               Ladda ner som PDF
             </Button>
@@ -376,11 +370,10 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
             >
               Tillbaka till startsidan
             </Button>
-            
           </div>
 
           {/* Kontakttexten du lade till - Ligger under knapparna */}
-          <p className="small text-muted mt-2 mb-0"> 
+          <p className="small text-muted mt-2 mb-0">
             Avbokning för medlemmar sker via Mina Sidor. För ickemedlemmar
             kontakta oss på 000-12345 eller mejla filmvisarna38@gmail.com
           </p>
