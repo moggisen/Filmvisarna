@@ -49,20 +49,7 @@ export default class Server {
     // startEventsPoller(400); // 300–800 ms är lagom
     // }
 
-    // NÖDBROMS: blockera /api/bookings (alla metoder & alla underpaths)
-    this.app.get("/api/bookings", (req, res) => {
-      return res.status(403).json({ error: "Forbidden" });
-    });
-
-    // NÖDBROMS: blockera /api/bookings/:id (endast numeriska id)
-    this.app.get(/^\/api\/bookings\/\d+$/, (req, res) => {
-      return res.status(403).json({ error: "Forbidden" });
-    });
-
-    // NÖDBROMS: blockera /api/users (alla metoder & alla underpaths)
-    this.app.use("/api/users", (req, res) => {
-      return res.status(403).json({ error: "Forbidden" });
-    });
+    
 
     new SseRoute(this.app, { prefix: this.settings.restPrefix });
     startEventsPoller(200);

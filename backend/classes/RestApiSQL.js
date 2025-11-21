@@ -27,6 +27,20 @@ export default class RestApi {
     this.prefix = this.settings.restPrefix;
     this.prefix.endsWith("/") || (this.prefix += "/");
     this.db = new DBQueryMaker(settings);
+
+    app.use((req, res, next) => {
+      const isApiRequest = req.path.startsWith("/api");
+      const isFromBrowser =
+        req.get("Accept")?.includes("text/html") ||
+        req.get("Sec-Fetch-Mode") === "navigate" ||
+        req.get("Sec-Fetch-Dest") === "document";
+
+      if (isApiRequest && isFromBrowser) {
+        console.log(`Redirecting API direct access: ${req.method} ${req.path}`);
+        return res.redirect("/");
+      }
+      next();
+    });
     // use built in Express middleware to read the body
     app.use(express.json());
     // use middleware to capture malformed json errors
