@@ -97,6 +97,13 @@ const fmtTime = (iso: string) =>
     minute: "2-digit",
   });
 
+// Get auditorium name
+const getAuditoriumName = (id: number | undefined): string => {
+  if (id === 2) return "Lilla Salongen";
+  if (id === 1) return "Stora Salongen";
+  return id ? `Salong ${id}` : "N/A";
+};
+
 // Main component
 export default function MovieDetail({ onBook }: MovieDetailProps) {
   //find movie id
@@ -328,15 +335,15 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                           onClick={() => handleBook(s)}
                           aria-label={`Boka ${m.movie_title} ${fmtDate(
                             s.screening_time
-                          )} ${fmtTime(s.screening_time)} i salong ${
+                          )} ${fmtTime(s.screening_time)} i ${getAuditoriumName(
                             s.auditorium_id
-                          }`}
+                          )}`}
                           className="d-flex justify-content-between align-items-center w-100 text-start rounded-2 py-2 "
                         >
                           <span>
                             {fmtDate(s.screening_time)} •{" "}
-                            {fmtTime(s.screening_time)} • Salong{" "}
-                            {s.auditorium_id}
+                            {fmtTime(s.screening_time)} •{" "}
+                            {getAuditoriumName(s.auditorium_id)}
                           </span>
                         </ListGroup.Item>
                       ))}

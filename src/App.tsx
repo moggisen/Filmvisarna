@@ -27,8 +27,7 @@ import FooterMenu from "./components/FooterMenu";
 import InfoPage from "./components/InfoPage";
 
 // Routing helpers
-import { routePath, buildPath } from "./routes";
-import type { RouteKey } from "./routes";
+import { routePath } from "./routes";
 
 // Types
 import type { BookingSummary } from "./components/types";
@@ -88,13 +87,11 @@ export default function App() {
 
         const data = await response.json();
 
-        console.log("Auth check: ", data);
-
         if (response.ok && !data.error) {
           const isGuest = !!data.is_guest;
 
           setAuthState({
-            isAuthenticated: !isGuest, 
+            isAuthenticated: !isGuest,
             isGuest: isGuest,
             userData: data,
           });
@@ -140,34 +137,11 @@ export default function App() {
             userData: data,
           });
 
-          // Return to booking flow if needed
-          const shouldRestoreBooking = sessionStorage.getItem(
-            "shouldRestoreBooking"
-          );
-          const returnTo = sessionStorage.getItem("returnTo");
-
-          console.log(
-            "Auth success - shouldRestoreBooking:",
-            shouldRestoreBooking,
-            "returnTo:",
-            returnTo
-          );
-
-          if (shouldRestoreBooking === "true" && returnTo) {
-            console.log("Navigating back to booking:", returnTo);
-            navigate(returnTo, { replace: true });
-            return;
-          }
-
           // Return to protected route
           const fromGuardPath =
             (location.state as any)?.from?.pathname ??
             (location.state as any)?.from?.location?.pathname;
           if (fromGuardPath) {
-            console.log(
-              "Auth success - returning to guarded route:",
-              fromGuardPath
-            );
             navigate(fromGuardPath, { replace: true });
             return;
           }
@@ -198,7 +172,6 @@ export default function App() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        console.log(data.success);
         setAuthState({
           isAuthenticated: false,
           isGuest: false,
@@ -223,26 +196,6 @@ export default function App() {
     setBookings((prev) => prev.filter((b) => b.bookingId !== bookingId));
   };
 
-  // Navigation handler from homepage
-  const homeOnNavigate = (name: RouteKey, movieId?: number) => {
-    if (
-      name === "movie-detail" &&
-      typeof movieId === "number" &&
-      Number.isFinite(movieId) &&
-      movieId > 0
-    ) {
-      const target = buildPath("movie-detail", { id: movieId });
-      try {
-        localStorage.setItem("selectedMovieId", String(movieId));
-      } catch {}
-      console.log("Navigating to:", target, "movieId:", movieId);
-      navigate(target);
-      return;
-    }
-
-    navigate(routePath[name] ?? routePath.home);
-  };
-
   // Helper för bakåtkompatibilitet
   const isAuthed = authState.isAuthenticated;
 
@@ -260,18 +213,15 @@ export default function App() {
       <main className="container py-4">
         <Routes>
           {/* HOME*/}
-          <Route
-            path={routePath.home}
-            element={<HomePage onNavigate={homeOnNavigate} />}
-          />
+          <Route path={routePath.home} element={<HomePage />} />
 
           {/* BOOKING */}
           <Route
             path={routePath.biljett}
             element={
               <Booking
-                authed={isAuthed} 
-                isGuest={authState.isGuest} 
+                authed={isAuthed}
+                isGuest={authState.isGuest}
                 onConfirm={(b) => {
                   addBooking(b);
                 }}
@@ -357,7 +307,6 @@ export default function App() {
       </main>
 
       <FooterMenu />
-
 
       <BottomNav
         authed={isAuthed}
