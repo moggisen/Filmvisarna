@@ -1,11 +1,7 @@
-// ==========================================================
-// 🏠 HOMEPAGE.SCSS
-// Endast styling för HomePage.tsx
-// ==========================================================
+// HOMEPAGE.SCSS
+// Styling specifically for HomePage.tsx and little ageToolTip styling
 
-// ==========================================================
-// 🎨 Färgvariabler
-// ==========================================================
+//  Color variables
 :root {
   --home-primary: #0d253f;
   --home-primary-dark: #071422;
@@ -17,9 +13,7 @@
   --home-text-muted: #d0dbe6;
 }
 
-// ==========================================================
-// 🧱 Huvudcontainer
-// ==========================================================
+//  Main Container and sidebar layout
 .homepage-container {
   &.d-md-none { padding: 1rem; }
   &.d-none.d-md-block {
@@ -31,9 +25,8 @@
   }
 }
 
-// ==========================================================
-// 📝 Rubriker
-// ==========================================================
+
+// Headings
 .homepage-heading {
   font-family: "Inter", sans-serif;
   font-weight: 700;
@@ -41,9 +34,7 @@
   margin-bottom: 1rem;
 }
 
-// ==========================================================
-// 🎬 Filmkort
-// ==========================================================
+// Movie Cards
 .homepage-movie-card {
   display: flex;
   flex-direction: column;
@@ -89,9 +80,8 @@
   }
 }
 
-// ==========================================================
-// 🎟️ Eventkort
-// ==========================================================
+
+// Event cards
 .homepage-event-card {
   background-color: var(--home-primary) !important;
   color: var(--home-text);
@@ -132,18 +122,14 @@
   }
 }
 
-// ==========================================================
-// 🧭 Sidebar
-// ==========================================================
+// Sidebar styling
 .sidebar { background-color: var(--home-primary-dark) !important; }
 
-// ==========================================================
-// 📅 Kalender
-// ==========================================================
+// Calendar (react-calendar)
 .homepage-calendar {
   width: 100%;
   border: none;
-  color: #194e83;
+  
 
   .react-calendar__navigation {
     background-color: #343a40;
@@ -175,9 +161,7 @@
   .react-calendar__month-view__weekdays__weekday { padding: 0; }
 }
 
-// ==========================================================
-// 🧾 Formulärelement
-// ==========================================================
+//  Form Elements (Input search and Select age limits)
 .homepage-form {
   .form-label { color: var(--home-text); font-family: "Inter", sans-serif; font-weight: 600; }
   .form-control, .form-select {
@@ -194,9 +178,8 @@
   .form-control::placeholder { color: var(--home-text-muted); }
 }
 
-// ==========================================================
-// 🔘 Knappar (alla storlekar)
-// ==========================================================
+
+//  Buttons
 .homepage-btn {
   font-family: "Inter", sans-serif;
   font-weight: 700;
@@ -215,20 +198,14 @@
   }
 }
 
-// ==========================================================
-// 🧩 Grid-layout
-// ==========================================================
+// Grid layout specifics
 .homepage-movie-grid {
   .col { margin-inline: auto; }
-  .row { --bs-gutter-x: 1rem; --bs-gutter-y: 1rem; }
-
   &.homepage-mobile-grid { .col { flex: 0 0 calc(50% - 0.5rem); max-width: calc(50% - 0.5rem); } }
   &.homepage-desktop-grid { .col { margin-bottom: 1rem; } }
 }
 
-// ==========================================================
-// 🎞️ Nyaste filmen
-// ==========================================================
+// Carousel and newest movie styling
 .homepage-newest-movie {
   margin-bottom: 1.5rem;
   background-color: var(--home-primary) !important;
@@ -243,9 +220,7 @@
   }
 }
 
-// ==========================================================
-// 🧩 Extra layoutjusteringar (titel, text m.m.)
-// ==========================================================
+// Additional styling and layput tweaks
 .movie-title-wrapper {
   color: var(--home-text);
   font-weight: bold;
@@ -264,7 +239,7 @@
   @media (max-width: 767px) { min-height: 2.5rem; }
 }
 
-//  Centrera kalendern i mobilvy
+//  Calendar on mobile 
 @media (max-width: 768px) {
   .homepage-calendar {
     display:block;
@@ -275,6 +250,7 @@
   }
 }
 
+// Tooltip styling (for AgeTooltip)
 .tooltip-inner {
   background-color: #222 !important;
   color: #fff !important;
@@ -286,10 +262,10 @@
   border-right-color: #222 !important;
 }
 
-
+// Tooltip styling for larger screens
 @media (min-width: 991.98px) {
   #age-tooltip {
-  max-width: 400px !important; 
+  max-width: 500px !important; 
 }
 }
 
