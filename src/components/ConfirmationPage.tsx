@@ -8,11 +8,12 @@ import {
   Row,
   Col,
 } from "react-bootstrap";
-import { usePDF } from "react-to-pdf"; // <-- LADES TILL
+import { usePDF } from "react-to-pdf"; // PDF generation hook
 import "../styles/ConfirmationAndProfile.scss";
 
-// --- Hjälpfunktioner ---
+// Helper functions
 
+// Helper function to format price into Swedish Krona (SEK)
 function formatPrice(n: number) {
   return new Intl.NumberFormat("sv-SE", {
     style: "currency",
@@ -20,6 +21,7 @@ function formatPrice(n: number) {
   }).format(n);
 }
 
+// Helper function to format ISO date string to readable date and time (Swedish locale)
 function formatDateTimeISO(isoLike: string) {
   const d = new Date(isoLike);
   const date = d.toLocaleDateString("sv-SE");
@@ -30,19 +32,20 @@ function formatDateTimeISO(isoLike: string) {
   return `${date} ${time}`;
 }
 
-// helper: gör om row_index (1,2,3...) till A,B,C...
+// Helper: converts row_index (1, 2, 3...) to a letter (A, B, C...)
 function rowIndexToLetter(rowIndex: number): string {
   const baseCharCode = "A".charCodeAt(0);
   return String.fromCharCode(baseCharCode + (rowIndex - 1));
 }
 
+// Helper to get a human-readable auditorium name from its ID
 function getAuditoriumName(id: number | undefined): string {
   if (id === 2) return "Lilla Salongen";
   if (id === 1) return "Stora Salongen";
   return id ? `Salong ${id}` : "N/A";
 }
 
-// --- Data-typer (Oförändrade) ---
+// Data types
 
 type BookingRow = {
   id: number;
@@ -74,19 +77,23 @@ type TicketTypeRow = {
 };
 
 interface ConfirmationPageProps {
-  onDone: () => void;
+  onDone: () => void; // Function to call when user is done (e.g., navigate home)
 }
 
-// --- Huvudkomponent ---
+interface PdfOptions {
+  filename: string;
+  scale?: number;
+}
+// Main Component
 
 export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   // PDF Hook: Initialiserar toPDF funktionen och targetRef
   const { toPDF, targetRef } = usePDF({
     filename: "biljett_filmvisarna.pdf",
-    page: { scale: 1.2 },
-  });
+    scale: 1.2,
+  } as PdfOptions);
 
-  // 1) Läs query params
+  // Read query parameters from URL
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const bookingIdParam = params.get("booking_id");
   const confParam = params.get("conf") || undefined;
@@ -94,7 +101,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // Data som visas
+  // Data to be displayed
   const [ticketBreakdown, setTicketBreakdown] = useState<string>("");
   const [booking, setBooking] = useState<BookingRow | null>(null);
   const [screening, setScreening] = useState<ScreeningRow | null>(null);
@@ -102,9 +109,9 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
   const [seats, setSeats] = useState<SeatDetailedRow[]>([]);
   const [ticketsTotal, setTicketsTotal] = useState<number | null>(null);
 
-  // Hämtar all bokningsdata (Logik från den första versionen)
+  // Effect to fetch all booking data
   useEffect(() => {
-    let isDead = false;
+    let isDead = false; // Flag to prevent state update after component unmount
     async function run() {
       try {
         setLoading(true);
@@ -114,19 +121,20 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
           throw new Error("Saknar booking_id i URL:en.");
         }
 
-        // 2) Hämta bokning
+        // Fetch booking details
         const bRes = await fetch(`/api/bookings/${bookingIdParam}`);
         if (!bRes.ok)
           throw new Error(`Kunde inte hämta bokning (${bRes.status}).`);
         const bJson: BookingRow | null = await bRes.json();
         if (!bJson) throw new Error("Bokningen finns inte.");
+        // Basic security check (though typically done on backend)
         if (confParam && bJson.booking_confirmation !== confParam) {
           console.warn("booking_confirmation i URL och DB matchar inte.");
         }
         if (isDead) return;
         setBooking(bJson);
 
-        // 3) Hämta visningen
+        // Fetch screening details using ID from booking
         const scRes = await fetch(`/api/screenings/${bJson.screening_id}`);
         if (!scRes.ok)
           throw new Error(`Kunde inte hämta visning (${scRes.status}).`);
@@ -135,7 +143,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
         if (isDead) return;
         setScreening(scJson);
 
-        // 4) Hämta filmen
+        // Fetch movie details using ID from screening
         const mvRes = await fetch(`/api/movies/${scJson.movie_id}`);
         if (!mvRes.ok)
           throw new Error(`Kunde inte hämta film (${mvRes.status}).`);
@@ -144,7 +152,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
         if (isDead) return;
         setMovie(mvJson);
 
-        // 5) Hämta platser (inkl rader/nummer) för denna bokning
+        // Fetch detailed seat information for this booking
         const bxRes = await fetch(`/api/bookings/${bJson.id}/seatsDetailed`);
         if (!bxRes.ok)
           throw new Error(`Kunde inte hämta stolar (${bxRes.status}).`);
@@ -152,13 +160,13 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
         if (isDead) return;
         setSeats(bxJson);
 
-        // 6) Hämta ticketTypes, räkna totalpris och breakdown per typ
+        // Fetch ticket types, calculate total price and create breakdown string
         try {
           const ttRes = await fetch(`/api/ticketTypes`);
           if (ttRes.ok) {
             const ttJson: TicketTypeRow[] = await ttRes.json();
 
-            // Maps för pris & namn
+            // Maps for price and name lookup
             const priceMap = new Map(
               ttJson.map((t) => [t.id, t.ticketType_price])
             );
@@ -166,14 +174,14 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
               ttJson.map((t) => [t.id, t.ticketType_name])
             );
 
-            // Summera totalpris
+            // Calculate total price
             const sum = bxJson.reduce(
               (acc, row) => acc + (priceMap.get(row.ticketType_id) ?? 0),
               0
             );
             if (!isDead) setTicketsTotal(sum);
 
-            // Räkna antal per ticketType_id
+            // Count number of seats per ticketType_id
             const counts = new Map<number, number>();
             for (const row of bxJson) {
               counts.set(
@@ -182,7 +190,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
               );
             }
 
-            // Bygg i formatet “2 vuxen, 1 barn”
+            // Build string format like “2 adult, 1 child”
             const parts: string[] = [];
             for (const [ttId, count] of counts) {
               const rawName = nameMap.get(ttId) ?? `Typ ${ttId}`;
@@ -199,19 +207,24 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
         } catch (e) {
           console.warn("Fel vid hämtning av ticketTypes:", e);
         }
-      } catch (e: any) {
-        if (!isDead) setErr(e?.message ?? "Ett fel inträffade.");
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Ett fel inträffade.";
+
+        if (!isDead) setErr(message);
       } finally {
         if (!isDead) setLoading(false);
       }
     }
     run();
+    // Cleanup function to set the dead flag
     return () => {
       isDead = true;
     };
   }, [bookingIdParam, confParam]);
 
-  // --- UI Rendrering ---
+  // Ui Rendering
+
+  // Show spinner while loading
   if (loading) {
     return (
       <div className="mobile-shell confirm-page d-flex justify-content-center align-items-center">
@@ -221,6 +234,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
     );
   }
 
+  // Show error message if fetch failed
   if (err) {
     return (
       <div className="mobile-shell confirm-page">
@@ -239,20 +253,22 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
     );
   }
 
+  // Should not happen, but for type safety:
   if (!booking || !screening || !movie) {
     return null;
   }
 
-  // Presentationsdata
+  // Presentation data formatting
   const bookingCode = (
     booking.booking_confirmation?.slice(0, 6) || "------"
   ).toUpperCase();
   const showtimeLabel = formatDateTimeISO(screening.screening_time);
 
-  // Bygg "A7, A8, B12 ..."
+  // Build the list of seats, e.g., "A7, A8, B12 ..."
   const seatList = seats
     .slice()
     .sort((a, b) => {
+      // Sort by row index first, then by seat number
       if (a.row_index !== b.row_index) {
         return a.row_index - b.row_index;
       }
@@ -263,60 +279,45 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
 
   return (
     <div className="mobile-shell confirm-page">
-      {/* 1. BLÅ Toppremsa (Använder Bootstrap Primary) */}
       <div className="top-alert bg-primary text-white">Bokning bekräftad!</div>
-
-      {/* 2. Biljettens Huvuddel (Card) - Använder targetRef för PDF-generering */}
       <Card className="mb-0" ref={targetRef}>
-        {/* Filmdetaljer (Enkel kolumn) */}
         <Card.Header as="h6">
           <Row>
             <Col xs={12}>
-              {/* Film titel: STOR och CENTRERAD */}
               <h5
                 className="mb-4 text-uppercase text-center border-bottom"
                 style={{ fontSize: "1.8rem", fontWeight: "bold" }}
               >
                 {movie.movie_title}
               </h5>
-
-              {/* Detaljer: Mindre typsnitt - Med ljusgrå linjer */}
               <ListGroup variant="flush" style={{ fontSize: "0.9rem" }}>
-                {/* DATUM - py-1 */}
                 <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-light border-bottom">
                   <span className="fw-bold text-uppercase">Datum</span>{" "}
                   <span>{showtimeLabel.split(" ")[0]}</span>
                 </ListGroup.Item>
 
-                {/* TID - py-1 */}
                 <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-light border-bottom">
                   <span className="fw-bold text-uppercase">Tid</span>{" "}
                   <span>{showtimeLabel.split(" ")[1]}</span>
                 </ListGroup.Item>
 
-                {/* SALONG (med namnmappning) - py-1 */}
                 <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-light border-bottom">
                   <span className="fw-bold text-uppercase">Salong</span>{" "}
                   <span>{getAuditoriumName(screening.auditorium_id)}</span>
                 </ListGroup.Item>
 
-                {/* PLATSER (vilka stolar) - py-1 */}
                 <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-light border-bottom">
                   <span className="fw-bold text-uppercase">Platser</span>{" "}
                   <span>{seatList || "–"}</span>
                 </ListGroup.Item>
 
-                {/* BILJETTER (antal + typ) - py-1 */}
                 <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-light border-bottom">
                   <span className="fw-bold text-uppercase">Biljetter</span>{" "}
                   <span>{ticketBreakdown || `${seats.length} st`}</span>
                 </ListGroup.Item>
 
-                {/* PRIS (utan border-bottom) - py-1 */}
                 <ListGroup.Item className="d-flex justify-content-between px-0 py-1 border-0">
-                  <span className="fw-bold text-uppercase">
-                    Pris att betala
-                  </span>{" "}
+                  <span className="fw-bold text-uppercase">Totala priset</span>{" "}
                   <strong>
                     {ticketsTotal != null ? formatPrice(ticketsTotal) : "–"}
                   </strong>
@@ -326,12 +327,9 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
           </Row>
         </Card.Header>
 
-        {/* 4. Bokningsnummer & Knappar - MINSKAR PADDING PÅ SEKTIONEN TILL p-3 */}
         <div className="text-center p-3">
-          {/* Bokningsnummer-etikett - mb-0 */}
-          <p className="mb-0 text-uppercase">Boknings-ID:</p>
+          <p className="mb-0 text-uppercase text-primary-dark">Boknings-ID:</p>
 
-          {/* Bokningsnummer-ruta - mb-1 */}
           <div
             className="d-inline-block p-2 px-4 mb-1"
             style={{ backgroundColor: "#eeeeee", borderRadius: "5px" }}
@@ -344,24 +342,20 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
             </strong>
           </div>
 
-          {/* Ny text: Visa upp i kassan - MINSKAD MARGINAL TILL mb-1 */}
-          <p className="small text-muted mb-1">
-            Visa upp ditt boknings-ID i kassan.
-          </p>
+          <p className="small mb-1">Visa upp ditt boknings-ID i kassan.</p>
 
-          {/* Knappgrupp - APPLICERA hide-on-print för PDF:en */}
           <div className="d-grid gap-2 mt-2 ">
-            {/* Ladda ner PDF (Använder toPDF) */}
             <Button
               variant="secondary"
               size="lg"
               className="py-2 px-3"
-              onClick={toPDF}
+              onClick={() => {
+                toPDF();
+              }}
             >
               Ladda ner som PDF
             </Button>
 
-            {/* Tillbaka till startsidan */}
             <Button
               variant="primary"
               size="lg"
@@ -372,8 +366,7 @@ export default function ConfirmationPage({ onDone }: ConfirmationPageProps) {
             </Button>
           </div>
 
-          {/* Kontakttexten du lade till - Ligger under knapparna */}
-          <p className="small text-muted mt-2 mb-0">
+          <p className="small mt-2 mb-0">
             Avbokning för medlemmar sker via Mina Sidor. För ickemedlemmar
             kontakta oss på 000-12345 eller mejla filmvisarna38@gmail.com
           </p>

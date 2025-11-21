@@ -1,5 +1,6 @@
+// SASS vairables (Colors)
 $primary: #0d253f !default;
-$primary-light: lighten($primary, 15%); // 15% ljusare
+$primary-light: lighten($primary, 15%);
 $primary-dark: #071422;
 $secondary: #113255 !default;
 $success: #28a745 !default;
@@ -9,6 +10,7 @@ $danger: #dc3545 !default;
 $light: #d52026 !default;
 $dark: #b81c21 !default;
 
+// Mixins (Typography)
 @mixin title-text {
   font-family: "Bebas Neue", sans-serif;
   font-weight: 400;
@@ -36,14 +38,20 @@ $dark: #b81c21 !default;
   font-family: "Inter", sans-serif;
   font-optical-sizing: auto;
   font-weight: 700;
-  //   font-style: italic;
   font-size: 1rem;
 }
 
-/* Dra in allt Bootstrap */
+/* Import all of Bootstrap */
 @import "bootstrap/scss/bootstrap";
 
+// Mobile Shell (Layout Container)
 .mobile-shell {
+  width: 100%;
+  max-width: clamp(var(--shell-min), var(--shell-ideal), var(--shell-max));
+  margin-inline: auto;
+  padding-inline: var(--shell-pad);
+
+  // General style overrides for Bootstrap components within the shell
   .btn {
     @include button-text;
     color: $info;
@@ -61,7 +69,7 @@ $dark: #b81c21 !default;
     padding: 20px 0;
     text-align: center;
   }
-  .card-header,
+
   .list-group-item {
     color: $info;
   }
@@ -82,212 +90,73 @@ $dark: #b81c21 !default;
   }
 }
 
-/* Roten skapar en stacking context */
-.app-root {
-  position: relative;
-  z-index: 0;
-  //   overflow-x: hidden;
-}
-
-@media (min-width: 768px) {
-  /* Profil-sidan */
-  .profile-page::before,
-  .auth-page::before,
-  /* Bekräftelsesidan */
-  .confirm-page::before {
-    content: "";
-    position: fixed; /* täck viewporten */
-    inset: 0;
-    z-index: -1; /* bakom innehållet men över body */
-    background: linear-gradient(rgba(7, 20, 34, 0.8), rgba(7, 20, 34, 0.8)),
-      /* mörk overlay för läsbarhet */ url("./background.jpg") center / cover
-        no-repeat;
-  }
-}
-/* Mobil-shell: smal, centrerad kolumn */
-:root {
-  --shell-min: 15rem; /* 22rem ≈352px */
-  --shell-ideal: 94%; /* väx lite med viewporten */
-  --shell-max: 28rem; /* 40rem ≈640px på desktop */
-  --shell-pad: 1rem;
-}
-
-.mobile-shell {
-  /* Fyll förälderns bredd, men begränsa med max-width */
-  width: 100%;
-  max-width: clamp(var(--shell-min), var(--shell-ideal), var(--shell-max));
-  margin-inline: auto;
-  padding-inline: var(--shell-pad);
-}
-
-/* Modal-variant */
-.mobile-shell-modal {
-  width: 100%;
-  max-width: clamp(var(--shell-min), var(--shell-ideal), var(--shell-max));
-  margin-inline: auto;
-}
-
-$primary: #0d253f !default;
-$primary-light: lighten($primary, 15%); // 15% ljusare
-$primary-dark: #071422;
-$secondary: #113255 !default;
-$success: #28a745 !default;
-$info: #ebebeb !default;
-$warning: #ffd700 !default;
-$danger: #dc3545 !default;
-$light: #d52026 !default;
-$dark: #b81c21 !default;
-
-@mixin title-text {
-  font-family: "Bebas Neue", sans-serif;
-  font-weight: 400;
-  font-style: normal;
-  font-size: 2rem;
-}
-
-@mixin heading-text {
-  font-family: "Inter", sans-serif;
-  font-optical-sizing: auto;
-  font-weight: 700;
-  font-style: normal;
-  font-size: 1.5rem;
-}
-
-@mixin content-text {
-  font-family: "Roboto", sans-serif;
-  font-optical-sizing: auto;
-  font-weight: 300;
-  font-style: normal;
-  font-variation-settings: "wdth" 100;
-  font-size: 1rem;
-}
-@mixin button-text {
-  font-family: "Inter", sans-serif;
-  font-optical-sizing: auto;
-  font-weight: 700;
-  //   font-style: italic;
-  font-size: 1rem;
-}
-
-/* Dra in allt Bootstrap */
-@import "bootstrap/scss/bootstrap";
-
-.mobile-shell {
-  .btn {
-    @include button-text;
-    color: $info;
-  }
-  .btn-close {
-    filter: invert(1);
-  }
-  .alert,
-  .card {
-    @include content-text;
-  }
-  .alert-heading,
-  .card-header {
-    @include heading-text;
-    padding: 20px 0;
-    text-align: center;
-  }
+.profile-page {
   .card-header,
   .list-group-item {
     color: $info;
   }
-  .list-group-item strong {
-    font-weight: bold;
-  }
-  .modal-backdrop {
-    --bs-backdrop-opacity: 0.9;
-  }
-  .mobile-nav-button {
-    padding: 20px 0;
-    background-image: linear-gradient(
-      to bottom,
-      $primary 0%,
-      #0a2036 50%,
-      $primary 100%
-    );
-  }
 }
 
-/* Roten skapar en stacking context */
+// Root: Creates a stacking context
 .app-root {
   position: relative;
   z-index: 0;
-  //   overflow-x: hidden;
 }
 
+// Desktop Background Styling
 @media (min-width: 768px) {
-  /* Profil-sidan */
   .profile-page::before,
   .auth-page::before,
-  /* Bekräftelsesidan */
   .confirm-page::before {
     content: "";
-    position: fixed; /* täck viewporten */
+    position: fixed;
     inset: 0;
-    z-index: -1; /* bakom innehållet men över body */
+    z-index: -1;
     background: linear-gradient(rgba(7, 20, 34, 0.8), rgba(7, 20, 34, 0.8)),
-      /* mörk overlay för läsbarhet */ url("./background.jpg") center / cover
-        no-repeat;
+      url("./background.jpg") center / cover no-repeat;
   }
 }
-/* Mobil-shell: smal, centrerad kolumn */
+
+// Mobile Shell Dimensions (CSS Variables)
 :root {
-  --shell-min: 15rem; /* 22rem ≈352px */
-  --shell-ideal: 94%; /* väx lite med viewporten */
-  --shell-max: 28rem; /* 40rem ≈640px på desktop */
+  --shell-min: 15rem;
+  --shell-ideal: 94%;
+  --shell-max: 28rem;
   --shell-pad: 1rem;
 }
 
-.mobile-shell {
-  /* Fyll förälderns bredd, men begränsa med max-width */
-  width: 100%;
-  max-width: clamp(var(--shell-min), var(--shell-ideal), var(--shell-max));
-  margin-inline: auto;
-  padding-inline: var(--shell-pad);
-}
-
-/* Modal-variant */
+// Modal variant of the mobile shell
 .mobile-shell-modal {
   width: 100%;
   max-width: clamp(var(--shell-min), var(--shell-ideal), var(--shell-max));
   margin-inline: auto;
 }
-
-// ... (Dina befintliga variabler, mixins och @import) ...
-
-// Lägg till eller uppdatera dessa stilar i din ConfirmationAndProfile.scss
 
 .confirm-page {
-  // Röd remsa (ersätter Bootstrap Alert)
   .top-alert {
-    background-color: $dark; /* Använd din röda färg */
-    color: $info; /* Ljus text */
+    background-color: $dark;
+    color: $info;
     @include heading-text;
     text-align: center;
     padding: 10px 0;
-    margin-bottom: 0; /* Går kant i kant med Card */
+    margin-bottom: 0;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
   }
 
-  // Biljetten (Card-komponenten)
+  // The ticket itself (Card component)
   .card {
     position: relative;
-    // Ljus/vit bakgrundsfärg för biljetten
     background-color: #fcfcfc !important;
-    color: $primary-dark !important; /* Mörk text */
     border: 1px solid #999;
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    overflow: visible; /* VIKTIGT: Tillåt perforering att sticka ut */
+    overflow: visible;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
   }
 
-  // Tar bort Card.Header standard-styling i denna design
+  // Override standard Card.Header styling for the ticket design
   .card-header {
     background-color: transparent !important;
     color: $primary-dark !important;
@@ -296,50 +165,7 @@ $dark: #b81c21 !default;
     border-bottom: none;
   }
 
-  // --- Horisontell Perforering (The Stub Cutout) ---
-  .ticket-stub-separator {
-    position: relative;
-    height: 30px;
-    margin: 20px 0;
-
-    // Använder en mörk bakgrundsfärg (som Card-texten) för att rita prickarna
-    $stub-color: $primary-dark;
-    $stub-bg: #fcfcfc;
-
-    // Perforerad linje med runda hål
-    &::before {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 10px;
-      right: 10px;
-      height: 1px;
-      background: $stub-color;
-      opacity: 0.3;
-      transform: translateY(-50%);
-    }
-
-    // Simulerar halvcirkelformade utskärningar
-    .cutout-dots {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 100%;
-      // Mörkblå bakgrund med hål fyllda med den ljusa biljettbakgrunden
-      background: radial-gradient(
-          circle at 0 50%,
-          $stub-bg 10px,
-          transparent 10px
-        ),
-        radial-gradient(circle at 100% 50%, $stub-bg 10px, transparent 10px);
-      background-size: 10px 20px; /* Kontrollera prickstorlek */
-      background-repeat: repeat-x;
-      background-position: 0% 50%, 100% 50%;
-    }
-  }
-
-  // Listgruppens utseende
+  // Styling for the ListGroup items (the detail rows)
   .list-group-item {
     background-color: transparent !important;
     color: $primary-dark !important;
@@ -347,7 +173,7 @@ $dark: #b81c21 !default;
     padding: 10px 20px;
 
     strong {
-      color: $dark; /* Rött för viktiga siffror/kod */
+      color: $dark;
     }
   }
 }
