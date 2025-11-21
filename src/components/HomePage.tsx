@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
 import {
   Container,
   Row,
@@ -14,21 +13,21 @@ import {
 } from "react-bootstrap";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-
 import "../styles/homepage.scss";
 
+// Static image imports (these should be moved to the /public folder for production deployment)
 import spidermarathonImg from "../assets/banners/spidermanmarathon.png";
 import guardianmarathonImg from "../assets/banners/guardianmarathon.png";
 import carousel1Img from "../assets/banners/deadpool.jpg";
 import carousel2Img from "../assets/banners/ironMan2013.jpg";
 import carousel3Img from "../assets/banners/venom2018.jpg";
-import type { Route } from "./types";
 import AgeTooltip from "../components/ageTooltip";
 
-// ⭐ Lägg till dessa imports för routes
+// Route imports for navigation
 import { routePath, buildPath } from "../routes";
 import type { RouteKey } from "../routes";
 
+// INTERFACES (Data Structures)
 interface Movie {
   id: number;
   movie_title: string;
@@ -52,22 +51,21 @@ interface Screening {
 interface Event {
   title: string;
   description: string;
+  type: string;
   date: string;
   img: string;
 }
 
-interface HomePageProps {
-  onNavigate: (route: Route, movieId?: number) => void;
-}
-
-// ------------------ MovieGrid-komponent ------------------
+// MovieGrid Component
+// Component responsible for rendering the movie cards in a grid layout
 interface MovieGridProps {
   movies: (Movie & { times?: string[] })[];
-  onNavigate: (route: Route, movieId?: number) => void;
+  onNavigate: (route: RouteKey, movieId?: number) => void;
 }
-
+// Hantering av moviegrid kortet
 const MovieGrid = ({ movies, onNavigate }: MovieGridProps) => (
-  <Row xs={2} lg={3} xl={4} className="homepage-movie-grid g-3 mb-5">
+  // Bootstrap Row setup: 2 columns on extra small screens, 4 columns on extra large screens
+  <Row xs={2} xl={4} className="homepage-movie-grid g-3 mb-5">
     {movies.map((movie) => (
       <Col key={movie.id}>
         <Card className="homepage-movie-card h-100 d-flex flex-column">
@@ -76,6 +74,7 @@ const MovieGrid = ({ movies, onNavigate }: MovieGridProps) => (
             {movie.movie_title}
           </div>
           <Card.Body className="text-center mt-auto">
+            {/* Button to navigate to the booking page */}
             <Button
               variant="secondary"
               size="sm"
@@ -84,6 +83,7 @@ const MovieGrid = ({ movies, onNavigate }: MovieGridProps) => (
             >
               Biljett
             </Button>
+            {/* Button to navigate to the movie detail page */}
             <Button
               variant="dark"
               size="sm"
@@ -99,37 +99,45 @@ const MovieGrid = ({ movies, onNavigate }: MovieGridProps) => (
   </Row>
 );
 
-// ------------------ HomePage-komponent ------------------
-export default function HomePage({ onNavigate }: HomePageProps) {
+//  HomePage Component
+export default function HomePage() {
+  // State for all movies fetched from API
   const [movies, setMovies] = useState<Movie[]>([]);
+  // State for all screenings fetched from API
   const [screenings, setScreenings] = useState<Screening[]>([]);
   const [loading, setLoading] = useState(true);
+  // State for age filter ('all' or specific age limit)
   const [age, setAge] = useState<string>("all");
+  // State for search input
   const [search, setSearch] = useState<string>("");
+  // State for the date selected in the calendar
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  // State for movies filtered by the selected date
   const [moviesForDate, setMoviesForDate] = useState<Movie[]>([]);
 
-  const navigate = useNavigate(); // ⭐ useNavigate är nu korrekt importerad
+  const navigate = useNavigate(); // Hook for programmatic navigation
 
-  // ⭐ Uppdaterad handleNavigate funktion
+  // Function to handle all internal navigation
   const handleNavigate = (name: RouteKey, movieId?: number) => {
     if (name === "biljett" && movieId) {
-      // Navigera till booking med movieId i state (URLen ändras INTE)
+      // Navigate to booking, passing the movie ID in the state (not URL)
       navigate(routePath.biljett, { state: { preselectedMovieId: movieId } });
     } else if (name === "movie-detail" && movieId) {
-      // Befintlig logik för movie-detail
+      // Logic for movie detail page navigation
       const target = buildPath("movie-detail", { id: movieId });
       try {
         localStorage.setItem("selectedMovieId", String(movieId));
-      } catch {}
+      } catch {
+        return;
+      }
       navigate(target);
     } else {
-      // Standard navigation
+      // Default navigation for other routes
       navigate(routePath[name] ?? routePath.home);
     }
   };
 
-  // Hämta filmer
+  // Effect to fetch all movies from the backend on component mount
   useEffect(() => {
     const fetchMovies = async () => {
       try {
@@ -142,9 +150,9 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       }
     };
     fetchMovies();
-  }, []);
+  }, []); // Runs once on mount
 
-  // Hämta visningar
+  // Effect to fetch all screenings from the backend
   useEffect(() => {
     const fetchScreenings = async () => {
       try {
@@ -155,16 +163,16 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        setLoading(false); // Stop loading after fetching screenings
       }
     };
     fetchScreenings();
-  }, []);
+  }, []); // Runs once on mount
 
-  // Filtrera filmer baserat på valt datum
+  // Effect to filter movies based on the selected date
   useEffect(() => {
     if (!selectedDate) {
-      setMoviesForDate([]);
+      setMoviesForDate([]); // Clear movies if no date is selected
       return;
     }
 
@@ -172,6 +180,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     const selectedMonth = selectedDate.getMonth();
     const selectedYear = selectedDate.getFullYear();
 
+    // Find all screenings happening on the selected day
     const screeningsOnDate = screenings.filter((s) => {
       const screeningDate = new Date(s.screening_time);
       return (
@@ -181,6 +190,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       );
     });
 
+    // Map movies to include screening times for the selected date
     const filteredMovies = movies
       .map((movie) => {
         const times = screeningsOnDate
@@ -191,13 +201,14 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               minute: "2-digit",
             })
           );
-        if (times.length > 0) return { ...movie, times };
+        if (times.length > 0) return { ...movie, times }; // Only return movies with times
         return null;
       })
       .filter(Boolean) as (Movie & { times: string[] })[];
     setMoviesForDate(filteredMovies);
-  }, [selectedDate, screenings, movies]);
+  }, [selectedDate, screenings, movies]); // Reruns when date, screenings, or movies change
 
+  // Filter movies based on the search term and age limit
   const filteredMovies = movies.filter((movie) => {
     const matchesSearch = movie.movie_title
       .toLowerCase()
@@ -206,27 +217,32 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     return matchesSearch && matchesAge;
   });
 
+  // Hardcoded event data
   const events: Event[] = [
     {
       title: "Spider-Man Marathon",
       description: "Se alla Spider-Man filmer!",
+      type: "marathon",
       date: "2025-10-15",
       img: spidermarathonImg,
     },
     {
       title: "Guardians of the Galaxy Marathon",
       description: "Alla Guardians-filmer back-to-back.",
+      type: "marathon",
       date: "2025-10-20",
       img: guardianmarathonImg,
     },
   ];
 
+  // Hardcoded newest movie data for the carousel
   const newestMoviesHardcoded = [
     { movie_id: 1, movie_title: "Deadpool", movie_poster: carousel1Img },
     { movie_id: 2, movie_title: "Iron Man 3", movie_poster: carousel2Img },
     { movie_id: 3, movie_title: "Venom", movie_poster: carousel3Img },
   ];
 
+  // Show a loading spinner while fetching data
   if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center vh-100">
@@ -235,14 +251,15 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     );
   }
 
-  // ------------------ Render ------------------
   return (
     <>
-      {/* ------------------ MOBILVY ------------------ */}
+      {/* MOBILE VIEW */}
       <Container fluid className="d-md-none p-3">
+        {/* Carousel for newest movies */}
         <Carousel variant="dark" className="homepage-newest-carousel mb-4">
           {newestMoviesHardcoded.map((movie) => (
             <Carousel.Item key={movie.movie_id}>
+              {/* Image source from public folder (static import) */}
               <img
                 className="d-block w-100"
                 src={movie.movie_poster}
@@ -253,7 +270,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           ))}
         </Carousel>
 
-        {/* KOMMANDE EVENT */}
+        {/* Upcoming events section */}
         <h5 className="homepage-heading">🎉 Kommande Event</h5>
         <Row xs={1} sm={2} className="mb-3 g-4">
           {events.map((event, idx) => (
@@ -272,14 +289,14 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           ))}
         </Row>
 
-        {/* ÅLDERSGRÄNS + INFO*/}
-
+        {/* Age limit filter with tooltip */}
         <h5 className="homepage-heading d-flex align-items-center gap-2">
           Åldersgräns
           <AgeTooltip />
         </h5>
         <Form.Group className="homepage-form mb-3">
           <Form.Select value={age} onChange={(e) => setAge(e.target.value)}>
+            {/* Age options */}
             <option value="all">Alla</option>
             <option value="7">7 år</option>
             <option value="11">11 år</option>
@@ -287,6 +304,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           </Form.Select>
         </Form.Group>
 
+        {/* Search movie input */}
         <Form.Group className="homepage-form mb-3">
           <Form.Label>Sök film</Form.Label>
           <FormControl
@@ -297,29 +315,46 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           />
         </Form.Group>
 
-        {/* KALENDER */}
+        {/* Calendar for date selection */}
         <h5 className="homepage-heading">Välj datum</h5>
         <Calendar
           value={selectedDate}
-          onChange={(value: Date | Date[]) => {
-            const newDate = Array.isArray(value) ? value[0] || null : value;
-            if (
-              selectedDate &&
-              newDate &&
-              selectedDate.toDateString() === newDate.toDateString()
-            ) {
+          onChange={(value) => {
+            if (value === null) {
               setSelectedDate(null);
+            } else if (Array.isArray(value)) {
+              // Logic for selecting the first date in the array (if multiple selection is possible)
+              const newDate = value[0] || null;
+              if (
+                selectedDate &&
+                newDate &&
+                selectedDate.toDateString() === newDate.toDateString()
+              ) {
+                setSelectedDate(null); // Logic for single date selection
+              } else {
+                setSelectedDate(newDate);
+              }
             } else {
-              setSelectedDate(newDate);
+              // Logic for single date selection
+              if (
+                selectedDate &&
+                value &&
+                selectedDate.toDateString() === value.toDateString()
+              ) {
+                setSelectedDate(null);
+              } else {
+                setSelectedDate(value); // Select new date
+              }
             }
           }}
           className="homepage-calendar"
+          // Custom short weekday format (Sön, Mån, Tis...)
           formatShortWeekday={(_, date) =>
             ["sön", "mån", "tis", "ons", "tor", "fre", "lör"][date.getDay()]
           }
         />
 
-        {/* Visa alla filmer-knapp */}
+        {/* Button to clear date filter (Show all movies) */}
         {selectedDate && (
           <div
             className="text-center"
@@ -349,7 +384,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           </div>
         )}
 
-        {/* FILMER FÖR VALT DATUM / ALLA */}
+        {/* Movie list rendering based on selected date */}
         {selectedDate ? (
           moviesForDate.length > 0 ? (
             <>
@@ -359,10 +394,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               >
                 Filmer som går den {selectedDate.toLocaleDateString()}
               </h5>
-              {/* ⭐ Använd handleNavigate här för mobila vyn */}
               <MovieGrid movies={moviesForDate} onNavigate={handleNavigate} />
             </>
           ) : (
+            // Message if no movies are found for the date
             <div className="text-center mt-4 mb-5">
               <p style={{ fontStyle: "italic", color: "#666" }}>
                 Ingen film visas detta datum 🎬
@@ -370,6 +405,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             </div>
           )
         ) : (
+          // Render all filtered movies (by age/search) if no date is selected
           <>
             <h5
               className="homepage-heading text-center"
@@ -377,20 +413,19 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             >
               Alla filmer
             </h5>
-            {/* ⭐ Använd handleNavigate här för mobila vyn */}
             <MovieGrid movies={filteredMovies} onNavigate={handleNavigate} />
           </>
         )}
       </Container>
 
-      {/* ------------------ DESKTOPVY ------------------ */}
+      {/* DESKTOP VIEW */}
       <Container
         fluid
         className="d-none d-md-block"
         style={{ width: "100%", paddingLeft: 0, paddingRight: 0 }}
       >
         <Row>
-          {/* SIDOFILTER */}
+          {/* SIDEBAR FILTER */}
           <Col md={4} lg={3} className="sidebar p-1 mt-2 position-sticky">
             <h5 className="homepage-heading d-flex align-items-center gap-2">
               Åldersgräns
@@ -414,20 +449,34 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </Form.Group>
-
+            {/* Calendar for date selection in desktop */}
             <h5 className="homepage-heading">Välj datum</h5>
             <Calendar
               value={selectedDate}
-              onChange={(value: Date | Date[]) => {
-                const newDate = Array.isArray(value) ? value[0] || null : value;
-                if (
-                  selectedDate &&
-                  newDate &&
-                  selectedDate.toDateString() === newDate.toDateString()
-                ) {
+              onChange={(value) => {
+                if (value === null) {
                   setSelectedDate(null);
+                } else if (Array.isArray(value)) {
+                  const newDate = value[0] || null;
+                  if (
+                    selectedDate &&
+                    newDate &&
+                    selectedDate.toDateString() === newDate.toDateString()
+                  ) {
+                    setSelectedDate(null);
+                  } else {
+                    setSelectedDate(newDate);
+                  }
                 } else {
-                  setSelectedDate(newDate);
+                  if (
+                    selectedDate &&
+                    value &&
+                    selectedDate.toDateString() === value.toDateString()
+                  ) {
+                    setSelectedDate(null);
+                  } else {
+                    setSelectedDate(value);
+                  }
                 }
               }}
               className="homepage-calendar"
@@ -436,7 +485,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               }
             />
 
-            {/* Vit knapp även i desktop-sidokolumn */}
+            {/* Show all movies button in desktop sidebar */}
             {selectedDate && (
               <div
                 className="text-center"
@@ -467,14 +516,15 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             )}
           </Col>
 
-          {/* FILMLISTA */}
+          {/* MOVIE LIST */}
           <Col md={8} lg={9} className="p-4">
             <h5 className="homepage-heading">
+              {/* Dynamic title based on date selection */}
               {selectedDate
                 ? `Filmer som går den ${selectedDate.toLocaleDateString()}`
                 : "Alla filmer"}
             </h5>
-            {/* ⭐ Använd handleNavigate här för desktop vyn också */}
+            {/* Render movie grid based on date filter */}
             <MovieGrid
               movies={selectedDate ? moviesForDate : filteredMovies}
               onNavigate={handleNavigate}
