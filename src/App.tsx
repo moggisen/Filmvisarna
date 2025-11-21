@@ -8,29 +8,37 @@ import {
 } from "react-router-dom";
 import { useEffect, useState } from "react";
 
+// Layout
 import HeaderBar from "./components/HeaderBar";
 import BottomNav from "./components/BottomNav";
+
+//Pages
 import HomePage from "./components/HomePage";
 import Booking from "./components/Booking";
 import ConfirmationPage from "./components/ConfirmationPage";
 import ProfilePage from "./components/ProfilePage";
 import MovieDetail from "./components/MovieDetail";
-import CookieConsent from "./components/CookieConsent";
-
-import { routePath, buildPath } from "./routes";
-import type { RouteKey } from "./routes";
-import type { BookingSummary } from "./components/types";
 import Signup from "./components/Signup";
 import Login from "./components/Login";
 
-// --- Types för auth-state ---
+// Cookies
+import CookieConsent from "./components/CookieConsent";
+
+// Routing helpers
+import { routePath, buildPath } from "./routes";
+import type { RouteKey } from "./routes";
+
+// Types
+import type { BookingSummary } from "./components/types";
+
+// Auth state
 interface AuthState {
   isAuthenticated: boolean;
   isGuest: boolean;
   userData: any | null;
 }
 
-// --- LocalStorage helpers ---
+// Load/save bookings
 function loadBookings(): BookingSummary[] {
   try {
     const raw = localStorage.getItem("bookings");
@@ -44,6 +52,7 @@ function saveBookings(b: BookingSummary[]) {
   } catch {}
 }
 
+// Wrapper for confirm page
 function ConfirmWrapper() {
   const [sp] = useSearchParams();
   if (!sp.get("booking_id")) return <Navigate to="/" replace />;
@@ -51,12 +60,14 @@ function ConfirmWrapper() {
 }
 
 export default function App() {
-  // ==== Uppdaterad auth-state ====
+  // Auth state (user, guest, logged in)
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     isGuest: false,
     userData: null,
   });
+
+  // Local booking history
   const [bookings, setBookings] = useState<BookingSummary[]>(() =>
     loadBookings()
   );
@@ -64,7 +75,7 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Uppdaterad auth-check som hanterar gästsessioner
+  // Check authentication on app load
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -78,16 +89,14 @@ export default function App() {
         console.log("Auth check: ", data);
 
         if (response.ok && !data.error) {
-          // Kolla om det är en gästsession
           const isGuest = !!data.is_guest;
 
           setAuthState({
-            isAuthenticated: !isGuest, // Endast icke-gäster är "authed"
+            isAuthenticated: !isGuest, 
             isGuest: isGuest,
             userData: data,
           });
         } else {
-          // Ingen session eller fel
           setAuthState({
             isAuthenticated: false,
             isGuest: false,
@@ -106,11 +115,11 @@ export default function App() {
     checkAuth();
   }, []);
 
+  // Auto save booking list
   useEffect(() => saveBookings(bookings), [bookings]);
 
-  // Uppdaterad handleAuthSuccess
+  // Login sucess handler
   const handleAuthSuccess = () => {
-    // Kör auth-check igen för att få korrekt state
     async function refreshAuth() {
       try {
         const response = await fetch("/api/login", {
@@ -129,7 +138,7 @@ export default function App() {
             userData: data,
           });
 
-          // Navigeringslogik
+          // Return to booking flow if needed
           const shouldRestoreBooking = sessionStorage.getItem(
             "shouldRestoreBooking"
           );
@@ -148,7 +157,7 @@ export default function App() {
             return;
           }
 
-          // NYTT: återgå till guarded route (t.ex. /profile) efter login
+          // Return to protected route
           const fromGuardPath =
             (location.state as any)?.from?.pathname ??
             (location.state as any)?.from?.location?.pathname;
@@ -176,7 +185,7 @@ export default function App() {
     refreshAuth();
   };
 
-  // Uppdaterad handleLogout
+  // Logout handler
   const handleLogout = async () => {
     try {
       const response = await fetch("/api/login", {
@@ -202,14 +211,17 @@ export default function App() {
     }
   };
 
+  // Add booking to local list
   const addBooking = (booking: BookingSummary) => {
     setBookings((prev) => [booking, ...prev]);
   };
 
+  // Remove booking from loval list
   const cancelBooking = (bookingId: string) => {
     setBookings((prev) => prev.filter((b) => b.bookingId !== bookingId));
   };
 
+  // Navigation handler from homepage
   const homeOnNavigate = (name: RouteKey, movieId?: number) => {
     if (
       name === "movie-detail" &&
@@ -234,30 +246,30 @@ export default function App() {
 
   return (
     <>
-      {/* Skicka både isAuthenticated och isGuest till komponenter som behöver det */}
+      {/* Header */}
       <HeaderBar
         authed={isAuthed}
         isGuest={authState.isGuest}
         onLogout={handleLogout}
       />
-      {/* Cookie-modal, visas endast om användaren inte redan gjort ett val */}
+      {/* Cookie popup */}
       <CookieConsent />
 
       <main className="container py-4">
         <Routes>
-          {/* START */}
+          {/* HOME*/}
           <Route
             path={routePath.home}
             element={<HomePage onNavigate={homeOnNavigate} />}
           />
 
-          {/* BOKNING */}
+          {/* BOOKING */}
           <Route
             path={routePath.biljett}
             element={
               <Booking
-                authed={isAuthed} // Använd isAuthenticated (false för gäster)
-                isGuest={authState.isGuest} // Skicka gäst-status om behövs
+                authed={isAuthed} 
+                isGuest={authState.isGuest} 
                 onConfirm={(b) => {
                   addBooking(b);
                 }}
@@ -268,12 +280,10 @@ export default function App() {
             }
           />
 
-          {/* CONFIRM (via query booking_id & conf) */}
+          {/* BOOKING CONFIRMATION */}
           <Route path={routePath.confirm} element={<ConfirmWrapper />} />
 
           {/* LOGIN */}
-          {/* NYTT: tillåt bara om man INTE redan är inloggad ELLER om en bokning pågår. 
-          Gäster (isGuest) får gå till login för att uppgradera. */}
           <Route
             path={routePath.login}
             element={
@@ -289,8 +299,7 @@ export default function App() {
             }
           />
 
-          {/* SIGNUP*/}
-          {/* NYTT: tillåt bara om man INTE redan är inloggad ELLER om en bokning pågår. */}
+          {/* SIGNUP */}
           <Route
             path={routePath.signup}
             element={
@@ -306,9 +315,7 @@ export default function App() {
             }
           />
 
-          {/* PROFIL */}
-          {/* NYTT: guarded route, om man försöker nå /profile via URL som icke-inloggad så tas man till login
-          och efter inloggning så återgår man till Mina Sidor som då är tillgänglig */}
+          {/* PROFILE */}
           <Route
             path={routePath.profile}
             element={
@@ -343,7 +350,7 @@ export default function App() {
           />
         </Routes>
       </main>
-      {/* Skicka både isAuthenticated och isGuest till BottomNav */}
+      {/* BOTTOM NAVIGATION */}
       <BottomNav
         authed={isAuthed}
         isGuest={authState.isGuest}
