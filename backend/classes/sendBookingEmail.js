@@ -1,11 +1,14 @@
 // sendBookingEmail.js
-import sendEmail from "./sendEmail.js"; // Import av default-exporten
+
+// Import the default function "sendEmail" from the local file
+import sendEmail from "./sendEmail.js"; 
 
 /**
- * Skickar ett bekräftelsemejl till kunden efter en lyckad bokning.
- * @param {object} bookingData - Objekt med all bokningsinformation.
+ // Sends a confirmation email to the customer after a successful booking.
+ * @param {object} bookingData - Object contaning all bookning information
  */
 
+ // Function to send the booking confirmation email
 async function sendBookingEmail({
   to,
   confirmation,
@@ -15,6 +18,7 @@ async function sendBookingEmail({
   screeningTime,
   totalPrice,
 }) {
+// HTML email content (Styled version for email clients)
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
      <p>
@@ -41,17 +45,10 @@ async function sendBookingEmail({
       <p style="margin-top: 25px;">Välkommen till Filmvisarna och njut av filmen 🎬</p>
       
    <p> Som medlem sker avbokning på mina sidor. Som Ickemedlem vänligen kontaka oss på 000-12345 eller mejla filmvisarna38@gmail.com</p>
-   
-   <p>
-          <img 
-            src="" 
-            alt="Filmvisarnas logotyp" 
-            style="max-width: 150px; height: auto; margin-bottom: 15px;"
-          />
-      </p>
       </div>
   `;
 
+  // Plain text email content (Fallback for simple email clients)
   const text = `
     Bekräftelse på din bokning hos Filmvisarna.
     Bokningsnummer: ${confirmation}
@@ -62,6 +59,7 @@ async function sendBookingEmail({
     Totalt pris: ${totalPrice} kr
   `;
 
+  // Use the imported function to send the email
   await sendEmail({
     to,
     subject: "Bekräftelse på din bokning 🎬",
@@ -70,4 +68,5 @@ async function sendBookingEmail({
   });
 }
 
+// Export the function so it can be used in other files
 export { sendBookingEmail };

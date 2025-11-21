@@ -1,13 +1,15 @@
 // sendEmail.js
-// Uppdaterad för att vara en ES Module (fungerar med import/export)
+// Updated to be an ES Module (works with imports/export syntax)
 
+// Import the Nodemailer libary to handle email sending
 import nodemailer from "nodemailer";
-import fs from "fs"; // Fortsätter att använda synkron fs
+// import the file system module to read local files
+import fs from "fs"; 
 
-// Sökvägen till din hemliga fil. Justera om filen ligger någon annanstans.
+// The file path to your secret JSON file- Adjurt if the file is elsewhere
 const GMAIL_SECRET_PATH = "./gmail-secret.json";
 
-// Använder "export default" för att enkelt kunna importeras som "import sendEmail from './sendEmail.js';"
+// Use "export default" so it can be imported easily as "import sendEmail from './sendEmail.js;"
 export default async function sendEmail({
   to,
   subject,
@@ -18,25 +20,24 @@ export default async function sendEmail({
   let credentials;
 
   try {
-    // 1. Läs och tolka den hemliga JSON-filen SYNKRONT
+    // Read and aprse the secret JSON file SYNCHRONOUSLY
+    // This reads the file content
     const data = fs.readFileSync(GMAIL_SECRET_PATH, "utf8");
+    // This reads the file content
     credentials = JSON.parse(data);
   } catch (error) {
-    console.error(
-      `❌ Kunde inte läsa eller tolka filen ${GMAIL_SECRET_PATH}. Har du lagt till den?`,
-      error
-    );
     throw new Error(
       `Kunde inte ladda e-postuppgifter. Kontrollera att ${GMAIL_SECRET_PATH} finns.`
     );
   }
 
+  // Check if the necessary values (email and password) are in the file 
   if (!credentials.email || !credentials.appPassword) {
     throw new Error(
       "E-post ('email') eller App-lösenord ('appPassword') saknas i gmail-secret.json."
     );
   }
-
+// Create the transporter (The sender setup)
   const transporter = nodemailer.createTransport({
     service: "Gmail",
     auth: {
@@ -45,6 +46,7 @@ export default async function sendEmail({
     },
   });
 
+  // Define email options (The mail content)
   const mailOptions = {
     from: `"Filmvisarna" <${credentials.email}>`,
     to,
@@ -54,12 +56,12 @@ export default async function sendEmail({
     attachments,
   };
 
+  // Send the email
   try {
+    // Send the eamil and wait for the result 
     const info = await transporter.sendMail(mailOptions);
-    console.log("✅ E-post skickad:", info.response);
     return info;
   } catch (error) {
-    console.error("❌ Fel vid e-postutskick:", error);
     throw error;
   }
 }
