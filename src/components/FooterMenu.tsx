@@ -45,7 +45,7 @@ export default function FooterMenu({ aboutRoute = "/info" }: FooterMenuProps) {
           <button
             type="button"
             className="btn btn-link p-0 text-decoration-none link-light-50"
-            onClick={() => openCookieConsent()} // öppna cookies-modalen
+            onClick={() => openCookieConsent()}
             aria-label="Öppna cookiepolicy"
           >
             Cookiepolicy

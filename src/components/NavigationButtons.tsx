@@ -32,7 +32,7 @@ export default function NavigationButtons({
 
   return (
     <Nav className={btnClass}>
-      {/* Vanliga länkar (Hem, Biljett) använder NavLink */}
+      {/* Regular links /Hem, Biljett) uses NavLink */}
       {buttons.map(({ key, label, klass }) => (
         <Nav.Item key={key}>
           <NavLink
