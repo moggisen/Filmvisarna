@@ -1,4 +1,6 @@
-// AuthModal with session support
+// Modal for choosing auth path or entering guest email
+// - Two steps: "choose" (login/signup/guest) and "guest" (email input)
+// - Persists a flag so booking session can be restored after auth
 export default function AuthModal(props: {
   step: "choose" | "guest";
   guestEmail: string;
@@ -20,14 +22,14 @@ export default function AuthModal(props: {
     onConfirmGuest,
   } = props;
 
+  // Set a flag so booking state is restored when returning from login
   const handleLogin = () => {
-    // Flag for restoring session when user returns from login
     sessionStorage.setItem("shouldRestoreBooking", "true");
     onLogin();
   };
 
+  // Set a flag so booking state is restored when returning from signup
   const handleSignup = () => {
-    // Flag for restoring session when user returns from signup
     sessionStorage.setItem("shouldRestoreBooking", "true");
     onSignup();
   };
@@ -47,6 +49,7 @@ export default function AuthModal(props: {
               ></button>
             </div>
 
+            {/* Step 1: let user choose login / signup / guest */}
             {step === "choose" && (
               <div className="modal-body">
                 <p className="mb-3">
@@ -67,6 +70,7 @@ export default function AuthModal(props: {
               </div>
             )}
 
+            {/* Step 2: guest flow, collect email for confirmation */}
             {step === "guest" && (
               <div className="modal-body">
                 <label className="form-label">E-postadress</label>
@@ -83,6 +87,7 @@ export default function AuthModal(props: {
               </div>
             )}
 
+            {/* Footer: always show close; show confirm in guest step */}
             <div className="modal-footer">
               <button className="btn btn-cancel" onClick={onClose}>
                 Stäng

@@ -23,7 +23,8 @@ export default function SeatPickerMobile({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canAddMore = selected.size < needed;
 
-  // Sorterar efter radbokstav + siffra (A1, A2, A10) istället för sträng-fel
+  // Sort seats by user-friendly label (A..Z then numeric)
+  // Example: A1, A2, A10 -> A1, A2, A10 (not A1, A10, A2)
   const sortBySeatLabel = (a: number, b: number) => {
     const la = getSeatLabel(a);
     const lb = getSeatLabel(b);
@@ -39,7 +40,11 @@ export default function SeatPickerMobile({
     return numA - numB;
   };
 
-  // Text i "stängd" läge
+  // Build summary text for the collapsed picker
+  // Cases:
+  // - Some selected > "Platser: A2, A10"
+  // - Need more than 0 and none selected > prompt to open
+  // - Need 0 > ask user to pick ticket count first
   const summaryLabel =
     selected.size > 0
       ? `Platser: ${[...selected]
@@ -50,7 +55,8 @@ export default function SeatPickerMobile({
       ? "Öppna och välj platser"
       : "Välj antal biljetter först";
 
-  // 🔹 Klick utanför → stäng
+  // Close panel when clicking outside the component
+  // - Only active while panel is open
   useEffect(() => {
     if (!open) return;
 
@@ -72,13 +78,15 @@ export default function SeatPickerMobile({
   }, [open]);
 
   return (
+    // Mobile-only picker (hidden on lg and up)
     <div className="seat-picker-mobile d-lg-none" ref={wrapperRef}>
+      {/* Label with dynamic hint of how many seats are still needed */}
       <label className="form-label fw-semibold">
         Välj platser{" "}
         {needed > 0 ? `(behöver ${needed})` : `(välj antal biljetter först)`}
       </label>
 
-      {/* Klickbar "select" som öppnar/stänger panelen */}
+      {/* Clickable summary acting like a <select> to toggle the panel */}
       <button
         type="button"
         className="spm-summary form-select d-flex justify-content-between align-items-center"
@@ -91,6 +99,7 @@ export default function SeatPickerMobile({
         <span className="ms-2">{open ? "▴" : "▾"}</span>
       </button>
 
+      {/* Expanded panel with rows and pill buttons for each seat */}
       {open && (
         <div className="spm-panel mt-2">
           {rows.map((rowSeatIds, rowIndex) => {
@@ -98,6 +107,7 @@ export default function SeatPickerMobile({
 
             const rowLetter = String.fromCharCode("A".charCodeAt(0) + rowIndex);
 
+            // Keep visual order consistent within each row
             const sortedSeats = [...rowSeatIds].sort(sortBySeatLabel);
 
             return (
@@ -111,12 +121,18 @@ export default function SeatPickerMobile({
                     const heldByOther =
                       held.has(seatId) && held.get(seatId) !== sessionId;
 
+                    // Disable rules:
+                    // - No tickets requested
+                    // - Already taken
+                    // - Temporarily held by another session
+                    // - Reaching the requested seat count
                     const disabled =
-                      needed === 0 || // NYTT
+                      needed === 0 ||
                       taken ||
                       heldByOther ||
                       (!checked && !canAddMore);
 
+                    // Visual state per seat
                     const stateClass = taken
                       ? "spm-seat-taken"
                       : heldByOther
