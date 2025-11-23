@@ -16,11 +16,11 @@ import "react-calendar/dist/Calendar.css";
 import "../styles/homepage.scss";
 
 // Static image imports (these should be moved to the /public folder for production deployment)
-import spidermarathonImg from "../assets/banners/spidermanmarathon.png";
-import guardianmarathonImg from "../assets/banners/guardianmarathon.png";
-import carousel1Img from "../assets/banners/deadpool.jpg";
-import carousel2Img from "../assets/banners/ironMan2013.jpg";
-import carousel3Img from "../assets/banners/venom2018.jpg";
+import spidermarathonImg from "/assets/banners/spidermanmarathon.png";
+import guardianmarathonImg from "/assets/banners/guardianmarathon.png";
+import carousel1Img from "/assets/banners/deadpool.jpg";
+import carousel2Img from "/assets/banners/ironMan2013.jpg";
+import carousel3Img from "/assets/banners/venom2018.jpg";
 import AgeTooltip from "../components/ageTooltip";
 
 // Route imports for navigation
@@ -69,7 +69,7 @@ const MovieGrid = ({ movies, onNavigate }: MovieGridProps) => (
     {movies.map((movie) => (
       <Col key={movie.id}>
         <Card className="homepage-movie-card h-100 d-flex flex-column">
-          <Card.Img variant="top" src={`src/${movie.movie_banner}`} />
+          <Card.Img variant="top" src={`${movie.movie_banner}`} />
           <div className="movie-title-wrapper text-center mt-2 mb-2">
             {movie.movie_title}
           </div>

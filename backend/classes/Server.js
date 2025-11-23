@@ -20,7 +20,7 @@ const RestApi = (
   await import(isSQL ? "./RestApiSQL.js" : "./RestApiMongoDB.js")
 ).default;
 
-// 🔽 ADD: importera SSE-route + poller
+// ADD: importera SSE-route + poller
 // import SseRoute from './sseRoute.js';
 // import { startEventsPoller } from '../helpers/eventsPoller.js';
 
@@ -64,18 +64,9 @@ export default class Server {
     const folder = PathFinder.relToAbs(this.settings.staticFolder);
     this.app.use(express.static(folder));
 
-    this.app.get(/^\/(?!api).*/, (req, res) => {
-      if (!req.url.includes(".")) {
-        return res.sendFile(path.join(folder, "index.html"));
-      }
-      return res.status(404).json({ error: "Not found" });
+    // SPA fallback
+    this.app.get(/.*/, (req, res) => {
+      res.sendFile(path.join(folder, "index.html"));
     });
-
-    // catch all middleware (important for SPA:s - serve index.html if not matching server route)
-    // this.app.get("*", (req, res) => {
-    //   !req.url.includes(".")
-    //     ? res.sendFile(path.join(folder, "index.html"))
-    //     : res.status(400).json({ error: "No such route" });
-    // });
   }
 }
