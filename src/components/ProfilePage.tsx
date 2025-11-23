@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Button, Card, ListGroup, Modal } from "react-bootstrap";
+import {
+  Button,
+  Card,
+  ListGroup,
+  Modal,
+  OverlayTrigger,
+  Tooltip,
+} from "react-bootstrap";
 import type { BookingSummary } from "./types";
 import "../styles/ConfirmationAndProfile.scss";
 
@@ -9,6 +16,15 @@ interface ProfilePageProps {
   onCancel: (bookingId: string) => void;
 }
 
+type SeatDetailedRow = {
+  seat_id: number;
+  ticketType_id: number;
+  row_index: number;
+  seat_number: number;
+  ticketType_name: string;
+  ticketType_price: number;
+};
+
 interface UserBooking {
   id: number;
   booking_confirmation: string;
@@ -17,11 +33,7 @@ interface UserBooking {
   movie_title: string;
   auditorium_name: string;
   total_price: number;
-  seats: Array<{
-    seat_id: number;
-    ticketType_name: string;
-    ticketType_price: number;
-  }>;
+  seats: SeatDetailedRow[];
 }
 
 function formatPrice(n: number) {
@@ -41,11 +53,45 @@ function formatDateTime(iso: string) {
   return `${date} ${time}`;
 }
 
+// Helper: turn row_index (1, 2, 3...) into A, B, C...
+function rowIndexToLetter(rowIndex: number): string {
+  const baseCharCode = "A".charCodeAt(0);
+  return String.fromCharCode(baseCharCode + (rowIndex - 1));
+}
+
+// Check if booking can be canceled (more than 1 hr remaining until screening time
+function canCancelBooking(screeningTime: string): boolean {
+  const now = new Date();
+  const screeningDate = new Date(screeningTime);
+  const timeDiff = screeningDate.getTime() - now.getTime();
+  const hoursDiff = timeDiff / (1000 * 60 * 60);
+  return hoursDiff > 1;
+}
+
 export default function ProfilePage({ onBack }: ProfilePageProps) {
   const [userBookings, setUserBookings] = useState<UserBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [toCancel, setToCancel] = useState<UserBooking | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [showBackButton, setShowBackButton] = useState(false);
+
+  // Only shows the "← Tillbaka"-button on the bottom if there is enough content that the user has to scroll
+  useEffect(() => {
+    const checkScroll = () => {
+      const scrolledFromTop = window.scrollY;
+      const viewportHeight = window.innerHeight;
+
+      // adjusting how much you need to be able to scroll before the button at the bottom displays
+      const scrollThreshold = viewportHeight * 0.2; // 1 = 1 viewport height
+
+      setShowBackButton(scrolledFromTop > scrollThreshold);
+    };
+
+    window.addEventListener("scroll", checkScroll);
+    checkScroll();
+
+    return () => window.removeEventListener("scroll", checkScroll);
+  }, []);
 
   useEffect(() => {
     async function fetchUserBookings() {
@@ -57,7 +103,30 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
 
         if (response.ok) {
           const data = await response.json();
-          setUserBookings(data);
+
+          // For each booking, fetch detailed seatinfo
+          const bookingsWithDetailedSeats = await Promise.all(
+            data.map(async (booking: any) => {
+              try {
+                const seatsResponse = await fetch(
+                  `/api/bookings/${booking.id}/seatsDetailed`
+                );
+                if (seatsResponse.ok) {
+                  const detailedSeats: SeatDetailedRow[] =
+                    await seatsResponse.json();
+                  return {
+                    ...booking,
+                    seats: detailedSeats,
+                  };
+                }
+              } catch (error) {
+                console.error("Kunde inte hämta detaljerad platsinfo:", error);
+              }
+              return booking; // Fallback to original data if fail
+            })
+          );
+
+          setUserBookings(bookingsWithDetailedSeats);
         } else {
           console.error("Kunde inte hämta bokningar");
         }
@@ -80,7 +149,6 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
       });
 
       if (response.ok) {
-        // Uppdatera listan genom att ta bort den avbokade bokningen
         setUserBookings((prev) =>
           prev.filter((booking) => booking.id !== bookingId)
         );
@@ -101,17 +169,45 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
     }
   };
 
+  // Format seatlist as "A7, A8, B12..."
+  const formatSeatList = (seats: SeatDetailedRow[]): string => {
+    return seats
+      .slice()
+      .sort((a, b) => {
+        if (a.row_index !== b.row_index) {
+          return a.row_index - b.row_index;
+        }
+        return a.seat_number - b.seat_number;
+      })
+      .map((seat) => `${rowIndexToLetter(seat.row_index)}${seat.seat_number}`)
+      .join(", ");
+  };
+
   // Separate bookings in coming screenings and past screenings based on time of showing
   const now = new Date();
-  const upcomingBookings = userBookings.filter((booking) => {
-    const screeningDate = new Date(booking.screening_time);
-    return screeningDate > now;
-  });
+  const upcomingBookings = userBookings
+    .filter((booking) => {
+      const screeningDate = new Date(booking.screening_time);
+      return screeningDate > now;
+    })
+    .sort((a, b) => {
+      return (
+        new Date(a.screening_time).getTime() -
+        new Date(b.screening_time).getTime()
+      );
+    });
 
-  const pastBookings = userBookings.filter((booking) => {
-    const screeningDate = new Date(booking.screening_time);
-    return screeningDate <= now;
-  });
+  const pastBookings = userBookings
+    .filter((booking) => {
+      const screeningDate = new Date(booking.screening_time);
+      return screeningDate <= now;
+    })
+    .sort((a, b) => {
+      return (
+        new Date(b.screening_time).getTime() -
+        new Date(a.screening_time).getTime()
+      );
+    });
 
   if (loading) {
     return <div className="container py-4 text-white">Laddar...</div>;
@@ -122,13 +218,13 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
       <Button
         variant="primary"
         size="sm"
-        className="mb-3 d-block mx-auto text-info border-dark py-2 px-5"
+        className="auth-btn auth-btn-back d-block mx-auto"
         onClick={onBack}
       >
-        Tillbaka
+        ← Tillbaka
       </Button>
 
-      {/* Kommande visningar */}
+      {/* Upcoming screenings */}
       <Card className="bg-secondary border-primary my-5">
         <Card.Header as="h6">Kommande visningar</Card.Header>
         <ListGroup variant="flush" className="bg-secondary">
@@ -137,53 +233,82 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
               Inga kommande bokningar.
             </ListGroup.Item>
           ) : (
-            upcomingBookings.map((booking) => (
-              <ListGroup.Item
-                key={booking.id}
-                className="bg-secondary border-primary text-info d-flex justify-content-between align-items-start py-4"
-              >
-                <div>
-                  <div className="fw-semibold">{booking.movie_title}</div>
-                  <div className="small text-info">
-                    {formatDateTime(booking.screening_time)}
+            upcomingBookings.map((booking) => {
+              const canCancel = canCancelBooking(booking.screening_time);
+
+              return (
+                <ListGroup.Item
+                  key={booking.id}
+                  className="bg-secondary border-primary text-info d-flex justify-content-between align-items-start py-4"
+                >
+                  <div>
+                    <div className="fw-semibold">{booking.movie_title}</div>
+                    <div className="small text-info">
+                      {formatDateTime(booking.screening_time)}
+                    </div>
+                    <div className="small text-info">
+                      Salong: {booking.auditorium_name}
+                    </div>
+                    <div className="small text-info">
+                      Platser: {formatSeatList(booking.seats)}
+                      {booking.seats[0]?.ticketType_name && (
+                        <span>
+                          {" "}
+                          (
+                          {booking.seats
+                            .map((seat) => seat.ticketType_name)
+                            .join(", ")}
+                          )
+                        </span>
+                      )}
+                    </div>
+                    <div className="small text-info">
+                      Bokningsnummer:{" "}
+                      {booking.booking_confirmation.slice(0, 6).toUpperCase()}
+                    </div>
+                    {!canCancel && (
+                      <div className="small text-warning mt-1">
+                        Kan inte avbokas (mindre än 1 timme kvar)
+                      </div>
+                    )}
                   </div>
-                  <div className="small text-info">
-                    Salong: {booking.auditorium_name}
+                  <div className="text-end">
+                    <div className="fw-semibold">
+                      {formatPrice(booking.total_price)}
+                    </div>
+                    <OverlayTrigger
+                      placement="top"
+                      overlay={
+                        <Tooltip>
+                          {canCancel
+                            ? "Avboka denna visning"
+                            : "Går inte att avboka mindre än 1 timme före visning"}
+                        </Tooltip>
+                      }
+                    >
+                      <span>
+                        <Button
+                          size="sm"
+                          variant={canCancel ? "dark" : "secondary"}
+                          className={`border-light mt-2 ${
+                            !canCancel ? "text-danger" : ""
+                          }`}
+                          onClick={() => canCancel && setToCancel(booking)}
+                          disabled={cancelLoading || !canCancel}
+                        >
+                          Avboka
+                        </Button>
+                      </span>
+                    </OverlayTrigger>
                   </div>
-                  <div className="small text-info">
-                    Platser:{" "}
-                    {booking.seats
-                      .map(
-                        (seat) =>
-                          `Stol ${seat.seat_id} (${seat.ticketType_name})`
-                      )
-                      .join(", ")}
-                  </div>
-                  <div className="small text-info">
-                    Bokningsnummer: {booking.booking_confirmation}
-                  </div>
-                </div>
-                <div className="text-end">
-                  <div className="fw-semibold">
-                    {formatPrice(booking.total_price)}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="dark"
-                    className="border-light mt-2"
-                    onClick={() => setToCancel(booking)}
-                    disabled={cancelLoading}
-                  >
-                    Avboka
-                  </Button>
-                </div>
-              </ListGroup.Item>
-            ))
+                </ListGroup.Item>
+              );
+            })
           )}
         </ListGroup>
       </Card>
 
-      {/* Tidigare visningar */}
+      {/* Previous screenings */}
       <Card className="bg-secondary border-primary my-5">
         <Card.Header as="h6">Tidigare visningar</Card.Header>
         <ListGroup variant="flush" className="bg-secondary">
@@ -206,16 +331,21 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
                     Salong: {booking.auditorium_name}
                   </div>
                   <div className="small text-info">
-                    Platser:{" "}
-                    {booking.seats
-                      .map(
-                        (seat) =>
-                          `Stol ${seat.seat_id} (${seat.ticketType_name})`
-                      )
-                      .join(", ")}
+                    Platser: {formatSeatList(booking.seats)}
+                    {booking.seats[0]?.ticketType_name && (
+                      <span>
+                        {" "}
+                        (
+                        {booking.seats
+                          .map((seat) => seat.ticketType_name)
+                          .join(", ")}
+                        )
+                      </span>
+                    )}
                   </div>
                   <div className="small text-info">
-                    Bokningsnummer: {booking.booking_confirmation}
+                    Bokningsnummer:{" "}
+                    {booking.booking_confirmation.slice(0, 6).toUpperCase()}
                   </div>
                 </div>
                 <div className="text-end">
@@ -229,16 +359,18 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
         </ListGroup>
       </Card>
 
-      <Button
-        variant="primary"
-        size="sm"
-        className="mb-3 d-block mx-auto text-info border-dark py-2 px-5"
-        onClick={onBack}
-      >
-        Tillbaka
-      </Button>
+      {showBackButton && (
+        <Button
+          variant="primary"
+          size="sm"
+          className="auth-btn auth-btn-back d-block mx-auto"
+          onClick={onBack}
+        >
+          ← Tillbaka
+        </Button>
+      )}
 
-      {/* Avbokningsmodal */}
+      {/* Cancellation-modal */}
       <Modal show={!!toCancel} onHide={() => setToCancel(null)} centered>
         <Modal.Header closeButton className="bg-primary border-dark text-info">
           <Modal.Title>Avboka visning</Modal.Title>
@@ -261,11 +393,17 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
               <div>
                 Platser:{" "}
                 <span className="text-info">
-                  {toCancel.seats
-                    .map(
-                      (seat) => `Stol ${seat.seat_id} (${seat.ticketType_name})`
-                    )
-                    .join(", ")}
+                  {formatSeatList(toCancel.seats)}
+                  {toCancel.seats[0]?.ticketType_name && (
+                    <span>
+                      {" "}
+                      (
+                      {toCancel.seats
+                        .map((seat) => seat.ticketType_name)
+                        .join(", ")}
+                      )
+                    </span>
+                  )}
                 </span>
               </div>
               <div>

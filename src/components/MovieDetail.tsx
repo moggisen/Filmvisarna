@@ -2,8 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../styles/detail.scss";
+import Alert from "react-bootstrap/Alert";
+import Spinner from "react-bootstrap/Spinner";
+import Ratio from "react-bootstrap/Ratio";
+import Figure from "react-bootstrap/Figure";
+import Card from "react-bootstrap/Card";
+import Accordion from "react-bootstrap/Accordion";
+import ListGroup from "react-bootstrap/ListGroup";
+import AgeTooltip from "./ageTooltip";
 
-//types for movie data
+// Types for movie data
 interface Movie {
   id: number;
   movie_title: string;
@@ -16,19 +24,34 @@ interface Movie {
   movie_banner?: string;
   movie_trailer?: string;
   age_limit: number;
+  review1?: Review;
+  review2?: Review;
 }
 
-//props for component
+interface Screening {
+  id: number;
+  screening_time: string;
+  movie_id: number;
+  auditorium_id: number;
+}
+
+interface Review {
+  text: string;
+  author: string;
+  rating: number;
+}
+
+// Props for component
 interface MovieDetailProps {
   onBook: () => void;
   movieId?: number;
 }
 
-//make api path start with /api
+// Make api path start with /api
 const apiUrl = (path: string) =>
   path.startsWith("/") ? `/api${path}` : `/api/${path}`;
 
-//get youtube id from link
+// Get youtube id from link
 const toYouTubeId = (val?: string): string => {
   if (!val) return "";
   const v = val.trim();
@@ -41,27 +64,56 @@ const toYouTubeId = (val?: string): string => {
   return m ? m[1] : "";
 };
 
-//split cast list into array
+// Split cast list into array
 const csvToList = (csv?: string): string[] =>
   (csv ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
 
-//build full poster path
+// Build full poster path
 const posterPath = (val?: string): string => {
   const p = (val ?? "").trim();
   if (!p) return "";
   if (/^https?:\/\//i.test(p)) return p;
-  if (p.startsWith("/assets/")) return p;
-  if (p.startsWith("assets/")) return `/${p}`;
-  return `/assets/posters/${p}`;
+  const file = p.split("/").pop() ?? "";
+  try {
+    return new URL(`../assets/posters/${file}`, import.meta.url).href;
+  } catch {
+    return "";
+  }
 };
 
-//main component
-export default function MovieDetail({ onBook, movieId }: MovieDetailProps) {
+// Format helpers
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("sv-SE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+const fmtTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString("sv-SE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+// Get auditorium name
+const getAuditoriumName = (id: number | undefined): string => {
+  if (id === 2) return "Lilla Salongen";
+  if (id === 1) return "Stora Salongen";
+  return id ? `Salong ${id}` : "N/A";
+};
+
+// Main component
+export default function MovieDetail({ onBook }: MovieDetailProps) {
   //find movie id
   const { id: idParam } = useParams<{ id: string }>();
+  const [screenings, setScreenings] = useState<Screening[]>([]);
+  const [movie, setMovie] = useState<Movie | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const resolvedId = useMemo<number | null>(() => {
     const n = idParam ? Number(idParam) : NaN;
     if (Number.isFinite(n) && n > 0) return n;
@@ -73,265 +125,272 @@ export default function MovieDetail({ onBook, movieId }: MovieDetailProps) {
     return null;
   }, [idParam]);
 
-  //main states
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [movie, setMovie] = useState<Movie | null>(null);
-
-  //fetch movie data
+  // Fetch movie data
   useEffect(() => {
-    if (resolvedId === null) {
-      setLoading(false);
-      setMovie(null);
-      setError(
-        "Saknar film id. Öppna detaljvyn via Info eller lägg till id i URL:en."
-      );
-      return;
-    }
-
+    if (resolvedId === null) return;
     const ac = new AbortController();
+    let cancelled = false;
+
     (async () => {
       try {
-        setLoading(true);
-        setError(null);
-        setNotFound(false);
-
         const res = await fetch(apiUrl(`/movies/${resolvedId}`), {
           signal: ac.signal,
         });
         const json = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-        if (!res.ok) {
-          setError(
-            (json && (json.error || json.message)) || `HTTP ${res.status}`
-          );
-          setLoading(false);
-          return;
-        }
+        const payload: Movie = Array.isArray(json)
+          ? json[0]
+          : json?.data ?? json;
+        if (!payload) throw new Error("Filmen hittades inte");
 
-        const payload: Movie | null = Array.isArray(json)
-          ? json[0] ?? null
-          : json?.data ?? json ?? null;
-        if (!payload) {
-          setNotFound(true);
-          setLoading(false);
-          return;
-        }
-
-        setMovie(payload);
-        setLoading(false);
+        if (!cancelled) setMovie(payload);
       } catch (e: any) {
-        if (e?.name !== "AbortError") {
-          setError(e?.message || "Nätverksfel");
-          setLoading(false);
-        }
+        const name = e?.name ?? "";
+        const msg = e?.message ?? "";
+        if (name === "AbortError" || msg.includes("aborted")) return;
+        if (!cancelled) setError(msg || "Nätverksfel");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
 
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [resolvedId]);
+
+  // Fetch screenings
+  useEffect(() => {
+    if (resolvedId === null) return;
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(apiUrl(`/screenings`), { signal: ac.signal });
+        const data = await res.json().catch(() => []);
+        setScreenings(Array.isArray(data) ? data : data?.data ?? []);
+      } catch {
+        setScreenings([]);
+      }
+    })();
     return () => ac.abort();
   }, [resolvedId]);
 
-  //no id found
-  if (resolvedId === null) {
+  // Early states
+  if (resolvedId === null)
     return (
-      <div className="movie-detail-theme min-vh-100 d-flex flex-column">
-        <main className="container-xxl py-4 flex-grow-1">
-          <div className="alert alert-warning">
-            <strong>Saknar film-id.</strong> Öppna via <em>Info</em> eller lägg
-            till <code>?id=1</code> i adressfältet.
-          </div>
-        </main>
+      <div className="alert alert-warning m-5">
+        Saknar film-id. Öppna via Info eller lägg till <code>?id=1</code>.
       </div>
     );
-  }
 
-  //loading state
-  if (loading) {
+  if (loading)
     return (
-      <div className="movie-detail-theme min-vh-100 d-flex flex-column">
-        <main className="container-xxl py-4 flex-grow-1">
-          <section className="placeholder-glow">
-            <div className="placeholder col-6 mb-2" />
-            <div className="placeholder col-12 mb-2" />
-            <div className="placeholder col-10 mb-2" />
-            <div className="placeholder col-8 mb-2" />
-          </section>
-        </main>
+      <div className="text-center py-5">
+        <Spinner animation="border" role="status" className="text-primary" />
       </div>
     );
-  }
 
-  //movie not found
-  if (notFound) {
+  if (notFound)
     return (
-      <div className="movie-detail-theme min-vh-100 d-flex flex-column">
-        <main className="container-xxl py-4 flex-grow-1">
-          <section className="alert alert-info">
-            <strong>404.</strong> Filmen med id <code>{resolvedId}</code> kunde
-            inte hittas.
-          </section>
-        </main>
-      </div>
+      <Alert variant="info" className="m-5">
+        Filmen med id <code>{resolvedId}</code> kunde inte hittas.
+      </Alert>
     );
-  }
 
-  //error state
-  if (error) {
+  if (error)
     return (
-      <div className="movie-detail-theme min-vh-100 d-flex flex-column">
-        <main className="container-xxl py-4 flex-grow-1">
-          <section className="alert alert-danger">
-            <strong>Ett fel uppstod:</strong> {error}
-          </section>
-        </main>
-      </div>
+      <Alert variant="danger" className="m-5">
+        <strong>Ett fel uppstod:</strong> {error}
+      </Alert>
     );
-  }
 
-  //render movie
   const m = movie as Movie;
   const poster = posterPath(m.movie_poster);
   const trailerId = toYouTubeId(m.movie_trailer);
   const cast = csvToList(m.movie_cast);
 
+  const reviews: Review[] = [m.review1, m.review2].filter((r): r is Review =>
+    Boolean(r && r.text)
+  );
+
+  const upcoming = screenings
+    .filter((s) => s.movie_id === m.id)
+    .filter((s) => new Date(s.screening_time).getTime() > Date.now())
+    .sort(
+      (a, b) =>
+        new Date(a.screening_time).getTime() -
+        new Date(b.screening_time).getTime()
+    );
+
+  function handleBook(s: Screening): void {
+    localStorage.setItem("selectedScreeningId", String(s.id));
+    localStorage.setItem("selectedScreeningTime", s.screening_time);
+    localStorage.setItem("selectedAuditoriumId", String(s.auditorium_id));
+    onBook();
+  }
+
+  // Origin for youtube
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
   return (
     <div className="movie-detail-theme min-vh-100 d-flex flex-column">
       <main className="container-xxl py-4 flex-grow-1">
-        {/*title*/}
         <h1 className="movie-title mb-3">{m.movie_title}</h1>
 
         <section className="row g-4 align-items-start">
-          {/*left side*/}
           <article className="col-lg-7 order-2 order-lg-1">
-            {/*meta info*/}
-            <div className="movie-meta">
-              <p className="small d-flex justify-content-between mb-3">
-                <span>{m.age_limit ?? "-"}+</span>
-                <span>{/* genre saknas i schema */}</span>
-                <span>{m.movie_playtime || "-"}</span>
-              </p>
-            </div>
+            <p className="small d-flex justify-content-between mb-3">
+              <span>
+                {m.age_limit ?? "-"}+ <AgeTooltip />
+              </span>
+              <span>{m.movie_playtime || "-"}</span>
+            </p>
 
-            {/*description*/}
-            <section className="movie-card mb-3">
-              <div className="card-body movie-body-text p-4">
+            {/* Description card */}
+            <Card
+              className="movie-card border-0 shadow-0"
+              style={{
+                backgroundColor: "var(--movie-secondary)",
+                color: "var(--movie-text)",
+                boxShadow: "none",
+                border: 0,
+              }}
+            >
+              <Card.Body className="p-4" style={{ backgroundColor: "inherit" }}>
                 {m.movie_desc || "Ingen beskrivning."}
-              </div>
-            </section>
+              </Card.Body>
+            </Card>
 
-            {/*accordion*/}
-            <section className="movie-accordion accordion" id="filmAccordion">
-              <div className="accordion-item">
-                <h2 className="accordion-header">
-                  <button
-                    className="accordion-button"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#collapseInfo"
-                    aria-expanded={true}
-                    aria-controls="collapseInfo"
-                  >
-                    Mer info
-                  </button>
-                </h2>
-                <div
-                  id="collapseInfo"
-                  className="accordion-collapse collapse show"
-                  data-bs-parent="#filmAccordion"
-                >
-                  <div className="accordion-body movie-body-text">
-                    <p>
-                      <strong>Regi:</strong> {m.movie_director || "–"}
-                    </p>
-                    <p>
-                      <strong>Skådespelare:</strong>{" "}
-                      {cast.length ? (
-                        <ul className="mb-0">
-                          {cast.map((name, i) => (
-                            <li key={i}>{name}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        "-"
-                      )}
-                    </p>
-                    <p>
-                      <strong>Premiär:</strong> {m.movie_premier || "–"}
-                    </p>
+            {/* Accordion */}
+            <Accordion defaultActiveKey="info" className="movie-accordion">
+              {/* Info */}
+              <Accordion.Item eventKey="info">
+                <Accordion.Header>Mer info</Accordion.Header>
+                <Accordion.Body>
+                  <p>
+                    <strong>Regi:</strong> {m.movie_director || "–"}
+                  </p>
+                  <div className="mb-2">
+                    <strong>Skådespelare:</strong>{" "}
+                    {cast.length ? (
+                      <ul className="mb-0">
+                        {cast.map((n, i) => (
+                          <li key={i}>{n}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      "-"
+                    )}
                   </div>
-                </div>
-              </div>
+                  <p>
+                    <strong>Premiär:</strong> {m.movie_premier || "–"}
+                  </p>
+                </Accordion.Body>
+              </Accordion.Item>
 
-              <div className="accordion-item">
-                <h2 className="accordion-header">
-                  <button
-                    className="accordion-button collapsed"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#collapseReviews"
-                    aria-expanded={false}
-                    aria-controls="collapseReviews"
-                  >
-                    Recensioner
-                  </button>
-                </h2>
-                <div
-                  id="collapseReviews"
-                  className="accordion-collapse collapse"
-                  data-bs-parent="#filmAccordion"
-                >
-                  <div className="accordion-body movie-body-text">
+              {/* Reviews */}
+              <Accordion.Item eventKey="reviews">
+                <Accordion.Header>Recensioner</Accordion.Header>
+                <Accordion.Body>
+                  {reviews.length === 0 ? (
                     <p className="mb-0 text-muted">Inga recensioner ännu.</p>
-                  </div>
-                </div>
-              </div>
-            </section>
+                  ) : (
+                    <div className="d-flex flex-column gap-3">
+                      {reviews.map((r, i) => (
+                        <Card key={i} className="border rounded-2">
+                          <Card.Body className="p-3">
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                              <strong>{r.author || "Okänd källa"}</strong>
+                              <span className="badge bg-secondary">
+                                Betyg: {r.rating}/5
+                              </span>
+                            </div>
+                            <p className="mb-0">{r.text}</p>
+                          </Card.Body>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </Accordion.Body>
+              </Accordion.Item>
 
-            {/*book button*/}
-            <div className="d-flex justify-content-end mb-5">
-              <button className="movie-book-btn" onClick={onBook}>
-                Boka biljett
-              </button>
-            </div>
+              {/* Screenings & booking */}
+              <Accordion.Item eventKey="bookings">
+                <Accordion.Header>Föreställningar & bokning</Accordion.Header>
+                <Accordion.Body>
+                  {upcoming.length === 0 ? (
+                    <p className="mb-0 text-muted">
+                      Inga kommande visningar för den här filmen.
+                    </p>
+                  ) : (
+                    <ListGroup variant="flush" className="mt-1 gap-1">
+                      {upcoming.map((s) => (
+                        <ListGroup.Item
+                          as="button"
+                          type="button"
+                          key={s.id}
+                          action
+                          onClick={() => handleBook(s)}
+                          aria-label={`Boka ${m.movie_title} ${fmtDate(
+                            s.screening_time
+                          )} ${fmtTime(s.screening_time)} i ${getAuditoriumName(
+                            s.auditorium_id
+                          )}`}
+                          className="d-flex justify-content-between align-items-center w-100 text-start rounded-2 py-2 "
+                        >
+                          <span>
+                            {fmtDate(s.screening_time)} •{" "}
+                            {fmtTime(s.screening_time)} •{" "}
+                            {getAuditoriumName(s.auditorium_id)}
+                          </span>
+                        </ListGroup.Item>
+                      ))}
+                    </ListGroup>
+                  )}
+                </Accordion.Body>
+              </Accordion.Item>
+            </Accordion>
           </article>
 
-          {/*right side*/}
+          {/* Poster */}
           <aside className="col-lg-5 order-1 order-lg-2 d-grid gap-3">
-            {/*poster*/}
             {poster ? (
-              <figure className="movie-poster d-none d-lg-flex justify-content-center">
-                <img
+              <Figure className="movie-poster d-none d-lg-flex justify-content-center">
+                <Figure.Image
                   src={poster}
                   alt="Film poster"
                   className="img-fluid rounded-2"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src =
-                      "/assets/posters/placeholder.jpg";
-                  }}
+                  onError={(e) =>
+                    ((e.currentTarget as HTMLImageElement).src =
+                      "/assets/posters/placeholder.jpg")
+                  }
                 />
-              </figure>
+              </Figure>
             ) : (
-              <div className="alert alert-secondary d-none d-lg-block">
+              <Alert variant="secondary" className="d-none d-lg-block">
                 Ingen bild tillgänglig.
-              </div>
+              </Alert>
             )}
 
-            {/*trailer*/}
+            {/* Trailer */}
             <section className="movie-trailer-wrapper">
               {!trailerId ? (
-                <div className="alert alert-secondary mb-0">
+                <Alert variant="secondary" className="mb-0">
                   Ingen trailer tillgänglig.
-                </div>
+                </Alert>
               ) : (
-                <div className="movie-trailer-iframe ratio ratio-16x9">
+                <Ratio aspectRatio="16x9" className="movie-trailer-iframe">
                   <iframe
-                    src={`https://www.youtube-nocookie.com/embed/${trailerId}?autoplay=1&modestbranding=1&rel=0&showinfo=0`}
+                    src={`https://www.youtube-nocookie.com/embed/${trailerId}?modestbranding=1&rel=0&controls=1&origin=${origin}`}
                     title={`${m.movie_title} – trailer`}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    style={{ border: 0, width: "100%", height: "100%" }}
                   />
-                </div>
+                </Ratio>
               )}
             </section>
           </aside>

@@ -50,6 +50,11 @@ $logo-font: "Bebas Neue", sans-serif;
 }
 
 // End Mixins --------------------------------------------------------
+html,
+body,
+#root {
+  min-height: 100vh;
+}
 
 :root {
   h1,
@@ -75,6 +80,10 @@ body {
   font-family: "Roboto", sans-serif;
   font-weight: 700;
 }
+
+// main {
+//   margin-bottom: 2.5rem;
+// }
 
 .modal-backdrop {
   --bs-backdrop-opacity: 0.9;

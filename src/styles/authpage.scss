@@ -237,3 +237,8 @@
   font-weight: 700;
   color: var(--auth-text);
 }
+
+.invalid-feedback {
+  color: rgb(242, 114, 114) !important;
+  margin-top: 0.5rem;
+}
