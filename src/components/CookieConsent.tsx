@@ -3,9 +3,9 @@ import { Modal, Button, Form } from "react-bootstrap";
 import "../styles/cookieconsent.scss";
 
 type ConsentChoice = "necessary" | "stats";
-const LS_KEY = "cookieConsent"; // localStorage-nyckel
+const LS_KEY = "cookieConsent"; // localStorage-key
 
-// API att anropa från andra komponenter
+// API to call from other components
 export function openCookieConsent() {
   window.dispatchEvent(new CustomEvent("open-cookie-consent"));
 }
@@ -14,7 +14,7 @@ export default function CookieConsent() {
   const [show, setShow] = useState(false);
   const [choice, setChoice] = useState<ConsentChoice>("stats");
 
-  // Visa modal om inget val finns sen tidigare
+  // Show modal if no choice exists from before
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LS_KEY) as ConsentChoice | null;
@@ -22,7 +22,7 @@ export default function CookieConsent() {
         setShow(true);
       }
     } catch {
-      // Om localStorage är spärrad/privat läge, visa modal ändå
+      // If localStorage is blocked/incognito mode, show modal
       setShow(true);
     }
   }, []);
@@ -34,7 +34,6 @@ export default function CookieConsent() {
     setShow(false);
   };
 
-  // TESTNING: tryck på ALT för att visa modalen igen
   useEffect(() => {
     const onOpen = () => setShow(true);
 

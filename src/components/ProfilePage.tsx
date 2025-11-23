@@ -1,4 +1,3 @@
-// ProfilePage
 import { useState, useEffect } from "react";
 import {
   Button,
@@ -17,12 +16,11 @@ interface ProfilePageProps {
   onCancel: (bookingId: string) => void;
 }
 
-// Lägg till dessa typer för platsinformation
 type SeatDetailedRow = {
   seat_id: number;
   ticketType_id: number;
-  row_index: number; // 1 = rad A, 2 = rad B, etc
-  seat_number: number; // stolnumret i den raden
+  row_index: number;
+  seat_number: number;
   ticketType_name: string;
   ticketType_price: number;
 };
@@ -35,7 +33,7 @@ interface UserBooking {
   movie_title: string;
   auditorium_name: string;
   total_price: number;
-  seats: SeatDetailedRow[]; // Uppdatera till den detaljerade typen
+  seats: SeatDetailedRow[];
 }
 
 function formatPrice(n: number) {
@@ -55,13 +53,13 @@ function formatDateTime(iso: string) {
   return `${date} ${time}`;
 }
 
-// helper: gör om row_index (1,2,3...) till A,B,C...
+// Helper: turn row_index (1, 2, 3...) into A, B, C...
 function rowIndexToLetter(rowIndex: number): string {
   const baseCharCode = "A".charCodeAt(0);
   return String.fromCharCode(baseCharCode + (rowIndex - 1));
 }
 
-// Funktion för att kolla om en bokning går att avboka (mer än 1 timme kvar)
+// Check if booking can be canceled (more than 1 hr remaining until screening time
 function canCancelBooking(screeningTime: string): boolean {
   const now = new Date();
   const screeningDate = new Date(screeningTime);
@@ -106,7 +104,7 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
         if (response.ok) {
           const data = await response.json();
 
-          // För varje bokning, hämta detaljerad platsinformation
+          // For each booking, fetch detailed seatinfo
           const bookingsWithDetailedSeats = await Promise.all(
             data.map(async (booking: any) => {
               try {
@@ -124,7 +122,7 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
               } catch (error) {
                 console.error("Kunde inte hämta detaljerad platsinfo:", error);
               }
-              return booking; // Fallback till originaldata om det misslyckas
+              return booking; // Fallback to original data if fail
             })
           );
 
@@ -171,7 +169,7 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
     }
   };
 
-  // Funktion för att formatera platslistan som "A7, A8, B12"
+  // Format seatlist as "A7, A8, B12..."
   const formatSeatList = (seats: SeatDetailedRow[]): string => {
     return seats
       .slice()
@@ -193,7 +191,6 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
       return screeningDate > now;
     })
     .sort((a, b) => {
-      // Sortera efter screening_time, tidigast datum först
       return (
         new Date(a.screening_time).getTime() -
         new Date(b.screening_time).getTime()
@@ -206,7 +203,6 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
       return screeningDate <= now;
     })
     .sort((a, b) => {
-      // Sortera efter screening_time, senaste datum först (för historik)
       return (
         new Date(b.screening_time).getTime() -
         new Date(a.screening_time).getTime()
@@ -228,7 +224,7 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
         ← Tillbaka
       </Button>
 
-      {/* Kommande visningar */}
+      {/* Upcoming screenings */}
       <Card className="bg-secondary border-primary my-5">
         <Card.Header as="h6">Kommande visningar</Card.Header>
         <ListGroup variant="flush" className="bg-secondary">
@@ -312,7 +308,7 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
         </ListGroup>
       </Card>
 
-      {/* Tidigare visningar */}
+      {/* Previous screenings */}
       <Card className="bg-secondary border-primary my-5">
         <Card.Header as="h6">Tidigare visningar</Card.Header>
         <ListGroup variant="flush" className="bg-secondary">
@@ -374,7 +370,7 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
         </Button>
       )}
 
-      {/* Avbokningsmodal */}
+      {/* Cancellation-modal */}
       <Modal show={!!toCancel} onHide={() => setToCancel(null)} centered>
         <Modal.Header closeButton className="bg-primary border-dark text-info">
           <Modal.Title>Avboka visning</Modal.Title>
