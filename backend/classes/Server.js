@@ -49,8 +49,6 @@ export default class Server {
     // startEventsPoller(400); // 300–800 ms är lagom
     // }
 
-    
-
     new SseRoute(this.app, { prefix: this.settings.restPrefix });
     startEventsPoller(200);
     console.log("[SSE] mounted /api/bookings/stream");

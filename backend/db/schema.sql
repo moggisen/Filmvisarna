@@ -6,7 +6,8 @@ CREATE TABLE users (
     user_email VARCHAR(50) NOT NULL UNIQUE,
     user_password_hash VARCHAR(255),
     user_name VARCHAR(50),
-    user_phoneNumber VARCHAR(20) UNIQUE
+    user_phoneNumber VARCHAR(20) UNIQUE,
+    role VARCHAR(20) NOT NULL DEFAULT 'user';
 );
 
 CREATE TABLE movies (

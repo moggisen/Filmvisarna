@@ -407,6 +407,14 @@ const useSeatManagement = (
     selected.size,
   ]);
 
+    // När man går ner till 0 biljetter vill vi att autoväljaren ska kunna starta om
+  useEffect(() => {
+    if (needed === 0) {
+      setHasManualSelection(false);
+    }
+  }, [needed]);
+
+
   const toggleSeat = useCallback(
     (seatId: number) => {
       if (!screeningId) return;

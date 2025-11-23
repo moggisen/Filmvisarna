@@ -3,7 +3,6 @@ import LoginHandler from "./LoginHandlerSQL.js";
 import RestSearch from "./RestSearchSQL.js";
 import Acl from "./Acl.js";
 import catchExpressJsonErrors from "../helpers/catchExpressJsonErrors.js";
-import PasswordChecker from "../helpers/PasswordChecker.js";
 import { body, query, validationResult } from "express-validator";
 import { sendBookingEmail } from "./sendBookingEmail.js";
 import {
@@ -12,6 +11,7 @@ import {
   broadcast,
   clearHolds,
 } from "../helpers/sseRegistry.js";
+import { allowRoles } from "./middlewares/acl.js";
 
 // import the correct version of the DBQueryMaker
 const DBQueryMaker = (
@@ -21,6 +21,7 @@ const DBQueryMaker = (
 export default class RestApi {
   // Connect to the db through DBQueryMaker
   // and call methods that creates routes
+
   constructor(app, settings) {
     this.app = app;
     this.settings = settings;
@@ -29,6 +30,7 @@ export default class RestApi {
     this.db = new DBQueryMaker(settings);
 
     app.use((req, res, next) => {
+      // Kolla om det är en API-begäran OCH kommer från webbläsaren
       const isApiRequest = req.path.startsWith("/api");
       const isFromBrowser =
         req.get("Accept")?.includes("text/html") ||
@@ -49,6 +51,7 @@ export default class RestApi {
     // PasswordChecker.addMiddleware(app, this.prefix, settings);
     // add login routes
     new LoginHandler(this);
+
     // add post, get, put and delete routes
     this.addBookingRoute();
     this.addSeatHoldRoute();
@@ -72,7 +75,6 @@ export default class RestApi {
         );
         res.json(rows);
       } catch (error) {
-        console.error("Error fetching ticket types:", error);
         res.status(500).json({ error: "Kunde inte hämta biljettyper" });
       }
     });
@@ -148,7 +150,6 @@ export default class RestApi {
           rows,
         });
       } catch (err) {
-        console.error("Fel i GET /screenings/:id/layout:", err);
         res.status(500).json({ error: "Kunde inte hämta layout" });
       }
     });
@@ -235,7 +236,6 @@ export default class RestApi {
         }
         this.sendJsonResponse(res, bookings);
       } catch (error) {
-        console.error("Error fetching user bookings:", error);
         this.sendJsonResponse(res, { error: "Kunde inte hämta bokningar" });
       }
     });
@@ -273,7 +273,6 @@ export default class RestApi {
 
         this.sendJsonResponse(res, { success: "Bokning raderad" });
       } catch (error) {
-        console.error("Error deleting booking:", error);
         this.sendJsonResponse(res, { error: "Kunde inte radera bokning" });
       }
     });
@@ -314,7 +313,6 @@ export default class RestApi {
 
           res.json(rows);
         } catch (err) {
-          console.error("Error fetching seat details for booking:", err);
           res.status(500).json({
             error: "Kunde inte hämta sätesinformation för bokningen.",
           });
@@ -507,7 +505,6 @@ export default class RestApi {
             is_guest,
           });
         } catch (error) {
-          console.error(error);
           res.status(500).json({ error: "Kunde inte skapa användare" });
         }
       }
@@ -569,7 +566,6 @@ export default class RestApi {
           is_guest: true,
         });
       } catch (error) {
-        console.error(error);
         res.status(500).json({ error: "Kunde inte skapa gästanvändare" });
       }
     });
@@ -648,7 +644,6 @@ export default class RestApi {
             return res.json({ ok: true, action: "release" });
           }
         } catch (err) {
-          console.error("Fel i seat-hold-route:", err);
           return res
             .status(500)
             .json({ error: "Kunde inte uppdatera sätes-hold." });
@@ -910,9 +905,7 @@ export default class RestApi {
               screeningTime: formattedScreeningTime,
               totalPrice: totalPrice,
             });
-          } catch (emailError) {
-            console.error("Kunde INTE skicka bekräftelsemejl:", emailError);
-          }
+          } catch (emailError) {}
         }
 
         if (isGuestBooking) {
@@ -943,8 +936,6 @@ export default class RestApi {
           is_guest: !!guest_email,
         });
       } catch (err) {
-        console.error("Booking error:", err);
-
         const status = err.status || 500;
         let errorMessage = err.message || "Internt serverfel.";
 
