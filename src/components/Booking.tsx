@@ -1,8 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import type { BookingSummary } from "./types";
+
+import type {
+  BookingSummary,
+  Screening,
+  Tickets,
+  TicketType,
+  SeatMeta,
+  LayoutRow,
+  ScreeningLayoutResponse,
+  Movie,
+} from "./types";
+
 import "../styles/booking.scss";
 import AgeTooltip from "./ageTooltip";
+import SeatLegend from "./booking/SeatLegend";
+import TicketRow from "./booking/TicketRow";
+import SeatPickerMobile from "./booking/SeatPickerMobile";
+import SeatGridDesktop from "./booking/SeatGridDesktop";
+import AuthModal from "./booking/AuthModal";
+
+import useApiData from "../hooks/useApiData";
+import {
+  fmtSEK,
+  isFuture,
+  getSeatInfo,
+  getSeatLabel,
+  formatSelectedSeats,
+} from "./booking/bookingHelpers";
 
 interface BookingProps {
   onConfirm: (booking: BookingSummary) => void;
@@ -13,78 +38,6 @@ interface BookingProps {
 
 const API_PREFIX = import.meta.env.VITE_API_PREFIX || "/api";
 
-type Movie = { id: number; title: string };
-type Screening = {
-  id: number;
-  screening_time: string;
-  movie_id: number;
-  auditorium_id: number;
-};
-type Tickets = { adult: number; child: number; senior: number };
-type TicketType = {
-  id: number;
-  ticketType_name: string;
-  ticketType_price: number;
-};
-type SeatMeta = { ri: number; ci: number };
-type LayoutRow = {
-  rowIndex: number;
-  seats: { id: number; seatNumber: number; taken: boolean }[];
-};
-type ScreeningLayoutResponse = {
-  auditorium_id: number;
-  auditorium_name: string;
-  rows: LayoutRow[];
-};
-
-const fmtSEK = (n: number) =>
-  new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK" }).format(
-    n
-  );
-
-// Custom hook för data fetching med normalisering och felhantering
-const useApiData = <T,>(
-  url: string,
-  initialValue: T,
-  normalizer?: (data: any) => T
-) => {
-  const [data, setData] = useState<T>(initialValue);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`${API_PREFIX}${url}`);
-        if (!res.ok) {
-          throw new Error(
-            `Kunde inte hämta ${url}: ${res.status} ${res.statusText}`
-          );
-        }
-        const result = await res.json();
-        if (alive) {
-          setData(normalizer ? normalizer(result) : result);
-          setError(null);
-        }
-      } catch (e: any) {
-        if (alive) {
-          console.error(`Error fetching ${url}:`, e);
-          setError(e?.message || "Något gick fel");
-        }
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [url, normalizer]);
-
-  return { data, loading, error };
-};
-
 // Normaliseringsfunktion för filmer
 const normalizeMovies = (raw: any): Movie[] => {
   return (Array.isArray(raw) ? raw : []).map((m: any) => ({
@@ -93,7 +46,6 @@ const normalizeMovies = (raw: any): Movie[] => {
   }));
 };
 
-// Custom hook för seat management med "bästa platser" logik
 // Custom hook för seat management med "bästa platser" logik
 const useSeatManagement = (
   screeningId: number | null,
@@ -212,7 +164,7 @@ const useSeatManagement = (
       `${API_PREFIX}/bookings/stream?screeningId=${screeningId}`
     );
 
-    // ⭕️ Viktigt: detta snapshot ska bara användas EN gång per anslutning.
+    // Viktigt: detta snapshot ska bara användas EN gång per anslutning.
     const onSnapshot = (e: MessageEvent) => {
       // Har vi redan lagt in snapshot? Då IGNORERAR vi detta (förhindrar blink).
       if (gotSnapshotRef.current) return;
@@ -229,7 +181,7 @@ const useSeatManagement = (
       }
 
       setHeld(map);
-      gotSnapshotRef.current = true; // ✅ lås: snapshot är “konsumerat”
+      gotSnapshotRef.current = true; // lås: snapshot är “konsumerat”
     };
 
     const onSeatHeld = (e: MessageEvent) => {
@@ -381,7 +333,7 @@ const useSeatManagement = (
 
   useEffect(() => {
     if (hasManualSelection) return;
-    // ✅ Kör bara auto-select om vi INTE redan har val
+    // Kör bara auto-select om vi INTE redan har val
     if (selected.size > 0) return;
 
     setSelected(() => {
@@ -407,18 +359,17 @@ const useSeatManagement = (
     selected.size,
   ]);
 
-    // När man går ner till 0 biljetter vill vi att autoväljaren ska kunna starta om
+  // När man går ner till 0 biljetter vill vi att autoväljaren ska kunna starta om
   useEffect(() => {
     if (needed === 0) {
       setHasManualSelection(false);
     }
   }, [needed]);
 
-
   const toggleSeat = useCallback(
     (seatId: number) => {
       if (!screeningId) return;
-      if (needed === 0) return; // ⬅️ NY RAD: inga biljetter → ingen seat
+      if (needed === 0) return; // NY RAD: inga biljetter → ingen seat
       if (occupied.has(seatId)) return; // redan bokad
       if (held.has(seatId) && held.get(seatId) !== sessionId) return; // hålls av annan
 
@@ -430,7 +381,7 @@ const useSeatManagement = (
 
         if (wasSelected) {
           next.delete(seatId);
-          // 🔹 optimistisk release
+          // optimistisk release
           fetch(
             `${API_PREFIX}/screenings/${screeningId}/seats/${seatId}/hold`,
             {
@@ -442,7 +393,7 @@ const useSeatManagement = (
           ).catch(() => {});
         } else if (next.size < needed) {
           next.add(seatId);
-          // 🔹 optimistisk hold
+          // optimistisk hold
           fetch(
             `${API_PREFIX}/screenings/${screeningId}/seats/${seatId}/hold`,
             {
@@ -460,27 +411,27 @@ const useSeatManagement = (
   );
 
   const setSelectedWithManual = useCallback(
-  (newSelected: Set<number> | ((prev: Set<number>) => Set<number>)) => {
-    setSelected((prev) => {
-      const result =
-        typeof newSelected === "function" ? newSelected(prev) : newSelected;
+    (newSelected: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+      setSelected((prev) => {
+        const result =
+          typeof newSelected === "function" ? newSelected(prev) : newSelected;
 
-      if (
-        result.size > 0 &&
-        Array.from(result).some((seatId) => !prev.has(seatId))
-      ) {
-        // ➜ Vi har fått nya platser (manuell förändring) → stäng av autoväljaren
-        setHasManualSelection(true);
-      } else if (result.size === 0) {
-        // ➜ Alla platser är borttagna → slå PÅ autoväljaren igen
-        setHasManualSelection(false);
-      }
+        if (
+          result.size > 0 &&
+          Array.from(result).some((seatId) => !prev.has(seatId))
+        ) {
+          // ➜ Vi har fått nya platser (manuell förändring) → stäng av autoväljaren
+          setHasManualSelection(true);
+        } else if (result.size === 0) {
+          // ➜ Alla platser är borttagna → slå PÅ autoväljaren igen
+          setHasManualSelection(false);
+        }
 
-      return result;
-    });
-  },
-  []
-);
+        return result;
+      });
+    },
+    []
+  );
 
   const clearSelected = useCallback(() => {
     setSelected(new Set());
@@ -496,7 +447,7 @@ const useSeatManagement = (
     clearSelected,
     setSelected: setSelectedWithManual,
     hasManualSelection,
-    markAsBooked, // 👈 lägg till
+    markAsBooked, // lägg till
   };
 };
 
@@ -504,7 +455,6 @@ export default function Booking({
   onConfirm,
   onNavigate,
   authed,
-  isGuest = false,
 }: BookingProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -548,15 +498,9 @@ export default function Booking({
     error: movieError,
   } = useApiData<Movie[]>("/movies", [], normalizeMovies);
 
-  const {
-    data: ticketTypes,
-    loading: loadingTicketTypes,
-    error: ticketTypesError,
-  } = useApiData<TicketType[]>("/ticketTypes", []);
-
-  // Visa bara kommande visningar (1 min "buffert")
-  const isFuture = (iso: string) =>
-    new Date(iso).getTime() > Date.now() + 60 * 1000;
+  const { data: ticketTypes, error: ticketTypesError } = useApiData<
+    TicketType[]
+  >("/ticketTypes", []);
 
   const futureScreenings = useMemo(
     () => allScreenings.filter((s) => isFuture(s.screening_time)),
@@ -732,7 +676,7 @@ export default function Booking({
   useEffect(() => {
     if (!selectedScreeningId) return;
 
-    // ✅ Viktigt: rensa inte ner till 0 när inga biljetter är valda
+    // Viktigt: rensa inte ner till 0 när inga biljetter är valda
     if (needed === 0) return;
 
     if (selected.size <= needed) return;
@@ -767,7 +711,7 @@ export default function Booking({
     setSelected,
   ]);
 
-  // ✅ Debouncad sync: klumpar ihop lokala val → server-holds
+  // Debouncad sync: klumpar ihop lokala val → server-holds
   useEffect(() => {
     if (!selectedScreeningId) return;
 
@@ -879,37 +823,6 @@ export default function Booking({
   const getMovieTitle = (id: number | null) =>
     movies.find((m) => m.id === id)?.title ?? "";
 
-  const getSeatInfo = (seatId: number) => {
-    const meta = seatStruct.seatMeta.get(seatId);
-    if (!meta) return { rowLetter: "A", seatNumber: seatId };
-
-    const rowLetter = String.fromCharCode("A".charCodeAt(0) + meta.ri);
-    const layoutRow = layoutRows[meta.ri];
-    const seat = layoutRow?.seats.find((s) => s.id === seatId);
-
-    return {
-      rowLetter,
-      seatNumber: seat?.seatNumber ?? meta.ci,
-    };
-  };
-
-  const getSeatLabel = (seatId: number) => {
-    const { rowLetter, seatNumber } = getSeatInfo(seatId);
-    return rowLetter + seatNumber;
-  };
-
-  const formatSelectedSeats = () =>
-    Array.from(selected)
-      .sort((a, b) => {
-        const A = getSeatInfo(a);
-        const B = getSeatInfo(b);
-        return (
-          A.rowLetter.localeCompare(B.rowLetter) || A.seatNumber - B.seatNumber
-        );
-      })
-      .map(getSeatLabel)
-      .join(", ");
-
   const ticketTotal =
     tickets.adult * prices.adult +
     tickets.child * prices.child +
@@ -977,7 +890,7 @@ export default function Booking({
     if (allScreenings.length === 0) {
       return false;
     }
-    // ✅ Kolla URL-parametrar FÖRST
+    // Kolla URL-parametrar FÖRST
     const urlMovieId = searchParams.get("movie");
     const urlScreeningId = searchParams.get("screening");
 
@@ -1117,7 +1030,6 @@ export default function Booking({
     // Kolla om vi precis kom tillbaka från en auth flow
     const shouldRestore = sessionStorage.getItem("shouldRestoreBooking");
     const savedSessionId = sessionStorage.getItem("bookingSessionId");
-    const isAuthNavigation = sessionStorage.getItem("isAuthNavigation");
 
     if (shouldRestore === "true" && savedSessionId === sessionId) {
       console.log("Auth flow completed - restoring booking session");
@@ -1292,7 +1204,11 @@ export default function Booking({
         pensionar: tickets.senior,
       },
       seats: Array.from(selected).map((seatId) => {
-        const { rowLetter, seatNumber } = getSeatInfo(seatId);
+        const { rowLetter, seatNumber } = getSeatInfo(
+          seatStruct,
+          layoutRows,
+          seatId
+        );
         return { row: rowLetter, number: seatNumber };
       }),
       total: ticketTotal,
@@ -1303,7 +1219,7 @@ export default function Booking({
       isGuestBooking: isGuestBooking,
       guestEmail: email,
     };
-    // ✅ Optimistisk UI-uppdatering: mina val är nu bokade
+    // Optimistisk UI-uppdatering: mina val är nu bokade
     markAsBooked(Array.from(selected));
 
     // 9. Trigga bekräftelsesidan + ev. stäng modalen
@@ -1380,30 +1296,6 @@ export default function Booking({
     clearSelectedAndRelease();
   };
 
-  function SeatLegend() {
-    return (
-      <div className="seat-legend-wrapper">
-        <div className="seat-legend mt-3" aria-label="Färgnyckel för platser">
-          <div className="legend-item">
-            <span className="swatch swatch-free" aria-hidden="true" />
-            <span className="legend-text">Ledig</span>
-          </div>
-          <div className="legend-item">
-            <span className="swatch swatch-taken" aria-hidden="true" />
-            <span className="legend-text">Bokad</span>
-          </div>
-          <div className="legend-item">
-            <span className="swatch swatch-active" aria-hidden="true" />
-            <span className="legend-text">Vald plats</span>
-          </div>
-          <div className="legend-item">
-            <span className="swatch swatch-held" aria-hidden="true" />
-            <span className="legend-text">Tillfälligt reserverad</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
   // SearchParams
   useEffect(() => {
     if (movieId || selectedScreeningId) {
@@ -1554,7 +1446,9 @@ export default function Booking({
                   selected={selected}
                   needed={needed}
                   onToggle={toggleSeat}
-                  getSeatLabel={getSeatLabel}
+                  getSeatLabel={(id) =>
+                    getSeatLabel(seatStruct, layoutRows, id)
+                  }
                   sessionId={sessionId}
                 />
 
@@ -1562,47 +1456,19 @@ export default function Booking({
                 <div className="seat-viewport" ref={viewportRef}>
                   <div className="seat-stage" ref={stageRef}>
                     <div className="screenbar">BIODUK</div>
-                    <div className="seat-grid" aria-label="Salsplatser">
-                      {seatStruct.indexByRow.map((rowNos, ri) => (
-                        <div className="seat-row" key={ri}>
-                          <div className="row-inner">
-                            {rowNos.map((no) => {
-                              const isTaken = occupied.has(no);
-                              const isActive = selected.has(no);
-                              const heldByOther =
-                                held.has(no) && held.get(no) !== sessionId;
 
-                              return (
-                                <button
-                                  key={no}
-                                  type="button"
-                                  className={`seat ${
-                                    isTaken
-                                      ? "seat-taken"
-                                      : heldByOther
-                                      ? "seat-held"
-                                      : isActive
-                                      ? "seat-active"
-                                      : ""
-                                  }`}
-                                  aria-pressed={isActive}
-                                  disabled={
-                                    needed === 0 || // ⬅️ NYTT: inga biljetter = helt avstängd
-                                    isTaken ||
-                                    heldByOther ||
-                                    (!isActive &&
-                                      !(needed === 0 || selected.size < needed))
-                                  }
-                                  onClick={() => toggleSeat(no)}
-                                >
-                                  {getSeatLabel(no)}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <SeatGridDesktop
+                      seatStruct={seatStruct}
+                      occupied={occupied}
+                      held={held}
+                      selected={selected}
+                      needed={needed}
+                      sessionId={sessionId}
+                      getSeatLabel={(id) =>
+                        getSeatLabel(seatStruct, layoutRows, id)
+                      }
+                      onToggle={toggleSeat}
+                    />
                     <SeatLegend />
                   </div>
                 </div>
@@ -1611,7 +1477,9 @@ export default function Booking({
                   <div>
                     <div className="small hidden-text">Valda platser</div>
                     <div className="fw-semibold">
-                      {selected.size === 0 ? "–" : formatSelectedSeats()}
+                      {selected.size === 0
+                        ? "–"
+                        : formatSelectedSeats(selected, seatStruct, layoutRows)}
                     </div>
                   </div>
                   <div className="text-end">
@@ -1664,298 +1532,5 @@ export default function Booking({
         />
       )}
     </>
-  );
-}
-
-// AuthModal med session support
-function AuthModal(props: {
-  step: "choose" | "guest";
-  guestEmail: string;
-  onChangeEmail: (s: string) => void;
-  onClose: () => void;
-  onPickGuest: () => void;
-  onLogin: () => void;
-  onSignup: () => void;
-  onConfirmGuest: () => void;
-}) {
-  const {
-    step,
-    guestEmail,
-    onChangeEmail,
-    onClose,
-    onPickGuest,
-    onLogin,
-    onSignup,
-    onConfirmGuest,
-  } = props;
-
-  const handleLogin = () => {
-    // Sätt flagga för att restore session när användaren kommer tillbaka
-    sessionStorage.setItem("shouldRestoreBooking", "true");
-    onLogin();
-  };
-
-  const handleSignup = () => {
-    // Sätt flagga för att restore session när användaren kommer tillbaka
-    sessionStorage.setItem("shouldRestoreBooking", "true");
-    onSignup();
-  };
-
-  return (
-    <>
-      <div className="modal-backdrop fade show"></div>
-      <div className="modal d-block" role="dialog">
-        <div className="modal-dialog modal-dialog-centered">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">Fortsätt för att boka</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={onClose}
-              ></button>
-            </div>
-
-            {step === "choose" && (
-              <div className="modal-body">
-                <p className="mb-3">
-                  Välj hur du vill fortsätta. Dina val sparas så du kan
-                  återvända.
-                </p>
-                <div className="d-grid gap-2">
-                  <button className="btn btn-primary" onClick={handleLogin}>
-                    Logga in
-                  </button>
-                  <button className="btn btn-primary" onClick={handleSignup}>
-                    Bli medlem
-                  </button>
-                  <button className="btn btn-primary" onClick={onPickGuest}>
-                    Fortsätt som gäst
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {step === "guest" && (
-              <div className="modal-body">
-                <label className="form-label">E-postadress</label>
-                <input
-                  className="form-control"
-                  type="email"
-                  placeholder="du@example.com"
-                  value={guestEmail}
-                  onChange={(e) => onChangeEmail(e.target.value)}
-                />
-                <small className="booking-note d-block mt-2">
-                  Vi skickar din bokningsbekräftelse till denna adress.
-                </small>
-              </div>
-            )}
-
-            <div className="modal-footer">
-              <button className="btn btn-cancel" onClick={onClose}>
-                Stäng
-              </button>
-              {step === "guest" && (
-                <button
-                  className="btn btn-primary btn-confirm"
-                  onClick={onConfirmGuest}
-                >
-                  Bekräfta
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function TicketRow({
-  label,
-  price,
-  value,
-  onChange,
-}: {
-  label: string;
-  price: number;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="mb-2 d-flex align-items-center justify-content-between">
-      <div>
-        <div className="fw-semibold">{label}</div>
-        <div className="booking-hint">{fmtSEK(price)}</div>
-      </div>
-      <div className="btn-group">
-        <button
-          className="btn btn-outline-info btn-sm"
-          onClick={() => onChange(value - 1)}
-        >
-          −
-        </button>
-        <button className="btn btn-info btn-sm" disabled>
-          {value}
-        </button>
-        <button
-          className="btn btn-outline-info btn-sm"
-          onClick={() => onChange(value + 1)}
-        >
-          +
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SeatPickerMobile({
-  rows,
-  occupied,
-  held,
-  selected,
-  needed,
-  onToggle,
-  getSeatLabel,
-  sessionId,
-}: {
-  rows: number[][];
-  occupied: Set<number>;
-  held: Map<number, string>;
-  selected: Set<number>;
-  needed: number;
-  onToggle: (seatId: number) => void;
-  getSeatLabel: (seatId: number) => string;
-  sessionId: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const canAddMore = selected.size < needed;
-
-  // Sorterar efter radbokstav + siffra (A1, A2, A10) istället för sträng-fel
-  const sortBySeatLabel = (a: number, b: number) => {
-    const la = getSeatLabel(a);
-    const lb = getSeatLabel(b);
-
-    const rowA = la.charAt(0);
-    const rowB = lb.charAt(0);
-
-    const numA = parseInt(la.slice(1), 10) || 0;
-    const numB = parseInt(lb.slice(1), 10) || 0;
-
-    if (rowA < rowB) return -1;
-    if (rowA > rowB) return 1;
-    return numA - numB;
-  };
-
-  // Text i "stängd" läge
-  const summaryLabel =
-    selected.size > 0
-      ? `Platser: ${[...selected]
-          .sort(sortBySeatLabel)
-          .map((id) => getSeatLabel(id))
-          .join(", ")}`
-      : needed > 0
-      ? "Öppna och välj platser"
-      : "Välj antal biljetter först";
-
-  // 🔹 Klick utanför → stäng
-  useEffect(() => {
-    if (!open) return;
-
-    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      if (!wrapperRef.current) return;
-      const target = e.target as Node;
-      if (!wrapperRef.current.contains(target)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-    };
-  }, [open]);
-
-  return (
-    <div className="seat-picker-mobile d-lg-none" ref={wrapperRef}>
-      <label className="form-label fw-semibold">
-        Välj platser{" "}
-        {needed > 0 ? `(behöver ${needed})` : `(välj antal biljetter först)`}
-      </label>
-
-      {/* Klickbar "select" som öppnar/stänger panelen */}
-      <button
-        type="button"
-        className="spm-summary form-select d-flex justify-content-between align-items-center"
-        onClick={() => {
-          if (needed > 0) setOpen((o) => !o);
-        }}
-        disabled={needed === 0}
-      >
-        <span>{summaryLabel}</span>
-        <span className="ms-2">{open ? "▴" : "▾"}</span>
-      </button>
-
-      {open && (
-        <div className="spm-panel mt-2">
-          {rows.map((rowSeatIds, rowIndex) => {
-            if (!rowSeatIds.length) return null;
-
-            const rowLetter = String.fromCharCode("A".charCodeAt(0) + rowIndex);
-
-            const sortedSeats = [...rowSeatIds].sort(sortBySeatLabel);
-
-            return (
-              <div key={rowIndex} className="spm-row">
-                <div className="spm-row-label">Rad {rowLetter}</div>
-                <div className="spm-row-seats">
-                  {sortedSeats.map((seatId) => {
-                    const label = getSeatLabel(seatId);
-                    const taken = occupied.has(seatId);
-                    const checked = selected.has(seatId);
-                    const heldByOther =
-                      held.has(seatId) && held.get(seatId) !== sessionId;
-
-                    const disabled =
-                      needed === 0 || // ⬅️ NYTT
-                      taken ||
-                      heldByOther ||
-                      (!checked && !canAddMore);
-
-                    const stateClass = taken
-                      ? "spm-seat-taken"
-                      : heldByOther
-                      ? "spm-seat-held"
-                      : checked
-                      ? "spm-seat-selected"
-                      : "spm-seat-free";
-
-                    return (
-                      <button
-                        key={seatId}
-                        type="button"
-                        className={`spm-seat-pill ${stateClass}`}
-                        onClick={() => {
-                          if (!disabled) onToggle(seatId);
-                        }}
-                        disabled={disabled}
-                        aria-pressed={checked}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 }
