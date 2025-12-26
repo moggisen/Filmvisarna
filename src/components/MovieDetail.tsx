@@ -74,13 +74,17 @@ const csvToList = (csv?: string): string[] =>
 // Build full poster path
 const posterPath = (val?: string): string => {
   const p = (val ?? "").trim();
-  if (!p) return "";
+  if (!p) return "/assets/posters/placeholder.jpg"; // Returnera placeholder direkt om tom
   if (/^https?:\/\//i.test(p)) return p;
+
   const file = p.split("/").pop() ?? "";
+  if (!file) return "/assets/posters/placeholder.jpg"; // Om inget filnamn
+
   try {
-    return new URL(`../assets/posters/${file}`, import.meta.url).href;
+    const url = new URL(`/assets/posters/${file}`, import.meta.url).href;
+    return url;
   } catch {
-    return "";
+    return "/assets/posters/placeholder.jpg"; // Returnera placeholder vid fel
   }
 };
 
