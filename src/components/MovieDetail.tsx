@@ -362,10 +362,13 @@ export default function MovieDetail({ onBook }: MovieDetailProps) {
                   src={poster}
                   alt="Film poster"
                   className="img-fluid rounded-2"
-                  onError={(e) =>
-                    ((e.currentTarget as HTMLImageElement).src =
-                      "/assets/posters/placeholder.jpg")
-                  }
+                  onError={(e) => {
+                    const img = e.currentTarget as HTMLImageElement;
+                    // Förhindra oändlig loop
+                    if (!img.src.includes("placeholder.jpg")) {
+                      img.src = "/assets/posters/placeholder.jpg";
+                    }
+                  }}
                 />
               </Figure>
             ) : (
